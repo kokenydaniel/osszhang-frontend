@@ -130,6 +130,7 @@ export interface UserProfile {
     name: string;
     invite_code: string;
     users?: UserProfile[];
+    categories?: string[];
   };
 }
 
@@ -148,6 +149,7 @@ interface AppState {
 
   savings: SavingsAccount[];
   addSavingsAccount: (s: Omit<SavingsAccount, 'id' | 'ledger'>) => Promise<void>;
+  updateSavingsAccount: (id: number, s: Partial<SavingsAccount>) => Promise<void>;
   deleteSavingsAccount: (id: number) => Promise<void>;
   addLedgerEntry: (savingsId: number, entry: Omit<LedgerEntry, 'id'>) => Promise<void>;
   deleteLedgerEntry: (savingsId: number, entryId: number) => Promise<void>;
@@ -283,6 +285,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   addSavingsAccount: async (s) => {
     const res = await savingsApi.create(s);
     set({ savings: [...get().savings, res.data] });
+  },
+  updateSavingsAccount: async (id, s) => {
+    const res = await savingsApi.update(id, s);
+    set({ savings: get().savings.map(acc => acc.id === id ? res.data : acc) });
   },
   deleteSavingsAccount: async (id) => {
     await savingsApi.delete(id);

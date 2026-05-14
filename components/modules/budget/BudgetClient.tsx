@@ -233,7 +233,7 @@ export default function BudgetClient() {
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#ef4444', '#8b5cf6'];
 
   const renderTable = (items: any[], title: string, type: 'income' | 'expense') => {
-    const allTableCategories = Array.from(new Set([...categories, ...items.map(i => i.category || 'Egyéb')]));
+    const allTableCategories = Array.from(new Set([...categories, ...items.map((i: any) => i.category || 'Egyéb')]));
     const grouped = allTableCategories.reduce((acc, cat) => {
        let filtered = items.filter(i => (i.category || 'Egyéb') === cat);
        
@@ -288,7 +288,7 @@ export default function BudgetClient() {
                         </div>
                       </td>
                     </tr>
-                    {grouped[cat].map(t => {
+                    {grouped[cat].map((t: any) => {
                       const spent = t.isBudget && t.subItems ? t.subItems.reduce((acc: number, si: any) => acc + Math.abs(si.amount), 0) : 0;
                       const remaining = t.amount - spent;
                       const progress = t.isBudget ? Math.min(100, (spent / t.amount) * 100) : 0;
