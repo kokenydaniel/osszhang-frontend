@@ -1,0 +1,114 @@
+// Utility functions for PénzPilot
+import { MONTH_NAMES } from '@/types';
+
+// ==============================
+// CURRENCY FORMATTING
+// ==============================
+export function formatHUF(amount: number, compact = false): string {
+  if (compact && Math.abs(amount) >= 1_000_000) {
+    return `${(amount / 1_000_000).toFixed(1).replace('.', ',')} M Ft`;
+  }
+  return new Intl.NumberFormat('hu-HU', {
+    style: 'currency',
+    currency: 'HUF',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+export function formatCurrency(amount: number, currency: string): string {
+  if (currency === 'HUF') return formatHUF(amount);
+  if (currency === 'BTC') return `₿ ${amount.toFixed(6)}`;
+  if (currency === 'ETH') return `Ξ ${amount.toFixed(4)}`;
+  
+  return new Intl.NumberFormat('hu-HU', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+export function formatNumber(n: number): string {
+  return new Intl.NumberFormat('hu-HU').format(n);
+}
+
+// ==============================
+// DATE FORMATTING
+// ==============================
+export function formatDate(dateStr: string): string {
+  if (!dateStr) return '—';
+  const date = new Date(dateStr);
+  return new Intl.DateTimeFormat('hu-HU', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date).replace(/\s/g, '');
+}
+
+export function formatMonthYear(month: number, year: number): string {
+  return `${year}. ${MONTH_NAMES[month]}`;
+}
+
+export function getMonthName(month: number): string {
+  return MONTH_NAMES[month] ?? '';
+}
+
+export function shortMonthName(month: number): string {
+  const names: Record<number, string> = {
+    1: 'Jan', 2: 'Feb', 3: 'Már', 4: 'Ápr',
+    5: 'Máj', 6: 'Jún', 7: 'Júl', 8: 'Aug',
+    9: 'Szep', 10: 'Okt', 11: 'Nov', 12: 'Dec',
+  };
+  return names[month] ?? '';
+}
+
+export function getCurrentMonth(): number {
+  return new Date().getMonth() + 1;
+}
+
+export function getCurrentYear(): number {
+  return new Date().getFullYear();
+}
+
+export function isOverdue(dateStr: string): boolean {
+  return new Date(dateStr) < new Date();
+}
+
+export function daysUntil(dateStr: string): number {
+  const diff = new Date(dateStr).getTime() - new Date().getTime();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+// ==============================
+// PERCENTAGE
+// ==============================
+export function calcPercent(part: number, total: number): number {
+  if (total === 0) return 0;
+  return Math.round((part / total) * 100);
+}
+
+export function formatPercent(value: number): string {
+  return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+}
+
+// ==============================
+// CLASS NAMES
+// ==============================
+export function cn(...classes: (string | undefined | null | false)[]): string {
+  return classes.filter(Boolean).join(' ');
+}
+
+// ==============================
+// COLORS
+// ==============================
+export const STATUS_COLORS = {
+  rendben: 'badge-success',
+  kint: 'badge-danger',
+  szolgaltatonal: 'badge-warning',
+} as const;
+
+export const CATEGORY_COLORS = [
+  '#7c6af7', '#22d3ee', '#f472b6', '#22c55e', '#f59e0b',
+  '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6',
+];
