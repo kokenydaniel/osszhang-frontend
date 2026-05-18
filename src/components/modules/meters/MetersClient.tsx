@@ -109,12 +109,35 @@ function MeterCard({
   onDeleteReading: (mId: number, rId: number) => void;
 }) {
   const [showFullHistory, setShowFullHistory] = useState(false);
+  const [calcValue, setCalcValue] = useState<string>('');
+  const { addMeterReading } = useMetersStore();
+
   const chartData = getChartData(meter, selectedYear, getPreviousYearValue);
   
   const yearReadings = meter.readings.filter((r: MeterReading) => r.year === selectedYear).sort((a: MeterReading, b: MeterReading) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const otherReadings = meter.readings.filter((r: MeterReading) => r.year !== selectedYear).sort((a: MeterReading, b: MeterReading) => new Date(b.date).getTime() - new Date(a.date).getTime());
   
   const displayReadings = showFullHistory ? [...yearReadings, ...otherReadings] : yearReadings;
+
+  const sortedAllReadings = [...meter.readings].sort((a: MeterReading, b: MeterReading) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const latestReading = sortedAllReadings[0];
+  const currentVal = parseFloat(calcValue);
+  const diff = latestReading && !isNaN(currentVal) ? currentVal - latestReading.value : 0;
+
+  const handleSaveCalc = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!calcValue || isNaN(currentVal) || diff < 0) return;
+    const todayStr = new Date().toISOString().split('T')[0];
+    addMeterReading(meter.id, {
+      date: todayStr,
+      month: new Date().getMonth() + 1,
+      year: new Date().getFullYear(),
+      value: currentVal,
+      isReset: false,
+      isEstimated: false
+    });
+    setCalcValue('');
+  };
 
   return (
     <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden flex flex-col shadow-2xl">
@@ -159,6 +182,43 @@ function MeterCard({
                </div>
             </div>
          </div>
+
+         {latestReading && (
+            <div className="mb-6 p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+               <div className="flex flex-col gap-1">
+                  <div className="text-[0.65rem] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                     <span className="w-1.5 h-1.5 rounded-full bg-brand-primary"></span>
+                     Részleges Fogyasztás Kalkulátor
+                  </div>
+                  <div className="text-xs text-slate-300">
+                     Utolsó mentett állás: <b className="text-white">{formatNumber(latestReading.value)} {meter.unit}</b> ({formatDate(latestReading.date)})
+                  </div>
+               </div>
+               <form onSubmit={handleSaveCalc} className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+                  <div className="relative">
+                     <input
+                        type="number"
+                        placeholder="Aktuális állás..."
+                        value={calcValue}
+                        onChange={(e) => setCalcValue(e.target.value)}
+                        className="bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-primary w-40"
+                     />
+                     {calcValue && (
+                        <div className={`absolute left-0 -bottom-5 text-[0.65rem] font-bold ${diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                           {diff >= 0 ? `+${formatNumber(diff)} ${meter.unit}` : `${formatNumber(diff)} ${meter.unit} (Kisebb!)`}
+                        </div>
+                     )}
+                  </div>
+                  <button
+                     type="submit"
+                     disabled={!calcValue || isNaN(currentVal) || diff < 0}
+                     className="px-3 py-2 bg-brand-primary hover:bg-brand-light disabled:bg-slate-800 disabled:text-slate-500 text-xs font-bold text-white rounded-xl transition-all shadow-md"
+                  >
+                     Rögzítés új leolvasásként
+                  </button>
+               </form>
+            </div>
+         )}
 
          <div className="h-[240px] w-full">
             <ResponsiveContainer width="100%" height={240}>
