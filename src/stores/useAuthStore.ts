@@ -71,13 +71,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updateUser: async (u) => {
     const currentUser = get().user;
     if (currentUser) {
-      const res = await authClient.updateProfile({
-        firstName: u.firstName,
-        lastName: u.lastName,
-        email: u.email,
-        password: (u as any).password,
-        password_confirmation: (u as any).password_confirmation
-      });
+      const payload: any = {};
+      if (u.firstName !== undefined) payload.firstName = u.firstName;
+      if (u.lastName !== undefined) payload.lastName = u.lastName;
+      if (u.email !== undefined) payload.email = u.email;
+      if ((u as any).password !== undefined) {
+        payload.password = (u as any).password;
+        payload.password_confirmation = (u as any).password_confirmation;
+      }
+
+      const res = await authClient.updateProfile(payload);
       set({
         user: {
           ...currentUser,
