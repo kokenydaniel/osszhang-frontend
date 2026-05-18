@@ -33,15 +33,20 @@ export const usePreferenceStore = create<PreferenceState>((set, get) => ({
 
   refreshRates: async () => {
     try {
-      const [fiatRes, cryptoRes] = await Promise.all([
+      const [fiatRes, btcRes, ethRes] = await Promise.all([
         fetch('https://open.er-api.com/v6/latest/USD').then(r => r.json()),
-        fetch('https://min-api.cryptocompare.com/data/pricemulti?fsyms=BTC,ETH&tsyms=HUF').then(r => r.json())
+        fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT').then(r => r.json()),
+        fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT').then(r => r.json())
       ]);
 
       const usdToHuf = fiatRes.rates?.HUF || 365;
       const eurToHuf = fiatRes.rates?.HUF && fiatRes.rates?.EUR ? (fiatRes.rates.HUF / fiatRes.rates.EUR) : 395;
-      const btcToHuf = cryptoRes.BTC?.HUF || 24000000;
-      const ethToHuf = cryptoRes.ETH?.HUF || 1200000;
+      
+      const btcPriceUsd = Number(btcRes?.price) || 66000;
+      const ethPriceUsd = Number(ethRes?.price) || 3000;
+
+      const btcToHuf = btcPriceUsd * usdToHuf;
+      const ethToHuf = ethPriceUsd * usdToHuf;
 
       set({
         exchangeRates: {
