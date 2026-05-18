@@ -125,7 +125,7 @@ function MeterCard({
   const diff = latestReading && !isNaN(currentVal) ? currentVal - latestReading.value : 0;
 
   const sortedOfficialReadings = [...meter.readings]
-    .filter((r: MeterReading) => r.isOfficial)
+    .filter((r: MeterReading) => r.isOfficial || r.is_official)
     .sort((a: MeterReading, b: MeterReading) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const latestOfficialReading = sortedOfficialReadings[0];
   const consumptionSinceOfficial = latestReading && latestOfficialReading ? latestReading.value - latestOfficialReading.value : null;
@@ -276,9 +276,9 @@ function MeterCard({
                 <td className="p-4 text-right font-black text-slate-200">{formatNumber(r.value)} <span className="text-[0.65rem] text-slate-500 font-bold">{meter.unit}</span></td>
                 <td className="p-4">
                   <div className="flex gap-2">
-                    {r.isOfficial && <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[0.6rem] font-black">🏢 HIVATALOS</span>}
-                    {r.isReset && <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 text-[0.6rem] font-black"><RefreshCw size={10} /> CSAPERE</span>}
-                    {r.isEstimated && <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-brand-primary text-[0.6rem] font-black"><Bot size={10} /> AI</span>}
+                    {(r.isOfficial || r.is_official) && <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[0.6rem] font-black">🏢 HIVATALOS</span>}
+                    {(r.isReset || r.is_reset) && <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 text-[0.6rem] font-black"><RefreshCw size={10} /> CSAPERE</span>}
+                    {(r.isEstimated || r.is_estimated) && <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-brand-primary text-[0.6rem] font-black"><Bot size={10} /> AI</span>}
                   </div>
                 </td>
                 <td className="p-4 text-right font-black text-brand-primary">
