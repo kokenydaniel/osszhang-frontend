@@ -326,52 +326,66 @@ export default function BudgetClient() {
                       </td>
                     </tr>
                     {grouped[cat].map((t: TableItem) => {
-                      const spent = t.isBudget && t.subItems ? t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0) : 0;
-                      const remaining = t.amount - spent;
-                      const progress = t.isBudget ? Math.min(100, (spent / t.amount) * 100) : 0;
+                       const spent = t.isBudget && t.subItems ? t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0) : 0;
+                       const remaining = t.amount - spent;
+                       const progress = t.isBudget ? Math.min(100, (spent / t.amount) * 100) : 0;
+                       const todayStr = new Date().toISOString().split('T')[0];
+                       const isOverdue = !t.paidDate && t.dueDate < todayStr;
 
-                      return (
-                        <tr key={t.id} className="hover:bg-white/[0.02] transition-colors group">
-                          <td className="p-3 pl-5">
-                            <div className="font-bold text-sm text-slate-200">{t.description}</div>
-                            {t.isBudget && (
-                              <div 
-                                className="mt-1.5 cursor-pointer group/budget" 
-                                onClick={()=>{setActiveTxId(t.id as number); setIsLedgerModalOpen(true);}}
-                              >
-                                <div className="flex items-center gap-1.5 text-[0.65rem] font-black text-brand-primary group-hover/budget:text-brand-light transition-colors uppercase tracking-wider">
-                                   <History size={10} /> Rögzített tételek ({t.subItems?.length || 0})
-                                </div>
-                                <div className="w-full h-1 bg-white/10 rounded-full mt-1.5 overflow-hidden">
-                                  <div 
-                                    className={`h-full rounded-full transition-all ${progress > 90 ? 'bg-red-500' : 'bg-brand-primary'}`} 
-                                    style={{ width: `${progress}%` }} 
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </td>
-                          <td className="p-3">
-                            <div className={`font-black text-sm ${type === 'income' ? 'text-green-500' : 'text-slate-200'}`}>
-                              {formatHUF(t.amount)}
-                            </div>
-                            {t.isBudget && (
-                              <div className="text-[0.65rem] font-medium text-slate-500 mt-1">
-                                Elköltve: {formatHUF(spent)} | <span className={`${remaining < 0 ? 'text-red-500 font-bold' : ''}`}>Maradt: {formatHUF(remaining)}</span>
-                              </div>
-                            )}
-                          </td>
-                          <td className="p-3 text-xs font-medium text-slate-400">{formatDate(t.dueDate)}</td>
-                          <td className="p-3 text-center">
-                            <button 
-                              onClick={() => updateTransaction(t.id as number, { paidDate: t.paidDate ? null : new Date().toISOString().split('T')[0] })}
-                              className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-lg text-[0.65rem] font-black border transition-colors whitespace-nowrap min-w-[90px]
-                                ${t.paidDate ? 'bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20'}
-                              `}
-                            >
-                              {t.paidDate ? <><CheckCircle size={10} /> {formatDate(t.paidDate)}</> : <><Clock size={10} /> FÜGGŐBEN</>}
-                            </button>
-                          </td>
+                       return (
+                         <tr key={t.id} className="hover:bg-white/[0.02] transition-colors group">
+                           <td className="p-3 pl-5">
+                             <div className="font-bold text-sm text-slate-200">{t.description}</div>
+                             {t.isBudget && (
+                               <div 
+                                 className="mt-1.5 cursor-pointer group/budget" 
+                                 onClick={()=>{setActiveTxId(t.id as number); setIsLedgerModalOpen(true);}}
+                               >
+                                 <div className="flex items-center gap-1.5 text-[0.65rem] font-black text-brand-primary group-hover/budget:text-brand-light transition-colors uppercase tracking-wider">
+                                    <History size={10} /> Rögzített tételek ({t.subItems?.length || 0})
+                                 </div>
+                                 <div className="w-full h-1 bg-white/10 rounded-full mt-1.5 overflow-hidden">
+                                   <div 
+                                     className={`h-full rounded-full transition-all ${progress > 90 ? 'bg-red-500' : 'bg-brand-primary'}`} 
+                                     style={{ width: `${progress}%` }} 
+                                   />
+                                 </div>
+                               </div>
+                             )}
+                           </td>
+                           <td className="p-3">
+                             <div className={`font-black text-sm ${type === 'income' ? 'text-green-500' : 'text-slate-200'}`}>
+                               {formatHUF(t.amount)}
+                             </div>
+                             {t.isBudget && (
+                               <div className="text-[0.65rem] font-medium text-slate-500 mt-1">
+                                 Elköltve: {formatHUF(spent)} | <span className={`${remaining < 0 ? 'text-red-500 font-bold' : ''}`}>Maradt: {formatHUF(remaining)}</span>
+                               </div>
+                             )}
+                           </td>
+                           <td className={`p-3 text-xs font-bold ${isOverdue ? 'text-red-400 font-black' : 'text-slate-400'}`}>
+                             {formatDate(t.dueDate)}
+                           </td>
+                           <td className="p-3 text-center">
+                             <button 
+                               onClick={() => updateTransaction(t.id as number, { paidDate: t.paidDate ? null : new Date().toISOString().split('T')[0] })}
+                               className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-lg text-[0.65rem] font-black border transition-colors whitespace-nowrap min-w-[90px]
+                                 ${t.paidDate 
+                                   ? 'bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20' 
+                                   : isOverdue
+                                     ? 'bg-red-500/15 text-red-500 border-red-500/35 hover:bg-red-500/25 animate-pulse'
+                                     : 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20'}
+                               `}
+                             >
+                               {t.paidDate ? (
+                                 <><CheckCircle size={10} /> {formatDate(t.paidDate)}</>
+                               ) : isOverdue ? (
+                                 <><AlertCircle size={10} /> LEJÁRT</>
+                               ) : (
+                                 <><Clock size={10} /> FÜGGŐBEN</>
+                               )}
+                             </button>
+                           </td>
                           <td className="p-3 pr-5 text-right">
                             <div className="flex justify-end gap-2 opacity-100 transition-opacity">
                               <button onClick={() => openTxForm(t as unknown as CashTransaction)} className="p-1.5 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors"><Edit3 size={14} /></button>

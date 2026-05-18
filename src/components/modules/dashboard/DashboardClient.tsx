@@ -27,13 +27,15 @@ import {
   ArrowRight,
   TrendingDown,
   Info,
-  RefreshCw
+  RefreshCw,
+  Check,
+  Calendar
 } from 'lucide-react';
 
 export default function DashboardClient() {
   const { user, aiDashboardAdvice, lastAiFingerprint, setAiDashboardAdvice } = useAuthStore();
-  const { transactions, aiWeeklyBriefing, fetchAiWeeklyBriefing } = useBudgetStore();
-  const { bills, aiUtilityAnomalies, fetchAiUtilityAnomalies } = useUtilitiesStore();
+  const { transactions, updateTransaction, aiWeeklyBriefing, fetchAiWeeklyBriefing } = useBudgetStore();
+  const { bills, updateBill, aiUtilityAnomalies, fetchAiUtilityAnomalies } = useUtilitiesStore();
   const { savings } = useSavingsStore();
   const { meters } = useMetersStore();
   const { orders } = useBusinessStore();
@@ -138,6 +140,30 @@ export default function DashboardClient() {
   }, 0);
 
   const maradt = Number(manualBalance) - unpaidExpenses;
+
+  const unpaidItemsList = [
+    ...monthExpenses.filter(t => !t.paidDate).map(t => ({
+      id: t.id as number,
+      type: 'expense' as const,
+      description: t.description,
+      amount: t.isBudget && t.subItems ? t.amount - t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0) : t.amount,
+      dueDate: t.dueDate,
+      category: t.category,
+      rawItem: t
+    })),
+    ...monthBills.filter(b => !b.paidDate).map(b => {
+      const ourPortion = b.splitRule === 'shared' ? b.total / 2 : b.splitRule === 'dani-private' ? b.total : 0;
+      return {
+        id: b.id as number,
+        type: 'bill' as const,
+        description: `${b.type} számla`,
+        amount: ourPortion,
+        dueDate: b.dueDate,
+        category: 'Rezsi',
+        rawItem: b
+      };
+    })
+  ].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
   // --- AI CACHING LOGIC (Briefly kept for background logic, but UI hidden) ---
   useEffect(() => {
@@ -248,6 +274,75 @@ export default function DashboardClient() {
             <div className="text-[0.6rem] font-bold text-slate-500 uppercase mb-1 flex items-center gap-1.5"><TrendingDown size={10} /> Tartozások</div>
             <div className="text-base font-black text-slate-300">{formatHUF(externalDebts)}</div>
          </div>
+      </div>
+
+      {/* KÖZELGŐ & LEJÁRT BEFIZETÉSEK WIDGET */}
+      <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-8 shadow-2xl">
+         <div className="flex justify-between items-center mb-6">
+            <div>
+               <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                 <AlertCircle size={14} className="text-brand-primary animate-pulse" /> Közelgő és Lejárt Befizetések
+               </h3>
+               <p className="text-[0.65rem] text-slate-400 mt-1">Ebben a hónapban esedékes függő tételeid a költségvetésből és rezsiszámlákból</p>
+            </div>
+            {unpaidItemsList.length > 0 && (
+               <span className="text-[0.65rem] font-black bg-brand-primary/10 text-brand-primary border border-brand-primary/20 px-2 py-1 rounded-lg">
+                  {unpaidItemsList.length} FÜGGŐ TÉTEL
+               </span>
+            )}
+         </div>
+
+         {unpaidItemsList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center bg-white/[0.01] border border-dashed border-white/5 rounded-2xl">
+               <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 mb-3">
+                  <Check size={20} />
+               </div>
+               <div className="text-sm font-black text-slate-200">Minden számla és kiadás rendezve!</div>
+               <div className="text-xs text-slate-500 mt-1">Ebben a hónapban nincs több fizetendő tétel. Gratulálunk!</div>
+            </div>
+         ) : (
+            <div className="flex flex-col gap-3 custom-scrollbar max-h-[300px] overflow-y-auto pr-1">
+               {unpaidItemsList.map((item) => {
+                  const isOverdueItem = item.dueDate < todayStr;
+                  return (
+                     <div key={`${item.type}-${item.id}`} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-2xl hover:border-white/10 transition-all gap-4">
+                        <div className="flex items-center gap-3">
+                           <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isOverdueItem ? 'bg-red-500 animate-ping' : 'bg-amber-500'}`} />
+                           <div>
+                              <div className="text-sm font-bold text-slate-200">{item.description}</div>
+                              <div className="flex items-center gap-2 mt-1">
+                                 <span className="text-[0.65rem] font-bold text-slate-500 uppercase">{item.category}</span>
+                                 <div className="w-1 h-1 bg-slate-700 rounded-full" />
+                                 <span className={`text-[0.65rem] font-bold flex items-center gap-1 ${isOverdueItem ? 'text-red-400' : 'text-slate-400'}`}>
+                                    <Calendar size={10} /> Határidő: {item.dueDate} {isOverdueItem ? '(Lejárt!)' : ''}
+                                 </span>
+                              </div>
+                           </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                           <div className="text-right">
+                              <div className="text-sm font-black text-white">{formatHUF(item.amount)}</div>
+                           </div>
+                           <button
+                              onClick={async () => {
+                                 const today = new Date().toISOString().split('T')[0];
+                                 if (item.type === 'expense') {
+                                    await updateTransaction(item.id, { paidDate: today });
+                                 } else {
+                                    await updateBill(item.id, { paidDate: today });
+                                 }
+                              }}
+                              className={`flex items-center justify-center p-2 rounded-xl border border-white/10 hover:border-emerald-500/30 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all`}
+                              title="Megjelölés befizetettként"
+                           >
+                              <Check size={16} />
+                           </button>
+                        </div>
+                     </div>
+                  );
+               })}
+            </div>
+         )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
