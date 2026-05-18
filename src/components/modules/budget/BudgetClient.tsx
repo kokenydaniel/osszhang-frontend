@@ -819,7 +819,7 @@ export default function BudgetClient() {
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Összeg (Ft)</label>
-                <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="0" value={txAmount} onChange={e=>setTxAmount(e.target.value)} required />
+                <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="0" value={txAmount} onChange={e=>setTxAmount(e.target.value)} required step="any" />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Dátum</label>
@@ -866,7 +866,7 @@ export default function BudgetClient() {
             
             <div className="flex flex-col gap-1.5">
               <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Összeg</label>
-              <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="0" value={ledgerAmount} onChange={e=>setLedgerAmount(e.target.value)} />
+              <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="0" value={ledgerAmount} onChange={e=>setLedgerAmount(e.target.value)} step="any" />
             </div>
             
             <div className="flex flex-col gap-1.5">
