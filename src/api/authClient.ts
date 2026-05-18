@@ -8,4 +8,6 @@ export const authClient = {
     apiClient.post<{ access_token: string; token: string; user: RawApiUser }>('/register', data),
   logout: () => apiClient.post<{ message: string }>('/logout'),
   me: () => apiClient.get<RawApiUser>('/me'),
+  updateProfile: (data: { firstName?: string; lastName?: string; email?: string; password?: string; password_confirmation?: string }) => 
+    apiClient.put<RawApiUser>('/me', data),
 };

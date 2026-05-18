@@ -26,6 +26,10 @@ export default function SettingsClient() {
     email: user?.email || '' 
   });
   
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isPasswordSaving, setIsPasswordSaving] = useState(false);
+  
   // New Member Form State
   const [newMemberData, setNewMemberData] = useState({
     firstName: '',
@@ -58,14 +62,40 @@ export default function SettingsClient() {
 
   const isAdmin = user?.role === 'admin';
 
-  const handleProfileSave = (e: React.FormEvent) => {
+  const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setTimeout(() => {
-       updateUser(localProfile);
-       setIsSaving(false);
-       addNotification('Profil sikeresen mentve!', 'success');
-    }, 800);
+    try {
+      await updateUser(localProfile);
+      addNotification('Profil sikeresen mentve!', 'success');
+    } catch (err) {
+      addNotification('Sikertelen mentés.', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handlePasswordSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 8) {
+      addNotification('A jelszónak legalább 8 karakterből kell állnia!', 'error');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      addNotification('A két jelszó nem egyezik meg!', 'error');
+      return;
+    }
+    setIsPasswordSaving(true);
+    try {
+      await updateUser({ password: newPassword, password_confirmation: confirmPassword } as any);
+      setNewPassword('');
+      setConfirmPassword('');
+      addNotification('Jelszó sikeresen megváltoztatva!', 'success');
+    } catch (err) {
+      addNotification('Nem sikerült megváltoztatni a jelszót.', 'error');
+    } finally {
+      setIsPasswordSaving(false);
+    }
   };
 
   const handleAddMember = async (e: React.FormEvent) => {
@@ -146,7 +176,8 @@ export default function SettingsClient() {
       <div className="min-h-[400px]">
          {/* PROFILE TAB */}
          {activeTab === 'profile' && (
-           <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-8 shadow-2xl">
+           <div className="flex flex-col gap-8">
+             <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-8 shadow-2xl">
               <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-white">
                 <User size={18} className="text-brand-primary" /> Személyes adatok
               </h3>
@@ -170,6 +201,29 @@ export default function SettingsClient() {
                  </button>
               </form>
            </div>
+
+           <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+              <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-white">
+                <Key size={18} className="text-brand-primary" /> Jelszó megváltoztatása
+              </h3>
+              <form onSubmit={handlePasswordSave} className="flex flex-col gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                     <div className="flex flex-col gap-2">
+                        <label className="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest ml-1">Új jelszó</label>
+                        <input type="password" placeholder="********" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-brand-primary outline-none transition-all" value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
+                     </div>
+                     <div className="flex flex-col gap-2">
+                        <label className="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest ml-1">Új jelszó megerősítése</label>
+                        <input type="password" placeholder="********" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-brand-primary outline-none transition-all" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
+                     </div>
+                  </div>
+                 <button type="submit" className="mt-4 bg-brand-primary hover:bg-brand-light text-white font-black py-3 px-8 rounded-xl transition-all shadow-lg active:scale-95 self-start" disabled={isPasswordSaving}>
+                    {isPasswordSaving ? 'Feldolgozás...' : 'Jelszó frissítése'}
+                 </button>
+              </form>
+           </div>
+         </div>
          )}
 
          {/* HOUSEHOLD TAB */}
