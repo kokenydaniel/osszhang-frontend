@@ -124,6 +124,12 @@ function MeterCard({
   const currentVal = parseFloat(calcValue);
   const diff = latestReading && !isNaN(currentVal) ? currentVal - latestReading.value : 0;
 
+  const sortedOfficialReadings = [...meter.readings]
+    .filter((r: MeterReading) => r.isOfficial)
+    .sort((a: MeterReading, b: MeterReading) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const latestOfficialReading = sortedOfficialReadings[0];
+  const consumptionSinceOfficial = latestReading && latestOfficialReading ? latestReading.value - latestOfficialReading.value : null;
+
   const handleSaveCalc = (e: React.FormEvent) => {
     e.preventDefault();
     if (!calcValue || isNaN(currentVal) || diff < 0) return;
@@ -170,7 +176,7 @@ function MeterCard({
       
       <div className="p-5 md:p-6 min-h-[340px]">
          <div className="flex justify-between items-center py-4">
-            <div className="flex gap-6">
+            <div className="flex gap-6 flex-wrap">
                <div>
                   <div className="text-[0.65rem] text-slate-500 font-black uppercase tracking-widest mb-1">Idei Összes</div>
                   <div className="text-xl font-black text-white">{formatNumber(yearReadings.reduce((s, r)=>s+r.consumption, 0))} {meter.unit}</div>
@@ -179,6 +185,18 @@ function MeterCard({
                <div>
                   <div className="text-[0.65rem] text-slate-500 font-black uppercase tracking-widest mb-1">Tavalyi Összes</div>
                   <div className="text-xl font-black text-slate-400">{formatNumber(meter.readings.filter(r=>r.year === selectedYear -1).reduce((s, r)=>s+r.consumption, 0))} {meter.unit}</div>
+               </div>
+               <div className="w-px bg-white/10"></div>
+               <div>
+                  <div className="text-[0.65rem] text-brand-primary font-black uppercase tracking-widest mb-1">Hivatalos leolvasás óta</div>
+                  {consumptionSinceOfficial !== null && latestOfficialReading ? (
+                     <div className="text-xl font-black text-emerald-400">
+                        {formatNumber(consumptionSinceOfficial)} {meter.unit}
+                        <span className="text-[0.65rem] text-slate-500 font-bold block normal-case mt-0.5">({formatDate(latestOfficialReading.date)} óta)</span>
+                     </div>
+                  ) : (
+                     <div className="text-sm font-bold text-slate-500 mt-1">Nincs hivatalos állás</div>
+                  )}
                </div>
             </div>
          </div>
@@ -258,6 +276,7 @@ function MeterCard({
                 <td className="p-4 text-right font-black text-slate-200">{formatNumber(r.value)} <span className="text-[0.65rem] text-slate-500 font-bold">{meter.unit}</span></td>
                 <td className="p-4">
                   <div className="flex gap-2">
+                    {r.isOfficial && <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[0.6rem] font-black">🏢 HIVATALOS</span>}
                     {r.isReset && <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 text-[0.6rem] font-black"><RefreshCw size={10} /> CSAPERE</span>}
                     {r.isEstimated && <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-brand-primary text-[0.6rem] font-black"><Bot size={10} /> AI</span>}
                   </div>
@@ -307,6 +326,7 @@ export default function MetersClient() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [value, setValue] = useState('');
   const [isReset, setIsReset] = useState(false);
+  const [isOfficial, setIsOfficial] = useState(false);
 
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -336,13 +356,13 @@ export default function MetersClient() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!value) return;
-    if (editingReading) updateMeterReading(editingReading.meter.id, editingReading.reading.id, { date, value: Number(value), isReset });
-    else addMeterReading(meterId, { date, month: new Date(date).getMonth() + 1, year: new Date(date).getFullYear(), value: Number(value), isReset, isEstimated: false });
-    setIsModalOpen(false); setValue(''); setIsReset(false);
+    if (editingReading) updateMeterReading(editingReading.meter.id, editingReading.reading.id, { date, value: Number(value), isReset, isOfficial });
+    else addMeterReading(meterId, { date, month: new Date(date).getMonth() + 1, year: new Date(date).getFullYear(), value: Number(value), isReset, isOfficial, isEstimated: false });
+    setIsModalOpen(false); setValue(''); setIsReset(false); setIsOfficial(false);
   };
 
   const openEdit = (m: Meter, r: MeterReading) => {
-    setEditingReading({ meter: m, reading: r }); setMeterId(m.id); setDate(r.date); setValue(r.value.toString()); setIsReset(r.isReset); setIsModalOpen(true);
+    setEditingReading({ meter: m, reading: r }); setMeterId(m.id); setDate(r.date); setValue(r.value.toString()); setIsReset(r.isReset); setIsOfficial(r.isOfficial || false); setIsModalOpen(true);
   };
 
   const getPreviousYearValue = (mId: number, month: number, year: number): number | null => {
@@ -513,7 +533,7 @@ Feladat:
                    deleteMeterReading={deleteMeterReading} 
                    onAiClick={(id) => { setAiTargetMeter(id); setIsAiModalOpen(true); }} 
                    onEditReading={openEdit} 
-                   onAddReading={(m) => { setEditingReading(null); setMeterId(m.id); setValue(''); setDate(new Date().toISOString().split('T')[0]); setIsModalOpen(true); }}
+                   onAddReading={(m) => { setEditingReading(null); setMeterId(m.id); setValue(''); setDate(new Date().toISOString().split('T')[0]); setIsReset(false); setIsOfficial(false); setIsModalOpen(true); }}
                    onDeleteMeter={(id) => setConfirmMeterDelete(id)}
                    onDeleteReading={(mId, rId) => setConfirmReadingDelete({ mId, rId })}
                 />
@@ -549,6 +569,10 @@ Feladat:
             <label className="flex items-center gap-3 text-sm font-bold text-slate-300 cursor-pointer p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
               <input type="checkbox" className="w-4 h-4 accent-brand-primary border-white/20" checked={isReset} onChange={e=>setIsReset(e.target.checked)} /> 
               Óracsere történt
+            </label>
+            <label className="flex items-center gap-3 text-sm font-bold text-slate-300 cursor-pointer p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+              <input type="checkbox" className="w-4 h-4 accent-brand-primary border-white/20" checked={isOfficial} onChange={e=>setIsOfficial(e.target.checked)} /> 
+              🏢 Szolgáltató általi hivatalos leolvasás
             </label>
             <button type="submit" className="mt-2 bg-brand-primary hover:bg-brand-light text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-brand-primary/20">Mentés</button>
          </form>

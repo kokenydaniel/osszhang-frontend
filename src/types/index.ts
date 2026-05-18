@@ -103,6 +103,7 @@ export interface MeterReading {
   isReset: boolean;
   consumption: number;
   isEstimated?: boolean;
+  isOfficial?: boolean;
 }
 
 export interface Meter {
