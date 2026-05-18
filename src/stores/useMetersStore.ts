@@ -45,7 +45,7 @@ export const useMetersStore = create<MetersState>((set, get) => ({
     const res = await metersClient.addReading(meterId, reading);
     set({
       meters: get().meters.map((m) =>
-        m.id === meterId ? { ...m, readings: [...(m.readings || []), res.data] } : m
+        m.id === meterId ? res.data : m
       ),
     });
   },
@@ -54,21 +54,16 @@ export const useMetersStore = create<MetersState>((set, get) => ({
     const res = await metersClient.updateReading(meterId, readingId, reading);
     set({
       meters: get().meters.map((m) =>
-        m.id === meterId
-          ? {
-              ...m,
-              readings: (m.readings || []).map((r) => (r.id === readingId ? res.data : r)),
-            }
-          : m
+        m.id === meterId ? res.data : m
       ),
     });
   },
 
   deleteMeterReading: async (meterId, readingId) => {
-    await metersClient.deleteReading(meterId, readingId);
+    const res = await metersClient.deleteReading(meterId, readingId);
     set({
       meters: get().meters.map((m) =>
-        m.id === meterId ? { ...m, readings: (m.readings || []).filter((r) => r.id !== readingId) } : m
+        m.id === meterId ? res.data : m
       ),
     });
   },
