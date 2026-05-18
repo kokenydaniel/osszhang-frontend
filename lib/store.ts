@@ -273,13 +273,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ transactions: get().transactions.filter(t => t.id !== id) });
   },
   addSubItem: async (txId, item) => {
-    const res = await budgetApi.create({...item, transaction_id: txId});
-    const updated = get().transactions.map(t => t.id === txId ? { ...t, subItems: [...(t.subItems || []), res.data] } : t);
-    set({ transactions: updated });
+    const res = await budgetApi.addItem(txId, item);
+    set({ transactions: get().transactions.map(t => t.id === txId ? res.data : t) });
   },
   deleteSubItem: async (txId, itemId) => {
-     const updated = get().transactions.map(t => t.id === txId ? { ...t, subItems: (t.subItems || []).filter(i => i.id !== itemId) } : t);
-     set({ transactions: updated });
+     const res = await budgetApi.deleteItem(txId, itemId);
+     set({ transactions: get().transactions.map(t => t.id === txId ? res.data : t) });
   },
 
   addSavingsAccount: async (s) => {

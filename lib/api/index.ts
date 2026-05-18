@@ -62,6 +62,8 @@ export const budgetApi = {
   create: (data: any) => apiClient.post('/transactions', data),
   update: (id: number, data: any) => apiClient.put(`/transactions/${id}`, data),
   delete: (id: number) => apiClient.delete(`/transactions/${id}`),
+  addItem: (txId: number, data: any) => apiClient.post(`/transactions/${txId}/items`, data),
+  deleteItem: (txId: number, itemId: number) => apiClient.delete(`/transactions/${txId}/items/${itemId}`),
 };
 
 /**
