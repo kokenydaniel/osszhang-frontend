@@ -57,16 +57,16 @@ export const useSavingsStore = create<SavingsState>((set, get) => ({
     const res = await savingsClient.addEntry(savingsId, entry);
     set({
       savings: get().savings.map((s) =>
-        s.id === savingsId ? { ...s, ledger: [...(s.ledger || []), res.data] } : s
+        s.id === savingsId ? res.data : s
       ),
     });
   },
 
   deleteLedgerEntry: async (savingsId, entryId) => {
-    await savingsClient.deleteEntry(savingsId, entryId);
+    const res = await savingsClient.deleteEntry(savingsId, entryId);
     set({
       savings: get().savings.map((s) =>
-        s.id === savingsId ? { ...s, ledger: (s.ledger || []).filter((e) => e.id !== entryId) } : s
+        s.id === savingsId ? res.data : s
       ),
     });
   },
