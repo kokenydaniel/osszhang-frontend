@@ -8,6 +8,13 @@ export const metadata: Metadata = {
   keywords: 'pénzügyi kezelő, megtakarítások, rezsi, kifizetések, Little Loom',
 };
 
+export const viewport: import('next').Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export default function RootLayout({
   children,
 }: {

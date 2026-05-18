@@ -167,7 +167,7 @@ function MeterCard({ meter, selectedYear, getPreviousYearValue, deleteMeterReadi
                   {formatNumber(r.consumption)} <span className="text-[0.65rem] text-brand-primary/50 font-bold">{meter.unit}</span>
                 </td>
                 <td className="p-4 pr-6 text-right">
-                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex justify-end gap-2 opacity-100 transition-opacity">
                       <button onClick={() => onEditReading(meter, r)} className="p-1 text-slate-500 hover:text-white transition-colors"><Edit3 size={14} /></button>
                       <button onClick={() => onDeleteReading(meter.id, r.id)} className="p-1 text-red-500/50 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
                     </div>

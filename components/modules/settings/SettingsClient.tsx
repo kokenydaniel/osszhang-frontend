@@ -392,7 +392,7 @@ export default function SettingsClient() {
                       <span className="truncate pr-2 uppercase tracking-tighter">{cat}</span>
                       <button 
                         onClick={() => deleteCategory(cat)} 
-                        className="text-red-500/40 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                        className="text-red-500/80 hover:text-red-500 opacity-100 transition-all shrink-0"
                       >
                         <Trash2 size={18} />
                       </button>

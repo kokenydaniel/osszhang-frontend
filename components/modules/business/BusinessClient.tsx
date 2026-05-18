@@ -293,7 +293,7 @@ export default function BusinessClient() {
                          </div>
                       </td>
                       <td className="p-4 pr-6 text-right">
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-end gap-2 opacity-100 transition-opacity">
                           <button 
                             onClick={() => openForm(order)} 
                             className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
