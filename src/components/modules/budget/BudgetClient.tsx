@@ -599,65 +599,156 @@ export default function BudgetClient() {
                 </button>
              </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                {savings.map(acc => {
-                  const balance = acc.ledger.reduce((s, l) => s + l.amount, 0);
-                  return (
-                    <div 
-                      key={acc.id} 
-                      className={`bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-5 md:p-6 shadow-2xl flex flex-col transition-all duration-300
-                        ${acc.count_in_savings === false ? 'opacity-50 hover:opacity-75 grayscale-[0.3]' : ''}
-                      `}
-                    >
-                      <div className="flex justify-between items-start mb-4">
-                         <div>
-                            <div className="text-lg font-black text-white mb-0.5">{acc.institution}</div>
-                            <div className="text-xs font-bold text-slate-500">{acc.owner} • {acc.currency}</div>
-                         </div>
-                         <button 
-                           onClick={() => deleteSavingsAccount(acc.id)} 
-                           className="p-1.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                         >
-                           <Trash2 size={16} />
-                         </button>
-                      </div>
-                      <div className="text-2xl font-black text-brand-primary mb-1 tracking-tight">
-                         {formatCurrencyAmount(balance, acc.currency)}
-                      </div>
-                      {acc.currency !== 'HUF' ? (
-                        <div className="text-xs font-medium text-slate-400 mb-4">
-                          ~ {formatHUF(convertToHUF(balance, acc.currency))} <span className="opacity-50">(azonnali arfolyam)</span>
-                        </div>
-                      ) : (
-                        <div className="mb-4"></div>
-                      )}
-                      
-                      <div className="mt-auto flex flex-col gap-4">
-                        <label className="flex items-center gap-3 text-xs font-bold text-slate-300 cursor-pointer select-none group">
-                          <div
-                            onClick={(e) => { e.preventDefault(); updateSavingsAccount(acc.id, { count_in_savings: !acc.count_in_savings }); }}
-                            className={`w-10 h-5 rounded-full relative transition-colors duration-300 shrink-0
-                              ${acc.count_in_savings !== false ? 'bg-brand-primary' : 'bg-white/10'}
+             <div className="flex flex-col gap-8">
+                {/* SAJÁT ÉS KÖZÖS TARTALÉKOK */}
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-2 border-b border-white/5 pb-2">
+                    <div className="w-1.5 h-4 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50" />
+                    <h3 className="text-sm font-black text-slate-200 uppercase tracking-wider">Saját és Közös Számlák</h3>
+                    <span className="text-[0.65rem] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/10">{personalSavings.length} db</span>
+                  </div>
+                  {personalSavings.length === 0 ? (
+                    <div className="text-sm font-medium text-slate-500 py-6 bg-slate-900/20 rounded-3xl border border-dashed border-white/5 text-center">
+                      Nincs még saját vagy közös számla hozzáadva.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                      {personalSavings.map(acc => {
+                        const balance = acc.ledger.reduce((s, l) => s + l.amount, 0);
+                        return (
+                          <div 
+                            key={acc.id} 
+                            className={`bg-slate-900/50 backdrop-blur-xl border border-blue-500/10 rounded-3xl p-5 md:p-6 shadow-2xl flex flex-col transition-all duration-300 hover:border-blue-500/30 hover:shadow-blue-500/5
+                              ${acc.count_in_savings === false ? 'opacity-50 hover:opacity-75 grayscale-[0.3]' : ''}
                             `}
                           >
-                            <div 
-                              className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all duration-300 shadow-md
-                                ${acc.count_in_savings !== false ? 'left-[22px]' : 'left-0.5'}
-                              `}
-                            />
+                            <div className="flex justify-between items-start mb-4">
+                               <div>
+                                  <div className="text-lg font-black text-white mb-0.5">{acc.institution}</div>
+                                  <div className="text-xs font-bold text-slate-500">{acc.owner} • {acc.currency}</div>
+                               </div>
+                               <button 
+                                 onClick={() => deleteSavingsAccount(acc.id)} 
+                                 className="p-1.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                               >
+                                 <Trash2 size={16} />
+                               </button>
+                            </div>
+                            <div className="text-2xl font-black text-blue-500 mb-1 tracking-tight">
+                               {formatCurrencyAmount(balance, acc.currency)}
+                            </div>
+                            {acc.currency !== 'HUF' ? (
+                              <div className="text-xs font-medium text-slate-400 mb-4">
+                                ~ {formatHUF(convertToHUF(balance, acc.currency))} <span className="opacity-50">(azonnali arfolyam)</span>
+                              </div>
+                            ) : (
+                              <div className="mb-4"></div>
+                            )}
+                            
+                            <div className="mt-auto flex flex-col gap-4">
+                              <label className="flex items-center gap-3 text-xs font-bold text-slate-300 cursor-pointer select-none group">
+                                <div
+                                  onClick={(e) => { e.preventDefault(); updateSavingsAccount(acc.id, { count_in_savings: !acc.count_in_savings }); }}
+                                  className={`w-10 h-5 rounded-full relative transition-colors duration-300 shrink-0
+                                    ${acc.count_in_savings !== false ? 'bg-blue-500' : 'bg-white/10'}
+                                  `}
+                                >
+                                  <div 
+                                    className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all duration-300 shadow-md
+                                      ${acc.count_in_savings !== false ? 'left-[22px]' : 'left-0.5'}
+                                    `}
+                                  />
+                                </div>
+                                <span className="group-hover:text-white transition-colors">Beleszámít a megtakarításba</span>
+                              </label>
+                              <button 
+                                className="w-full px-4 py-2 rounded-xl text-sm font-bold border border-white/10 text-slate-300 hover:bg-white/5 hover:text-white transition-colors" 
+                                onClick={() => { setSelectedSavings(acc.id); setIsLedgerModalOpen(true); }}
+                              >
+                                Történet / Módosítás
+                              </button>
+                            </div>
                           </div>
-                          <span className="group-hover:text-white transition-colors">Beleszámít a megtakarításba</span>
-                        </label>
-                        <button 
-                          className="w-full px-4 py-2 rounded-xl text-sm font-bold border border-white/10 text-slate-300 hover:bg-white/5 hover:text-white transition-colors" 
-                          onClick={() => { setSelectedSavings(acc.id); setIsLedgerModalOpen(true); }}
-                        >
-                          Történet / Módosítás
-                        </button>
-                      </div>
+                        )
+                      })}
                     </div>
-                  )
-                })}
+                  )}
+                </div>
+
+                {/* LITTLE LOOM TARTALÉKOK */}
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-2 border-b border-white/5 pb-2">
+                    <div className="w-1.5 h-4 bg-pink-500 rounded-full shadow-lg shadow-pink-500/50" />
+                    <h3 className="text-sm font-black text-slate-200 uppercase tracking-wider">Little Loom Számlák</h3>
+                    <span className="text-[0.65rem] font-bold text-pink-400 bg-pink-500/10 px-2 py-0.5 rounded-full border border-pink-500/10">{wifeSavings.length} db</span>
+                  </div>
+                  {wifeSavings.length === 0 ? (
+                    <div className="text-sm font-medium text-slate-500 py-6 bg-slate-900/20 rounded-3xl border border-dashed border-white/5 text-center">
+                      Nincs még Little Loom számla hozzáadva.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                      {wifeSavings.map(acc => {
+                        const balance = acc.ledger.reduce((s, l) => s + l.amount, 0);
+                        return (
+                          <div 
+                            key={acc.id} 
+                            className={`bg-slate-900/50 backdrop-blur-xl border border-pink-500/10 rounded-3xl p-5 md:p-6 shadow-2xl flex flex-col transition-all duration-300 hover:border-pink-500/30 hover:shadow-pink-500/5
+                              ${acc.count_in_savings === false ? 'opacity-50 hover:opacity-75 grayscale-[0.3]' : ''}
+                            `}
+                          >
+                            <div className="flex justify-between items-start mb-4">
+                               <div>
+                                  <div className="text-lg font-black text-white mb-0.5">{acc.institution}</div>
+                                  <div className="text-xs font-bold text-slate-500">{acc.owner} • {acc.currency}</div>
+                               </div>
+                               <button 
+                                 onClick={() => deleteSavingsAccount(acc.id)} 
+                                 className="p-1.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                               >
+                                 <Trash2 size={16} />
+                               </button>
+                            </div>
+                            <div className="text-2xl font-black text-pink-500 mb-1 tracking-tight">
+                               {formatCurrencyAmount(balance, acc.currency)}
+                            </div>
+                            {acc.currency !== 'HUF' ? (
+                              <div className="text-xs font-medium text-slate-400 mb-4">
+                                ~ {formatHUF(convertToHUF(balance, acc.currency))} <span className="opacity-50">(azonnali arfolyam)</span>
+                              </div>
+                            ) : (
+                              <div className="mb-4"></div>
+                            )}
+                            
+                            <div className="mt-auto flex flex-col gap-4">
+                              <label className="flex items-center gap-3 text-xs font-bold text-slate-300 cursor-pointer select-none group">
+                                <div
+                                  onClick={(e) => { e.preventDefault(); updateSavingsAccount(acc.id, { count_in_savings: !acc.count_in_savings }); }}
+                                  className={`w-10 h-5 rounded-full relative transition-colors duration-300 shrink-0
+                                    ${acc.count_in_savings !== false ? 'bg-pink-500' : 'bg-white/10'}
+                                  `}
+                                >
+                                  <div 
+                                    className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all duration-300 shadow-md
+                                      ${acc.count_in_savings !== false ? 'left-[22px]' : 'left-0.5'}
+                                    `}
+                                  />
+                                </div>
+                                <span className="group-hover:text-white transition-colors">Beleszámít a megtakarításba</span>
+                              </label>
+                              <button 
+                                className="w-full px-4 py-2 rounded-xl text-sm font-bold border border-white/10 text-slate-300 hover:bg-white/5 hover:text-white transition-colors" 
+                                onClick={() => { setSelectedSavings(acc.id); setIsLedgerModalOpen(true); }}
+                              >
+                                Történet / Módosítás
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
              </div>
 
              <div className="bg-slate-900/50 backdrop-blur-xl border border-brand-primary/20 bg-brand-primary/5 rounded-3xl p-5 md:p-6 shadow-2xl mt-4">
@@ -831,9 +922,30 @@ export default function BudgetClient() {
                   </select>
                </div>
                <div className="flex flex-col gap-1.5">
-                  <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Tulajdonos</label>
-                  <input type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" value={savOwner} onChange={e=>setSavOwner(e.target.value)} />
-               </div>
+                   <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Tulajdonos</label>
+                   <select 
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white appearance-none" 
+                      value={savOwner === 'Közös' || savOwner === 'Little Loom' ? savOwner : 'custom'} 
+                      onChange={e => {
+                         if (e.target.value === 'custom') setSavOwner('');
+                         else setSavOwner(e.target.value);
+                      }}
+                   >
+                      <option value="Közös" className="bg-slate-800 text-white">Közös</option>
+                      <option value="Little Loom" className="bg-slate-800 text-white">Little Loom</option>
+                      <option value="custom" className="bg-slate-800 text-white">Egyedi tulajdonos...</option>
+                   </select>
+                   {savOwner !== 'Közös' && savOwner !== 'Little Loom' && (
+                      <input 
+                         type="text" 
+                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white mt-2" 
+                         placeholder="Pl. Szandi, Dani" 
+                         value={savOwner} 
+                         onChange={e => setSavOwner(e.target.value)} 
+                         required 
+                      />
+                   )}
+                </div>
             </div>
 
             <div className="flex gap-3 mt-2">
