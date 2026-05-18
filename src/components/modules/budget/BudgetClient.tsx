@@ -124,11 +124,12 @@ export default function BudgetClient() {
 
   const handleTxSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanAmount = txAmount.toString().replace(',', '.');
     const data = {
       type: txType,
       description: txDesc,
       category: txCat,
-      amount: Number(txAmount),
+      amount: Number(cleanAmount),
       dueDate: txDue,
       isBudget: txIsBudget,
       isReserve: txIsReserve,
@@ -876,7 +877,8 @@ export default function BudgetClient() {
 
             <button className="py-3 rounded-xl text-sm font-bold bg-brand-primary hover:bg-brand-light text-white transition-colors shadow-lg shadow-brand-primary/20 mt-2" onClick={() => {
                if(!selectedSavings && !activeTxId) return;
-               const amt = activeTxId ? -Math.abs(Number(ledgerAmount)) : (ledgerType === 'deposit' ? Number(ledgerAmount) : -Number(ledgerAmount));
+               const cleanAmount = ledgerAmount.replace(',', '.');
+               const amt = activeTxId ? -Math.abs(Number(cleanAmount)) : (ledgerType === 'deposit' ? Number(cleanAmount) : -Number(cleanAmount));
                if(selectedSavings) addLedgerEntry(selectedSavings, { date: new Date().toISOString().split('T')[0], amount: amt, reason: ledgerReason });
                if(activeTxId) addSubItem(activeTxId, { date: new Date().toISOString().split('T')[0], amount: amt, reason: ledgerReason });
                setLedgerAmount(''); setLedgerReason('');
@@ -885,18 +887,21 @@ export default function BudgetClient() {
             <div className="mt-4 border-t border-white/10 pt-5 flex flex-col max-h-[300px] overflow-hidden">
                <h4 className="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest mb-3 shrink-0">Korábbi tételek</h4>
                <div className="flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-2 pb-2">
-                  {(selectedSavings ? savings.find(s=>s.id===selectedSavings)?.ledger : transactions.find(t=>t.id===activeTxId)?.subItems)
-                    ?.slice().reverse().map((item: LedgerEntry) => (
-                    <div key={item.id} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5">
-                       <div>
-                          <div className="text-sm font-bold text-white mb-0.5">{item.reason}</div>
-                          <div className="text-[0.65rem] font-medium text-slate-500">{formatDate(item.date)}</div>
+                  {(() => {
+                     const ledgerCurrency = selectedSavings ? (savings.find(s=>s.id===selectedSavings)?.currency || 'HUF') : 'HUF';
+                     const items = (selectedSavings ? savings.find(s=>s.id===selectedSavings)?.ledger : transactions.find(t=>t.id===activeTxId)?.subItems);
+                     return items?.slice().reverse().map((item: LedgerEntry) => (
+                       <div key={item.id} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5">
+                          <div>
+                             <div className="text-sm font-bold text-white mb-0.5">{item.reason}</div>
+                             <div className="text-[0.65rem] font-medium text-slate-500">{formatDate(item.date)}</div>
+                          </div>
+                          <div className={`text-base font-black ${item.amount >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                             {item.amount >= 0 ? '+' : ''}{formatCurrencyAmount(item.amount, ledgerCurrency)}
+                          </div>
                        </div>
-                       <div className={`text-base font-black ${item.amount >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          {item.amount >= 0 ? '+' : ''}{formatHUF(item.amount)}
-                       </div>
-                    </div>
-                  ))}
+                     ));
+                  })()}
                </div>
             </div>
          </div>
