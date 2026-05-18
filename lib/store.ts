@@ -329,7 +329,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ meters: get().meters.map(m => m.id === meterId ? { ...m, readings: [...(m.readings || []), res.data] } : m) });
   },
   updateMeterReading: async (meterId, readingId, reading) => {
-     // Implement
+     const res = await metersApi.updateReading(meterId, readingId, reading);
+     set({ meters: get().meters.map(m => m.id === meterId ? { ...m, readings: (m.readings || []).map(r => r.id === readingId ? res.data : r) } : m) });
   },
   deleteMeterReading: async (meterId, readingId) => {
     await metersApi.deleteReading(meterId, readingId);

@@ -82,6 +82,7 @@ export const metersApi = {
   create: (data: any) => apiClient.post('/meters', data),
   delete: (id: number) => apiClient.delete(`/meters/${id}`),
   addReading: (meterId: number, data: any) => apiClient.post(`/meters/${meterId}/readings`, data),
+  updateReading: (meterId: number, readingId: number, data: any) => apiClient.put(`/meters/${meterId}/readings/${readingId}`, data),
   deleteReading: (meterId: number, readingId: number) => apiClient.delete(`/meters/${meterId}/readings/${readingId}`),
 };
 
