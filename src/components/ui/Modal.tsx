@@ -9,9 +9,10 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  overflowVisible?: boolean;
 }
 
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, overflowVisible = false }: ModalProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -29,7 +30,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-lg max-h-[90vh] bg-slate-900 border border-white/10 rounded-2xl md:rounded-3xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-200 overflow-hidden" 
+        className={`w-full max-w-lg max-h-[90vh] bg-slate-900 border border-white/10 rounded-2xl md:rounded-3xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-200 ${overflowVisible ? 'overflow-visible' : 'overflow-hidden'}`} 
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-5 md:p-6 border-b border-white/5">
@@ -42,7 +43,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
             <X size={20} />
           </button>
         </div>
-        <div className="p-5 md:p-6 overflow-y-auto custom-scrollbar">
+        <div className={`p-5 md:p-6 ${overflowVisible ? 'overflow-visible' : 'overflow-y-auto custom-scrollbar'}`}>
           {children}
         </div>
       </div>

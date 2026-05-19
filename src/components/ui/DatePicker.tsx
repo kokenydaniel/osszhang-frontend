@@ -15,7 +15,7 @@ import {
   parseISO
 } from 'date-fns';
 import { hu } from 'date-fns/locale';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 interface DatePickerProps {
   value: string;
@@ -130,9 +130,21 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeho
         className="flex items-center gap-3 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl cursor-pointer hover:border-white/20 transition-colors text-sm font-semibold"
       >
         <CalendarIcon size={16} className="text-slate-500" />
-        <span className={value ? 'text-slate-200' : 'text-slate-500'}>
+        <span className={`flex-1 ${value ? 'text-slate-200' : 'text-slate-500'}`}>
           {value ? format(parseISO(value), 'yyyy. MM. dd.', { locale: hu }) : placeholder}
         </span>
+        {value && (
+          <button 
+            type="button" 
+            className="ml-auto text-slate-500 hover:text-red-400 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange('');
+            }}
+          >
+            <X size={16} />
+          </button>
+        )}
       </div>
 
       {isOpen && (
@@ -141,7 +153,17 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeho
           {renderDays()}
           {renderCells()}
           
-          <div className="mt-4 pt-4 border-t border-white/5 flex justify-center">
+          <div className="mt-4 pt-4 border-t border-white/5 flex justify-between">
+            <button 
+              type="button"
+              className="px-4 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors text-xs font-bold"
+              onClick={() => {
+                onChange('');
+                setIsOpen(false);
+              }}
+            >
+              Törlés
+            </button>
             <button 
               type="button"
               className="px-4 py-1.5 rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white transition-colors text-xs font-bold"

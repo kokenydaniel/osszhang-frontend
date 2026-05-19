@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useMetersStore } from '@/stores/useMetersStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { useUtilitiesStore } from '@/stores/useUtilitiesStore';
 import { Meter, MeterReading } from '@/types';
@@ -109,6 +110,9 @@ function MeterCard({
   onDeleteReading: (mId: number, rId: number) => void;
 }) {
   const [showFullHistory, setShowFullHistory] = useState(false);
+  const { user } = useAuthStore();
+  const isReader = user?.role === 'reader';
+  const isAdmin = user?.role === 'admin';
   const [calcValue, setCalcValue] = useState<string>('');
   const { addMeterReading } = useMetersStore();
 
@@ -161,6 +165,7 @@ function MeterCard({
              </div>
            </div>
          </div>
+          {!isReader && (
           <div className="flex flex-wrap gap-2 items-center">
              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-primary text-white hover:bg-brand-light transition-colors shadow-lg" onClick={() => onAddReading(meter)}>
                <PlusCircle size={14} /> Leolvasás
@@ -172,6 +177,7 @@ function MeterCard({
                <Trash2 size={16} />
              </button>
           </div>
+       )}
       </div>
       
       <div className="p-5 md:p-6 min-h-[340px]">
@@ -212,7 +218,7 @@ function MeterCard({
                      Utolsó mentett állás: <b className="text-white">{formatNumber(latestReading.value)} {meter.unit}</b> ({formatDate(latestReading.date)})
                   </div>
                </div>
-               <form onSubmit={handleSaveCalc} className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+               {!isReader && <form onSubmit={handleSaveCalc} className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
                   <div className="relative">
                      <input
                         type="number"
@@ -234,7 +240,7 @@ function MeterCard({
                   >
                      Rögzítés új leolvasásként
                   </button>
-               </form>
+               </form>}
             </div>
          )}
 
@@ -285,10 +291,12 @@ function MeterCard({
                   {formatNumber(r.consumption)} <span className="text-[0.65rem] text-brand-primary/50 font-bold">{meter.unit}</span>
                 </td>
                 <td className="p-4 pr-6 text-right">
-                    <div className="flex justify-end gap-2 opacity-100 transition-opacity">
-                      <button onClick={() => onEditReading(meter, r)} className="p-1 text-slate-500 hover:text-white transition-colors"><Edit3 size={14} /></button>
-                      <button onClick={() => onDeleteReading(meter.id, r.id)} className="p-1 text-red-500/50 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
-                    </div>
+                    {!isReader && (
+                      <div className="flex justify-end gap-2 opacity-100 transition-opacity">
+                        <button onClick={() => onEditReading(meter, r)} className="p-1 text-slate-500 hover:text-white transition-colors"><Edit3 size={14} /></button>
+                        <button onClick={() => onDeleteReading(meter.id, r.id)} className="p-1 text-red-500/50 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    )}
                 </td>
               </tr>
             ))}
@@ -315,6 +323,8 @@ function MeterCard({
 }
 
 export default function MetersClient() {
+  const { user } = useAuthStore();
+  const isReader = user?.role === 'reader';
   const { meters, addMeter, deleteMeter, addMeterReading, updateMeterReading, deleteMeterReading } = useMetersStore();
   const { selectedMonth, selectedYear } = usePreferenceStore();
   const { aiUtilityAnomalies, fetchAiUtilityAnomalies } = useUtilitiesStore();
@@ -489,14 +499,16 @@ Feladat:
           </h1>
           <p className="text-slate-400 text-sm">Mérőóra állások, trendek és AI-alapú becslések</p>
         </div>
-        <div className="flex gap-2">
-          <button 
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-brand-primary hover:bg-brand-light text-white transition-colors shadow-lg shadow-brand-primary/20" 
-            onClick={() => setIsNewMeterModalOpen(true)}
-          >
-            <PlusCircle size={16} /> Új Mérőóra
-          </button>
-        </div>
+        {!isReader && (
+          <div className="flex gap-2">
+            <button 
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-brand-primary hover:bg-brand-light text-white transition-colors shadow-lg shadow-brand-primary/20" 
+              onClick={() => setIsNewMeterModalOpen(true)}
+            >
+              <PlusCircle size={16} /> Új Mérőóra
+            </button>
+          </div>
+        )}
       </div>
 
       {!!aiUtilityAnomalies?.anomalies?.length && (

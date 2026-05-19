@@ -7,4 +7,5 @@ export * from './metersClient';
 export * from './businessClient';
 export * from './debtsClient';
 export * from './savingsClient';
+export * from './investmentsClient';
 export * from './aiFinanceClient';

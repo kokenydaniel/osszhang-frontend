@@ -8,6 +8,7 @@ import { BusinessOrder } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Legend } from 'recharts';
+import { aiFinanceClient } from '@/api/aiFinanceClient';
 import { 
   ShoppingBag, 
   List, 
@@ -36,6 +37,9 @@ export default function BusinessClient() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  
+  const [realAiAdvice, setRealAiAdvice] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
   
   // Form elements matching Google Sheet
   const [customer, setCustomer] = useState('');
@@ -113,6 +117,27 @@ export default function BusinessClient() {
       console.error(err);
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleRequestAiAdvice = async () => {
+    setIsAiLoading(true);
+    try {
+      const prompt = `Kérlek, elemezd az alábbi Little Loom (kisvállalkozás, kézműves webshop) rendelési és bevételi adataimat a(z) ${selectedYear}. évre vonatkozóan, és adj egy 3-4 mondatos barátságos, motiváló stratégiát és tanácsot, hogy hogyan tudnám növelni a bevételem.
+      
+Adataim:
+- Éves forgalom eddig (YTD): ${businessStats.totalYTD} Ft
+- Átlagos rendelési érték (AOV): ${Math.round(businessStats.aov)} Ft
+- Legjobban teljesítő csatorna: ${businessStats.topChannel}
+- Csatornák szerinti bevételek: ${businessStats.channelData.map(c => c.name + ': ' + c.value + ' Ft').join(', ')}`;
+
+      const response = await aiFinanceClient.query(prompt, false);
+      setRealAiAdvice(response.data.answer);
+    } catch (error) {
+      console.error('Failed to get AI advice', error);
+      setRealAiAdvice("Sajnos nem sikerült elérni az AI szolgáltatást. Kérlek próbáld újra később.");
+    } finally {
+      setIsAiLoading(false);
     }
   };
 
@@ -244,16 +269,16 @@ export default function BusinessClient() {
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-left border-collapse min-w-[1000px]">
               <thead>
-                <tr className="border-b border-white/5 bg-white/5 text-xs uppercase tracking-wider text-slate-400 font-black">
-                  <th className="p-4 pl-6 font-medium">Dátum</th>
-                  <th className="p-4 font-medium">Vevő</th>
-                  <th className="p-4 font-medium">Rendelés</th>
-                  <th className="p-4 font-medium">Forrás</th>
-                  <th className="p-4 font-medium">Fizetés módja</th>
-                  <th className="p-4 text-right font-medium">Összeg</th>
-                  <th className="p-4 font-medium">Számla ID</th>
-                  <th className="p-4 text-center font-medium">Státusz</th>
-                  <th className="p-4 pr-6 text-right font-medium"></th>
+                <tr className="border-b border-white/5 bg-white/5 text-[0.65rem] md:text-xs uppercase tracking-wider text-slate-400 font-black">
+                  <th className="p-3 md:p-4 pl-4 md:pl-6 font-medium whitespace-nowrap">Rendelés sorszáma</th>
+                  <th className="p-3 md:p-4 font-medium whitespace-nowrap">Vevő</th>
+                  <th className="p-3 md:p-4 font-medium whitespace-nowrap">Dátum</th>
+                  <th className="p-3 md:p-4 font-medium whitespace-nowrap">Forrás</th>
+                  <th className="p-3 md:p-4 font-medium whitespace-nowrap">Fizetés módja</th>
+                  <th className="p-3 md:p-4 text-right font-medium whitespace-nowrap">Végösszeg</th>
+                  <th className="p-3 md:p-4 font-medium whitespace-nowrap">Számla sorszáma</th>
+                  <th className="p-3 md:p-4 text-center font-medium whitespace-nowrap">Státusz</th>
+                  <th className="p-3 md:p-4 pr-4 md:pr-6 text-right font-medium"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -261,29 +286,29 @@ export default function BusinessClient() {
                   const isPaid = !!order.paidDate;
                   return (
                     <tr key={order.id} className="hover:bg-white/[0.02] transition-colors group">
-                      <td className="p-4 pl-6 text-xs text-slate-400 font-medium">{formatDate(order.date)}</td>
-                      <td className="p-4 font-black text-white">{order.customerName}</td>
-                      <td className="p-4">
+                      <td className="p-3 md:p-4 pl-4 md:pl-6">
                          <div className="flex items-center gap-1.5">
-                            <span className="text-[0.65rem] font-black bg-white/5 px-2 py-0.5 rounded text-slate-300">
+                            <span className="text-[0.65rem] md:text-xs font-black bg-white/5 px-2 py-0.5 rounded text-slate-300 whitespace-nowrap">
                                {order.shopifyOrderNumber || '—'}
                             </span>
                          </div>
                       </td>
-                      <td className="p-4">
-                         <div className="flex items-center gap-1.5">
+                      <td className="p-3 md:p-4 text-xs md:text-sm font-black text-white whitespace-nowrap">{order.customerName}</td>
+                      <td className="p-3 md:p-4 text-[0.65rem] md:text-xs text-slate-400 font-medium whitespace-nowrap">{formatDate(order.date)}</td>
+                      <td className="p-3 md:p-4">
+                         <div className="flex items-center gap-1.5 whitespace-nowrap">
                             {getChannelIcon(order.channel)}
-                            <span className="text-xs font-bold text-slate-300">{order.channel}</span>
+                            <span className="text-[0.65rem] md:text-xs font-bold text-slate-300">{order.channel}</span>
                          </div>
                       </td>
-                      <td className="p-4 text-xs text-slate-400 font-medium">{order.paymentMethod} • {order.provider}</td>
-                      <td className="p-4 text-right font-black text-white">{formatHUF(order.amount)}</td>
-                      <td className="p-4 text-xs">
+                      <td className="p-3 md:p-4 text-[0.65rem] md:text-xs text-slate-400 font-medium whitespace-nowrap">{order.paymentMethod} • {order.provider}</td>
+                      <td className="p-3 md:p-4 text-right text-xs md:text-sm font-black text-white whitespace-nowrap">{formatHUF(order.amount)}</td>
+                      <td className="p-3 md:p-4 text-[0.65rem] md:text-xs whitespace-nowrap">
                          <div className="flex items-center gap-1.5 text-slate-400">
-                            <FileText size={12} /> {order.invoiceId || '—'}
+                            <FileText size={12} className="shrink-0" /> <span>{order.invoiceId || '—'}</span>
                          </div>
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="p-3 md:p-4 text-center">
                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[0.65rem] font-black border whitespace-nowrap
                            ${order.state === 'RENDBEN' 
                              ? 'bg-green-500/10 text-green-500 border-green-500/20' 
@@ -295,19 +320,19 @@ export default function BusinessClient() {
                            {order.state === 'RENDBEN' ? `RENDBEN (${formatDate(order.paidDate!)})` : order.state === 'KINT_PARKOL' ? 'PARKOL' : 'KINT'}
                          </div>
                       </td>
-                      <td className="p-4 pr-6 text-right">
-                        <div className="flex justify-end gap-2 opacity-100 transition-opacity">
+                      <td className="p-3 md:p-4 pr-4 md:pr-6 text-right">
+                        <div className="flex justify-end gap-1 md:gap-2 opacity-100 transition-opacity">
                           <button 
                             onClick={() => openForm(order)} 
                             className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                           >
-                            <Edit3 size={16} />
+                            <Edit3 size={14} className="md:w-4 md:h-4" />
                           </button>
                           <button 
                             onClick={() => deleteOrder(order.id)} 
                             className="p-1.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={14} className="md:w-4 md:h-4" />
                           </button>
                         </div>
                       </td>
@@ -329,11 +354,23 @@ export default function BusinessClient() {
              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
              <div className="flex items-start gap-4 relative z-10">
                 <div className="p-3 bg-indigo-500/20 rounded-2xl text-indigo-400">
-                   <Cpu size={24} />
+                   {isAiLoading ? <RefreshCw size={24} className="animate-spin" /> : <Cpu size={24} />}
                 </div>
-                <div>
-                   <h4 className="text-sm font-black text-white uppercase tracking-widest mb-1">Little Loom AI Stratéga</h4>
-                   <p className="text-slate-200 text-base font-medium italic">"{aiAdvice}"</p>
+                <div className="flex-1">
+                   <div className="flex justify-between items-start mb-2">
+                     <h4 className="text-sm font-black text-white uppercase tracking-widest mb-1">Little Loom AI Stratéga</h4>
+                     <button 
+                       onClick={handleRequestAiAdvice}
+                       disabled={isAiLoading}
+                       className="text-[0.65rem] font-bold bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/40 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                     >
+                       <RefreshCw size={12} className={isAiLoading ? "animate-spin" : ""} />
+                       {isAiLoading ? "Elemzés..." : "Új elemzés kérése"}
+                     </button>
+                   </div>
+                   <p className="text-slate-200 text-sm md:text-base font-medium italic whitespace-pre-wrap">
+                     {isAiLoading ? "Az adatok elemzése és a stratégia generálása folyamatban..." : `"${realAiAdvice || aiAdvice}"`}
+                   </p>
                 </div>
              </div>
           </div>

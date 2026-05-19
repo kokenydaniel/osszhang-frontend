@@ -13,11 +13,11 @@ import {
 } from 'lucide-react';
 
 export default function SettingsClient() {
-  const [activeTab, setActiveTab] = useState<'profile' | 'household' | 'categories' | 'system'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'household' | 'categories'>('profile');
   
   const { categories, addCategory, deleteCategory } = useBudgetStore();
   const { userPreferences, updatePreferences } = usePreferenceStore();
-  const { user, updateUser, updateHouseholdCode, updateMember, removeMember, addMember } = useAuthStore();
+  const { user, updateUser, updateHouseholdCode, updateMember, removeMember, addMember, updateHouseholdSettings } = useAuthStore();
   const { addNotification } = useNotificationStore();
 
   const [localProfile, setLocalProfile] = useState({ 
@@ -29,6 +29,16 @@ export default function SettingsClient() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isPasswordSaving, setIsPasswordSaving] = useState(false);
+
+  // Household Settings State
+  const [householdName, setHouseholdName] = useState(user?.household?.name || '');
+  const [businessEnabled, setBusinessEnabled] = useState(user?.household?.businessEnabled ?? user?.household?.business_enabled ?? true);
+  const [businessName, setBusinessName] = useState(user?.household?.businessName ?? user?.household?.business_name ?? 'Little Loom');
+  const [shopifyShopUrl, setShopifyShopUrl] = useState(user?.household?.shopifyShopUrl ?? user?.household?.shopify_shop_url ?? '');
+  const [shopifyAccessToken, setShopifyAccessToken] = useState(user?.household?.shopifyAccessToken ?? user?.household?.shopify_access_token ?? '');
+  const [utilitySplitEnabled, setUtilitySplitEnabled] = useState(user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? true);
+  const [utilitySplitPartnerId, setUtilitySplitPartnerId] = useState<number | null>(user?.household?.utilitySplitPartnerId ?? user?.household?.utility_split_partner_id ?? null);
+  const [isHouseholdSaving, setIsHouseholdSaving] = useState(false);
   
   // New Member Form State
   const [newMemberData, setNewMemberData] = useState({
@@ -36,7 +46,7 @@ export default function SettingsClient() {
     lastName: '',
     email: '',
     password: '',
-    role: 'member' as 'admin' | 'member',
+    role: 'editor' as 'admin' | 'editor' | 'reader',
     permissions: ['budget', 'utilities']
   });
 
@@ -46,7 +56,7 @@ export default function SettingsClient() {
   const MODULES = [
     { id: 'budget', label: 'Költségvetés', icon: <Wallet size={14} /> },
     { id: 'utilities', label: 'Rezsi', icon: <Droplets size={14} /> },
-    { id: 'business', label: 'Little Loom', icon: <ShoppingBag size={14} /> },
+    { id: 'business', label: businessEnabled ? businessName : 'Vállalkozás', icon: <ShoppingBag size={14} /> },
     { id: 'meters', label: 'Mérőórák', icon: <Gauge size={14} /> },
     { id: 'debts', label: 'Tartozások', icon: <AlertCircle size={14} /> },
     { id: 'savings', label: 'Megtakarítások', icon: <Shield size={14} /> }
@@ -58,6 +68,15 @@ export default function SettingsClient() {
       lastName: user?.lastName || '', 
       email: user?.email || '' 
     });
+    if (user?.household) {
+      setHouseholdName(user.household.name || '');
+      setBusinessEnabled(user.household.businessEnabled ?? user.household.business_enabled ?? true);
+      setBusinessName(user.household.businessName ?? user.household.business_name ?? 'Little Loom');
+      setShopifyShopUrl(user.household.shopifyShopUrl ?? user.household.shopify_shop_url ?? '');
+      setShopifyAccessToken(user.household.shopifyAccessToken ?? user.household.shopify_access_token ?? '');
+      setUtilitySplitEnabled(user.household.utilitySplitEnabled ?? user.household.utility_split_enabled ?? true);
+      setUtilitySplitPartnerId(user.household.utilitySplitPartnerId ?? user.household.utility_split_partner_id ?? null);
+    }
   }, [user]);
 
   const isAdmin = user?.role === 'admin';
@@ -98,6 +117,41 @@ export default function SettingsClient() {
     }
   };
 
+  const handleHouseholdSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsHouseholdSaving(true);
+    
+    if (businessEnabled) {
+      if (!businessName.trim()) {
+        addNotification('A vállalkozás nevét kötelező megadni, ha a modul be van kapcsolva!', 'error');
+        setIsHouseholdSaving(false);
+        return;
+      }
+      if (!shopifyShopUrl.trim() || !shopifyAccessToken.trim()) {
+        addNotification('A Shopify Shop URL-t és Access Tokent kötelező megadni, ha a modul be van kapcsolva!', 'error');
+        setIsHouseholdSaving(false);
+        return;
+      }
+    }
+    
+    try {
+      await updateHouseholdSettings({
+        name: householdName,
+        business_enabled: businessEnabled,
+        business_name: businessName,
+        shopify_shop_url: shopifyShopUrl,
+        shopify_access_token: shopifyAccessToken,
+        utility_split_enabled: utilitySplitEnabled,
+        utility_split_partner_id: utilitySplitPartnerId
+      });
+      addNotification('Háztartás beállítások sikeresen elmentve!', 'success');
+    } catch (err) {
+      addNotification('Nem sikerült elmenteni a beállításokat.', 'error');
+    } finally {
+      setIsHouseholdSaving(false);
+    }
+  };
+
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMemberData.email || !newMemberData.password || !newMemberData.firstName) {
@@ -119,7 +173,7 @@ export default function SettingsClient() {
       lastName: '',
       email: '',
       password: '',
-      role: 'member',
+      role: 'editor',
       permissions: ['budget', 'utilities']
     });
   };
@@ -136,12 +190,7 @@ export default function SettingsClient() {
     await updateMember(memberId, { permissions: newPermissions });
   };
 
-  const toggleMemberRole = async (memberId: number) => {
-    const member = user?.household?.users?.find(u => u.id === memberId);
-    if (!member) return;
-    const newRole = member.role === 'admin' ? 'member' : 'admin';
-    await updateMember(memberId, { role: newRole });
-  };
+
 
   return (
     <div className="flex flex-col gap-8 w-full max-w-5xl mx-auto pb-20">
@@ -158,8 +207,7 @@ export default function SettingsClient() {
          {[
            { id: 'profile', label: 'Profilom', icon: <User size={16} /> },
            { id: 'household', label: 'Háztartás', icon: <Home size={16} /> },
-           { id: 'categories', label: 'Kategóriák', icon: <FolderTree size={16} /> },
-           { id: 'system', label: 'Rendszer', icon: <Settings size={16} /> }
+           { id: 'categories', label: 'Kategóriák', icon: <FolderTree size={16} /> }
          ].map(tab => (
            <button 
              key={tab.id} 
@@ -229,6 +277,149 @@ export default function SettingsClient() {
          {/* HOUSEHOLD TAB */}
          {activeTab === 'household' && (
            <div className="flex flex-col gap-8">
+              {/* HOUSEHOLD CUSTOM SETTINGS FORM */}
+              {isAdmin && (
+                <form onSubmit={handleHouseholdSave} className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden flex flex-col gap-6">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                  
+                  <h3 className="text-lg font-black text-white mb-2 flex items-center gap-3">
+                    <Home size={20} className="text-brand-primary" /> Háztartás testreszabása
+                  </h3>
+                  
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest ml-1">Háztartás Neve</label>
+                    <input 
+                      type="text" 
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-brand-primary outline-none transition-all font-medium" 
+                      value={householdName} 
+                      onChange={e => setHouseholdName(e.target.value)} 
+                      placeholder="Pl. Kovács Család" 
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-white/5 pt-6">
+                    {/* BUSINESS MODULE BOX */}
+                    <div className="bg-white/5 border border-white/5 rounded-2xl p-5 md:p-6 flex flex-col gap-4">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <ShoppingBag className="text-brand-primary" size={22} />
+                          <div>
+                            <div className="font-black text-sm text-white uppercase tracking-wider">Vállalkozás Modul</div>
+                            <div className="text-[0.65rem] text-slate-500 mt-0.5">Shopify webáruház integráció</div>
+                          </div>
+                        </div>
+                        <div 
+                          onClick={() => setBusinessEnabled(!businessEnabled)} 
+                          className={`w-12 h-6 rounded-full relative cursor-pointer transition-all duration-300 ${businessEnabled ? 'bg-brand-primary shadow-[0_0_15px_rgba(124,106,247,0.4)]' : 'bg-slate-700'}`}
+                        >
+                          <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all duration-300 ${businessEnabled ? 'right-1' : 'right-[26px]'}`} />
+                        </div>
+                      </div>
+
+                      {businessEnabled && (
+                        <div className="flex flex-col gap-4 mt-2 border-t border-white/5 pt-4 animate-fadeIn">
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-[0.6rem] font-black text-slate-400 uppercase tracking-wider ml-1">Vállalkozás Neve</label>
+                            <input 
+                              type="text" 
+                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:border-brand-primary outline-none transition-all font-medium" 
+                              value={businessName} 
+                              onChange={e => setBusinessName(e.target.value)} 
+                              placeholder="Pl. Little Loom" 
+                            />
+                          </div>
+                          
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-[0.6rem] font-black text-slate-400 uppercase tracking-wider ml-1">Shopify Bolt URL (Domain)</label>
+                            <input 
+                              type="text" 
+                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:border-brand-primary outline-none transition-all font-medium" 
+                              value={shopifyShopUrl} 
+                              onChange={e => setShopifyShopUrl(e.target.value)} 
+                              placeholder="pl. bolt-neve.myshopify.com" 
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-[0.6rem] font-black text-slate-400 uppercase tracking-wider ml-1">Shopify Access Token (Admin API)</label>
+                            <div className="relative">
+                              <input 
+                                type="password" 
+                                className="w-full bg-white/5 border border-white/10 rounded-xl pl-4 pr-10 py-2.5 text-xs text-white focus:border-brand-primary outline-none transition-all font-medium" 
+                                value={shopifyAccessToken} 
+                                onChange={e => setShopifyAccessToken(e.target.value)} 
+                                placeholder="shpat_********************************" 
+                              />
+                              <Lock size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* UTILITY SPLIT BOX */}
+                    <div className="bg-white/5 border border-white/5 rounded-2xl p-5 md:p-6 flex flex-col gap-4">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <Droplets className="text-brand-primary" size={22} />
+                          <div>
+                            <div className="font-black text-sm text-white uppercase tracking-wider">Rezsi Megosztás</div>
+                            <div className="text-[0.65rem] text-slate-500 mt-0.5">Közös rezsiköltség elszámolása</div>
+                          </div>
+                        </div>
+                        <div 
+                          onClick={() => setUtilitySplitEnabled(!utilitySplitEnabled)} 
+                          className={`w-12 h-6 rounded-full relative cursor-pointer transition-all duration-300 ${utilitySplitEnabled ? 'bg-brand-primary shadow-[0_0_15px_rgba(124,106,247,0.4)]' : 'bg-slate-700'}`}
+                        >
+                          <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all duration-300 ${utilitySplitEnabled ? 'right-1' : 'right-[26px]'}`} />
+                        </div>
+                      </div>
+
+                      {utilitySplitEnabled && (
+                        <div className="flex flex-col gap-4 mt-2 border-t border-white/5 pt-4 animate-fadeIn">
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-[0.6rem] font-black text-slate-400 uppercase tracking-wider ml-1">Költségmegosztási Partner</label>
+                            {(() => {
+                              const partners = user?.household?.users?.filter(u => u.id !== user.id) || [];
+                              if (partners.length === 0) {
+                                return (
+                                  <div className="text-[0.7rem] text-amber-500 font-bold bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 leading-relaxed">
+                                    ⚠️ Nincs más tag a háztartásban! A rezsi megosztásához először hívjon meg vagy vegyen fel egy családtagot az alábbi űrlapon.
+                                  </div>
+                                );
+                              }
+                              return (
+                                <select 
+                                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:border-brand-primary outline-none transition-all font-bold appearance-none cursor-pointer"
+                                  value={utilitySplitPartnerId || ''} 
+                                  onChange={e => setUtilitySplitPartnerId(e.target.value ? Number(e.target.value) : null)}
+                                >
+                                  <option value="" className="bg-slate-900 font-bold">Válassz partnert...</option>
+                                  {partners.map(p => (
+                                    <option key={p.id} value={p.id} className="bg-slate-900 font-bold">
+                                      {p.firstName} {p.lastName} ({p.email})
+                                    </option>
+                                  ))}
+                                </select>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={isHouseholdSaving}
+                    className="w-full md:w-auto self-end bg-brand-primary hover:bg-brand-light text-white font-black py-3.5 px-10 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 mt-4"
+                  >
+                    <Save size={18} /> {isHouseholdSaving ? 'Mentés...' : 'Háztartási Beállítások Mentése'}
+                  </button>
+                </form>
+              )}
+
               {/* MEMBERS LIST */}
               <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-8 shadow-2xl">
                  <h3 className="text-lg font-black text-white mb-8 flex items-center gap-3">
@@ -287,14 +478,15 @@ export default function SettingsClient() {
                                <div className="flex items-center gap-3 lg:border-l lg:border-white/5 lg:pl-6">
                                   {isAdmin && member.id !== user.id && (
                                     <>
-                                       <button 
-                                         onClick={() => toggleMemberRole(member.id)}
-                                         className={`px-4 py-2 rounded-xl text-[0.65rem] font-black uppercase tracking-widest transition-all
-                                           ${isMemberAdmin ? 'bg-brand-primary text-white' : 'bg-white/5 text-slate-500 hover:text-white'}
-                                         `}
+                                       <select 
+                                         value={member.role || 'editor'}
+                                         onChange={async (e) => await updateMember(member.id, { role: e.target.value as any })}
+                                         className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-black outline-none focus:border-brand-primary cursor-pointer appearance-none text-center"
                                        >
-                                          {isMemberAdmin ? 'Admin' : 'Tag'}
-                                       </button>
+                                         <option value="admin" className="bg-slate-900 font-bold text-brand-primary">Adminisztrátor</option>
+                                         <option value="editor" className="bg-slate-900 font-bold text-green-500">Szerkesztő</option>
+                                         <option value="reader" className="bg-slate-900 font-bold text-slate-400">Olvasó</option>
+                                       </select>
                                        <button 
                                          onClick={() => removeMember(member.id)}
                                          className="p-2.5 text-red-500/40 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
@@ -303,9 +495,9 @@ export default function SettingsClient() {
                                        </button>
                                     </>
                                   )}
-                                  {!isAdmin && (
+                                  {(!isAdmin || member.id === user.id) && (
                                     <span className="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest">
-                                       {isMemberAdmin ? 'Adminisztrátor' : 'Családtag'}
+                                       {member.role === 'admin' ? 'Adminisztrátor' : member.role === 'editor' ? 'Szerkesztő' : member.role === 'reader' ? 'Olvasó' : 'Családtag'}
                                     </span>
                                   )}
                                </div>
@@ -376,13 +568,14 @@ export default function SettingsClient() {
                       <div className="space-y-2">
                          <label className="text-[0.6rem] font-black text-slate-500 uppercase tracking-widest ml-1">Szerepkör</label>
                          <select 
-                           className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-5 text-white text-sm outline-none focus:border-brand-primary transition-all font-bold appearance-none cursor-pointer"
-                           value={newMemberData.role}
-                           onChange={e => setNewMemberData({...newMemberData, role: e.target.value as any})}
-                         >
-                            <option value="member" className="bg-slate-900">Tag (Sima felhasználó)</option>
-                            <option value="admin" className="bg-slate-900">Adminisztrátor</option>
-                         </select>
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-5 text-white text-sm outline-none focus:border-brand-primary transition-all font-bold appearance-none cursor-pointer"
+                            value={newMemberData.role}
+                            onChange={e => setNewMemberData({...newMemberData, role: e.target.value as any})}
+                          >
+                             <option value="editor" className="bg-slate-900">Szerkesztő (szerkeszthet, hozzáadhat)</option>
+                             <option value="reader" className="bg-slate-900">Olvasó (csak megtekinthet)</option>
+                             <option value="admin" className="bg-slate-900">Adminisztrátor (teljes hozzáférés)</option>
+                          </select>
                       </div>
                    </div>
 
@@ -457,57 +650,7 @@ export default function SettingsClient() {
            </div>
          )}
 
-         {/* SYSTEM TAB */}
-         {activeTab === 'system' && (
-           <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-8 shadow-2xl">
-              <h3 className="text-lg font-black mb-8 flex items-center gap-3 text-white">
-                 <Shield size={20} className="text-brand-primary" /> Rendszer Preferenciák
-              </h3>
-              <div className="flex flex-col gap-6">
-                 <div className="flex flex-wrap justify-between items-center gap-4 bg-white/5 p-6 rounded-[2rem] border border-white/5">
-                    <div className="flex items-center gap-4">
-                       <div className="p-3 bg-brand-primary/10 rounded-2xl text-brand-primary">
-                          <Globe size={24} />
-                       </div>
-                       <div>
-                          <div className="font-black text-sm text-white uppercase tracking-widest">Elsődleges pénznem</div>
-                          <div className="text-xs text-slate-500 mt-1 font-medium">Jelenleg: {userPreferences.currency}</div>
-                       </div>
-                    </div>
-                    <select 
-                      className="bg-white/10 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white font-black focus:outline-none focus:border-brand-primary appearance-none min-w-[100px] text-center" 
-                      value={userPreferences.currency} 
-                      onChange={e => updatePreferences({ currency: e.target.value })}
-                    >
-                       <option value="HUF" className="bg-slate-900 font-bold">HUF</option>
-                       <option value="EUR" className="bg-slate-900 font-bold">EUR</option>
-                       <option value="USD" className="bg-slate-900 font-bold">USD</option>
-                    </select>
-                 </div>
-                 
-                 <div className="flex flex-wrap justify-between items-center gap-4 bg-white/5 p-6 rounded-[2rem] border border-white/5">
-                    <div className="flex items-center gap-4">
-                       <div className="p-3 bg-brand-primary/10 rounded-2xl text-brand-primary">
-                          <Bell size={24} />
-                       </div>
-                       <div className="font-black text-sm text-white uppercase tracking-widest">Push Értesítések</div>
-                    </div>
-                    <div 
-                      onClick={() => updatePreferences({ notificationsEnabled: !userPreferences.notificationsEnabled })} 
-                      className={`w-14 h-7 rounded-full relative cursor-pointer transition-all duration-300
-                        ${userPreferences.notificationsEnabled ? 'bg-brand-primary shadow-[0_0_15px_rgba(124,106,247,0.5)]' : 'bg-slate-700'}
-                      `}
-                    >
-                       <div 
-                         className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all duration-300 shadow-sm
-                           ${userPreferences.notificationsEnabled ? 'right-1' : 'right-[30px]'}
-                         `} 
-                       />
-                    </div>
-                 </div>
-              </div>
-           </div>
-         )}
+         
       </div>
     </div>
   );

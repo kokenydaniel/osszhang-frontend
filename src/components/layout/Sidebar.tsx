@@ -54,6 +54,33 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   const pathname = usePathname();
   const { user } = useAuthStore();
 
+  const businessEnabled = user?.household?.businessEnabled ?? user?.household?.business_enabled ?? true;
+  const businessName = user?.household?.businessName ?? user?.household?.business_name ?? 'Vállalkozás';
+
+  const navItems = [
+    {
+      section: null,
+      items: [
+        { href: '/', icon: <LayoutDashboard size={18} />, label: 'Dashboard', id: 'dashboard' },
+      ],
+    },
+    {
+      section: 'Modulok',
+      items: [
+        { href: '/budget', icon: <Wallet size={18} />, label: 'Költségvetés', id: 'budget' },
+        ...(businessEnabled ? [{ href: '/business', icon: <ShoppingBag size={18} />, label: businessName, id: 'business' }] : []),
+        { href: '/utilities', icon: <Home size={18} />, label: 'Rezsi', id: 'utilities' },
+        { href: '/meters', icon: <Zap size={18} />, label: 'Közműórák', id: 'meters' },
+      ],
+    },
+    {
+      section: 'Beállítások',
+      items: [
+        { href: '/settings', icon: <Settings size={18} />, label: 'Beállítások', id: 'settings' },
+      ],
+    },
+  ];
+
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
     return pathname.startsWith(href);
@@ -94,7 +121,9 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           {(!collapsed || mobileOpen) && (
             <div className="flex-1 min-w-0 transition-opacity duration-200">
               <div className="text-sm font-black text-white truncate uppercase tracking-tighter">PénzPilot</div>
-              <div className="text-[0.6rem] font-bold text-slate-500 uppercase tracking-widest truncate">Családi Vezérlő</div>
+              <div className="text-[0.6rem] font-bold text-brand-primary/80 uppercase tracking-widest truncate">
+                {user?.household?.name || 'Családi Vezérlő'}
+              </div>
             </div>
           )}
           {/* Mobile close button */}
@@ -110,7 +139,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-6 px-3 flex flex-col gap-6 custom-scrollbar">
-          {NAV_ITEMS.map((group, gi) => {
+          {navItems.map((group, gi) => {
             const filteredItems = group.items.filter(item => hasPermission(item.id));
             if (filteredItems.length === 0) return null;
 

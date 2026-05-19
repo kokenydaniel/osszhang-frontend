@@ -50,15 +50,34 @@ export const useInitStore = create<InitState>((set) => ({
         const householdCats = dbUser.household?.categories || defaultCats;
         useBudgetStore.getState().setCategories(householdCats);
         
-        // 2. Fetch all other stores in parallel to optimize initial load
-        await Promise.all([
-          useBudgetStore.getState().fetchTransactions(),
-          useUtilitiesStore.getState().fetchBills(),
-          useMetersStore.getState().fetchMeters(),
-          useBusinessStore.getState().fetchOrders(),
-          useDebtsStore.getState().fetchDebts(),
-          useSavingsStore.getState().fetchSavings(),
-        ]);
+        // 2. Fetch only stores the user has permission to view, in parallel
+        const permissions = dbUser.permissions || [];
+        const isAdmin = dbUser.role === 'admin';
+        const hasPermission = (moduleName: string) => isAdmin || permissions.includes(moduleName);
+
+        const fetchPromises: Promise<any>[] = [];
+
+        if (hasPermission('budget')) {
+          fetchPromises.push(useBudgetStore.getState().fetchTransactions());
+        }
+        if (hasPermission('utilities')) {
+          fetchPromises.push(useUtilitiesStore.getState().fetchBills());
+        }
+        if (hasPermission('meters')) {
+          fetchPromises.push(useMetersStore.getState().fetchMeters());
+        }
+        if (hasPermission('business')) {
+          fetchPromises.push(useBusinessStore.getState().fetchOrders());
+        }
+        if (hasPermission('debts')) {
+          fetchPromises.push(useDebtsStore.getState().fetchDebts());
+        }
+        if (hasPermission('savings')) {
+          fetchPromises.push(useSavingsStore.getState().fetchSavings());
+          fetchPromises.push(useSavingsStore.getState().fetchInvestments());
+        }
+
+        await Promise.all(fetchPromises);
       }
     } catch (e) {
       console.error('Initialization failed', e);

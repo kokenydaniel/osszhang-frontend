@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useBudgetStore } from '@/stores/useBudgetStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { useSavingsStore } from '@/stores/useSavingsStore';
 import { useUtilitiesStore } from '@/stores/useUtilitiesStore';
 import { useDebtsStore } from '@/stores/useDebtsStore';
@@ -31,7 +32,8 @@ import {
   TrendingUp,
   RefreshCw,
   Zap,
-  Bot
+  Bot,
+  Pencil
 } from 'lucide-react';
 
 export default function BudgetClient() {
@@ -44,11 +46,18 @@ export default function BudgetClient() {
 
   const {
     savings, addSavingsAccount, updateSavingsAccount, deleteSavingsAccount, addLedgerEntry, deleteLedgerEntry,
-    aiSavingsPlan, fetchAiSavingsPlan
+    aiSavingsPlan, fetchAiSavingsPlan,
+    investments, addInvestment, updateInvestment, deleteInvestment
   } = useSavingsStore();
 
   const { bills } = useUtilitiesStore();
   const { debts } = useDebtsStore();
+  const { user, updateManualBalance } = useAuthStore();
+  const utilitySplitEnabled = user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? true;
+  const getBillPortion = (b: any) => {
+    if (!utilitySplitEnabled) return b.total;
+    return b.splitRule === 'shared' ? b.total / 2 : (b.splitRule === 'dani-private' ? b.total : 0);
+  };
   const { selectedMonth, selectedYear, exchangeRates, refreshRates } = usePreferenceStore();
 
   const aiMeta = null as AiMeta | null; // Legacy placeholder for AI meta fallback
@@ -110,16 +119,214 @@ export default function BudgetClient() {
   const [ledgerReason, setLedgerReason] = useState('');
   const [ledgerDate, setLedgerDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const [manualBalance, setManualBalance] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('penzpilot_manual_balance') || '0';
-    }
-    return '0';
-  });
+  const [isNewInvestmentModalOpen, setIsNewInvestmentModalOpen] = useState(false);
+  const [invName, setInvName] = useState('');
+  const [invType, setInvType] = useState('bond');
+  const [invPrincipal, setInvPrincipal] = useState('');
+  const [invRate, setInvRate] = useState('');
+  const [invPurchaseDate, setInvPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
+  const [invMaturityDate, setInvMaturityDate] = useState('');
+  const [invOwner, setInvOwner] = useState('Közös');
+  const [invMaturityValue, setInvMaturityValue] = useState('');
+  const [editingInvId, setEditingInvId] = useState<number | null>(null);
+  const [editingInvValue, setEditingInvValue] = useState('');
+  const [invNextPayoutAmount, setInvNextPayoutAmount] = useState('');
+  const [invNextPayoutDate, setInvNextPayoutDate] = useState('');
+  const [editingPayoutInvId, setEditingPayoutInvId] = useState<number | null>(null);
+  const [editingPayoutAmount, setEditingPayoutAmount] = useState('');
+  const [editingPayoutDate, setEditingPayoutDate] = useState('');
 
-  const handleManualBalanceChange = (val: string) => {
-    setManualBalance(val);
-    localStorage.setItem('penzpilot_manual_balance', val);
+  const getInvestmentValue = (inv: any) => {
+    const purchase = new Date(inv.purchaseDate);
+    const now = new Date();
+    
+    const diffTime = Math.max(0, now.getTime() - purchase.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (inv.currentValue !== undefined && inv.currentValue !== null && Number(inv.currentValue) > 0) {
+      const totalValue = Number(inv.currentValue);
+      const accruedInterest = totalValue - Number(inv.principalAmount);
+      return {
+        accruedInterest,
+        totalValue,
+        daysPassed: diffDays,
+        isManualOverride: true
+      };
+    }
+    
+    const dailyRate = (Number(inv.annualInterestRate) / 100) / 365.25;
+    const accruedInterest = Number(inv.principalAmount) * diffDays * dailyRate;
+    const totalValue = Number(inv.principalAmount) + accruedInterest;
+    
+    return {
+      accruedInterest,
+      totalValue,
+      daysPassed: diffDays,
+      isManualOverride: false
+    };
+  };
+
+  const getMaturityAmount = (inv: any) => {
+    if (inv.maturityAmount) return inv.maturityAmount;
+    
+    if (inv.name.toUpperCase().includes('DKJ') && inv.maturityDate) {
+      const purchase = new Date(inv.purchaseDate);
+      const maturity = new Date(inv.maturityDate);
+      const diffTime = Math.max(0, maturity.getTime() - purchase.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays > 0) {
+        const rate = Number(inv.annualInterestRate) / 100;
+        return Math.round(Number(inv.principalAmount) * (1 + rate * (diffDays / 365.25)));
+      }
+    }
+    return null;
+  };
+
+  const getEstimatedPayout = (inv: any) => {
+    if (inv.nextPayoutAmount && inv.nextPayoutDate) {
+      return {
+        amount: inv.nextPayoutAmount,
+        date: inv.nextPayoutDate,
+        isEstimated: false,
+        label: 'Következő kamat'
+      };
+    }
+
+    const nameUpper = inv.name.toUpperCase();
+    const now = new Date();
+    
+    if (nameUpper.includes('DKJ')) {
+      const date = inv.maturityDate ? new Date(inv.maturityDate) : null;
+      const amount = getMaturityAmount(inv) || inv.principalAmount;
+      return {
+        amount,
+        date: date ? date.toISOString().split('T')[0] : null,
+        isEstimated: true,
+        label: 'Lejárati kifizetés'
+      };
+    }
+
+    if (nameUpper.includes('FIXMÁP') || nameUpper.includes('FIX MÁP')) {
+      const principal = getMaturityAmount(inv) || inv.principalAmount;
+      const yearlyRate = Number(inv.annualInterestRate) || 7;
+      
+      const currentYear = now.getFullYear();
+      const payoutMonths = [0, 3, 6, 9];
+      let nextPayoutDateObj = new Date(currentYear, 6, 23);
+      
+      for (const m of payoutMonths) {
+        const candidate = new Date(currentYear, m, 23);
+        if (candidate > now) {
+          nextPayoutDateObj = candidate;
+          break;
+        }
+      }
+      if (nextPayoutDateObj <= now) {
+        nextPayoutDateObj = new Date(currentYear + 1, 0, 23);
+      }
+      
+      const amount = Math.round(Number(principal) * (yearlyRate / 100) / 4);
+      
+      return {
+        amount,
+        date: nextPayoutDateObj.toISOString().split('T')[0],
+        isEstimated: true,
+        label: 'Következő kamat'
+      };
+    }
+
+    if (nameUpper.includes('PMÁP') || nameUpper.includes('PMAP')) {
+      const maturity = inv.maturityDate ? new Date(inv.maturityDate) : null;
+      const principal = getMaturityAmount(inv) || inv.principalAmount;
+      const yearlyRate = Number(inv.annualInterestRate) || 0;
+      
+      let nextPayoutDateObj = new Date();
+      if (maturity) {
+        const payMonth = maturity.getMonth();
+        const payDay = maturity.getDate();
+        const currentYear = now.getFullYear();
+        nextPayoutDateObj = new Date(currentYear, payMonth, payDay);
+        if (nextPayoutDateObj <= now) {
+          nextPayoutDateObj = new Date(currentYear + 1, payMonth, payDay);
+        }
+      } else {
+        const purchase = new Date(inv.purchaseDate);
+        nextPayoutDateObj = new Date(now.getFullYear(), purchase.getMonth(), purchase.getDate());
+        if (nextPayoutDateObj <= now) {
+          nextPayoutDateObj = new Date(now.getFullYear() + 1, purchase.getMonth(), purchase.getDate());
+        }
+      }
+      
+      const amount = Math.round(Number(principal) * (yearlyRate / 100));
+      return {
+        amount,
+        date: nextPayoutDateObj.toISOString().split('T')[0],
+        isEstimated: true,
+        label: 'Következő kamat'
+      };
+    }
+
+    if (inv.maturityDate) {
+      return {
+        amount: getMaturityAmount(inv) || inv.principalAmount,
+        date: inv.maturityDate,
+        isEstimated: true,
+        label: 'Lejárati kifizetés'
+      };
+    }
+
+    return null;
+  };
+
+  const handleInvestmentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    let finalRate = Number(invRate);
+    if (invMaturityValue && Number(invMaturityValue) > 0 && invMaturityDate && invPurchaseDate) {
+      const pDate = new Date(invPurchaseDate);
+      const mDate = new Date(invMaturityDate);
+      const diffTime = Math.max(0, mDate.getTime() - pDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays > 0) {
+        const totalReturnRatio = (Number(invMaturityValue) - Number(invPrincipal)) / Number(invPrincipal);
+        const computedAnnualRate = totalReturnRatio * (365.25 / diffDays) * 100;
+        finalRate = Math.round(computedAnnualRate * 100) / 100;
+      }
+    }
+
+    addInvestment({
+      name: invName,
+      type: invType,
+      principalAmount: Number(invPrincipal),
+      annualInterestRate: finalRate,
+      purchaseDate: invPurchaseDate,
+      maturityDate: invMaturityDate || null,
+      owner: invOwner,
+      countInSavings: true,
+      maturityAmount: invMaturityValue ? Number(invMaturityValue) : null,
+      nextPayoutAmount: invNextPayoutAmount ? Number(invNextPayoutAmount) : null,
+      nextPayoutDate: invNextPayoutDate || null
+    });
+    setIsNewInvestmentModalOpen(false);
+    setInvName('');
+    setInvPrincipal('');
+    setInvRate('');
+    setInvMaturityValue('');
+    setInvNextPayoutAmount('');
+    setInvNextPayoutDate('');
+  };
+
+  const [manualBalance, setManualBalance] = useState<string>('0');
+  
+  React.useEffect(() => {
+    const dbVal = user?.household?.manualBalance ?? user?.household?.manual_balance ?? 0;
+    setManualBalance(dbVal.toString());
+  }, [user?.household?.manualBalance, user?.household?.manual_balance]);
+
+  const handleManualBalanceBlur = () => {
+    const num = Number(manualBalance) || 0;
+    updateManualBalance(num);
   };
 
   const handleTxSubmit = (e: React.FormEvent) => {
@@ -200,13 +407,11 @@ export default function BudgetClient() {
      }
      return s + (t.paidDate ? t.amount : 0);
   }, 0) + monthlyBills.filter(b => !!b.paidDate).reduce((s,b) => {
-     const ourPortion = b.splitRule === 'shared' ? b.total / 2 : b.splitRule === 'dani-private' ? b.total : 0;
-     return s + ourPortion;
+     return s + getBillPortion(b);
   }, 0);
 
   const totalProjectedExpense = expenses.reduce((s,t) => s + t.amount, 0) + monthlyBills.reduce((s,b) => {
-     const ourPortion = b.splitRule === 'shared' ? b.total / 2 : b.splitRule === 'dani-private' ? b.total : 0;
-     return s + ourPortion;
+     return s + getBillPortion(b);
   }, 0);
 
   // --- LIQUIDITY CALCULATION ---
@@ -222,25 +427,25 @@ export default function BudgetClient() {
      return s + t.amount;
   }, 0) + 
                          monthlyBills.filter(b => !b.paidDate).reduce((s, b) => {
-                            const ourPortion = b.splitRule === 'shared' ? b.total / 2 : b.splitRule === 'dani-private' ? b.total : 0;
-                            return s + ourPortion;
+                            return s + getBillPortion(b);
                          }, 0);
 
   const unpaidIncome = incomes.filter(t => !t.paidDate).reduce((s, t) => s + t.amount, 0);
 
-  const projectedFinalLiquidAssets = Number(manualBalance) - unpaidExpenses;
+  const unpaidReserves = reserves.filter(t => !t.paidDate).reduce((s, t) => s + Math.abs(t.amount), 0);
+
+  const projectedFinalLiquidAssets = Number(manualBalance) - unpaidExpenses - unpaidReserves;
 
   const today = new Date().toISOString().split('T')[0];
   const overdueExpenses = expenses.filter(t => !t.paidDate && t.dueDate < today).reduce((s, t) => s + t.amount, 0) + 
                           monthlyBills.filter(b => !b.paidDate && b.dueDate < today).reduce((s, b) => {
-                             const ourPortion = b.splitRule === 'shared' ? b.total / 2 : b.splitRule === 'dani-private' ? b.total : 0;
-                             return s + ourPortion;
+                             return s + getBillPortion(b);
                           }, 0);
 
   const allExpenseCategories = Array.from(new Set([...categories, ...expenses.map(e => e.category || 'Egyéb')]));
   const categoryData = allExpenseCategories.map(name => {
      const amt = expenses.filter(e => (e.category || 'Egyéb') === name).reduce((s,e) => s+e.amount, 0);
-     const billAmt = name === 'Rezsi' ? monthlyBills.reduce((s,b) => s + (b.splitRule === 'shared' ? b.total / 2 : b.splitRule === 'dani-private' ? b.total : 0), 0) : 0;
+     const billAmt = name === 'Rezsi' ? monthlyBills.reduce((s,b) => s + getBillPortion(b), 0) : 0;
      return { name, value: amt + billAmt };
   }).filter(c => c.value > 0);
 
@@ -259,7 +464,7 @@ export default function BudgetClient() {
     type?: 'income' | 'expense';
   }
 
-  const renderTable = (items: CashTransaction[], title: string, type: 'income' | 'expense') => {
+  const renderTable = (items: CashTransaction[], title: string, type: 'income' | 'expense', includeBills: boolean = false) => {
     const allTableCategories = Array.from(new Set([...categories, ...items.map((i: CashTransaction) => i.category || 'Egyéb')]));
     const grouped = allTableCategories.reduce((acc, cat) => {
        let filtered: TableItem[] = items.filter(i => (i.category || 'Egyéb') === cat).map(i => ({
@@ -274,12 +479,12 @@ export default function BudgetClient() {
          type: i.type
        }));
        
-       if (cat === 'Rezsi' && type === 'expense') {
+       if (cat === 'Rezsi' && type === 'expense' && includeBills) {
           const billItems: TableItem[] = monthlyBills.map(b => ({
              id: `bill-${b.id}`,
              description: b.type,
              category: 'Rezsi',
-             amount: b.splitRule === 'shared' ? b.total / 2 : (b.splitRule === 'dani-private' ? b.total : 0),
+             amount: getBillPortion(b),
              dueDate: b.dueDate,
              paidDate: b.paidDate,
              isBill: true
@@ -498,7 +703,14 @@ export default function BudgetClient() {
                 <input 
                   type="number"
                   value={manualBalance}
-                  onChange={(e) => handleManualBalanceChange(e.target.value)}
+                  onChange={(e) => setManualBalance(e.target.value)}
+                  onBlur={handleManualBalanceBlur}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleManualBalanceBlur();
+                      (e.target as HTMLElement).blur();
+                    }
+                  }}
                   className="w-full bg-transparent text-3xl font-black text-white tracking-tight outline-none border-b border-transparent focus:border-emerald-500/30 transition-all p-0"
                   placeholder="0"
                 />
@@ -570,7 +782,8 @@ export default function BudgetClient() {
 
                <div className="flex flex-col">
                   {renderTable(incomes, 'Bevételek', 'income')}
-                  {renderTable(expenses, 'Kiadások', 'expense')}
+                  {reserves.length > 0 && renderTable(reserves, 'Tartalékok', 'expense')}
+                  {renderTable(expenses, 'Kiadások', 'expense', true)}
                </div>
             </div>
           </div>
@@ -581,8 +794,19 @@ export default function BudgetClient() {
         const personalSavings = savings.filter(s => s.owner !== 'Little Loom');
         const wifeSavings = savings.filter(s => s.owner === 'Little Loom');
         
-        const sumPersonal = personalSavings.filter(s => s.count_in_savings !== false).reduce((sum, acc) => sum + convertToHUF(acc.ledger.reduce((s,l)=>s+l.amount, 0), acc.currency), 0);
-        const sumWife = wifeSavings.filter(s => s.count_in_savings !== false).reduce((sum, acc) => sum + convertToHUF(acc.ledger.reduce((s,l)=>s+l.amount, 0), acc.currency), 0);
+        const personalInvestments = investments.filter(i => i.owner !== 'Little Loom');
+        const wifeInvestments = investments.filter(i => i.owner === 'Little Loom');
+
+        const sumPersonalInvestments = personalInvestments
+          .filter(i => i.countInSavings !== false)
+          .reduce((sum, inv) => sum + getInvestmentValue(inv).totalValue, 0);
+
+        const sumWifeInvestments = wifeInvestments
+          .filter(i => i.countInSavings !== false)
+          .reduce((sum, inv) => sum + getInvestmentValue(inv).totalValue, 0);
+
+        const sumPersonal = personalSavings.filter(s => s.count_in_savings !== false).reduce((sum, acc) => sum + convertToHUF(acc.ledger.reduce((s,l)=>s+l.amount, 0), acc.currency), 0) + sumPersonalInvestments;
+        const sumWife = wifeSavings.filter(s => s.count_in_savings !== false).reduce((sum, acc) => sum + convertToHUF(acc.ledger.reduce((s,l)=>s+l.amount, 0), acc.currency), 0) + sumWifeInvestments;
         
         return (
           <div className="flex flex-col gap-6">
@@ -764,44 +988,245 @@ export default function BudgetClient() {
                     </div>
                   )}
                 </div>
-             </div>
+              </div>
 
-             <div className="bg-slate-900/50 backdrop-blur-xl border border-brand-primary/20 bg-brand-primary/5 rounded-3xl p-5 md:p-6 shadow-2xl mt-4">
-               <h4 className="text-[0.65rem] font-black uppercase text-brand-primary tracking-widest mb-4 flex items-center gap-1.5">
-                 <Bot size={14} /> AI Széf cél-ajánló
-               </h4>
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
-                 <div className="flex flex-col gap-1.5">
-                   <label className="text-[0.65rem] font-bold text-slate-500 uppercase">Cél neve</label>
-                   <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all text-white" value={goalName} onChange={(e) => setGoalName(e.target.value)} placeholder="Vésztartalék" />
-                 </div>
-                 <div className="flex flex-col gap-1.5">
-                   <label className="text-[0.65rem] font-bold text-slate-500 uppercase">Cél összeg (Ft)</label>
-                   <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all text-white" type="number" value={goalAmount} onChange={(e) => setGoalAmount(e.target.value)} placeholder="1500000" />
-                 </div>
-                 <div className="flex flex-col gap-1.5">
-                   <label className="text-[0.65rem] font-bold text-slate-500 uppercase">Céldátum</label>
-                   <DatePicker value={goalDate} onChange={setGoalDate} />
-                 </div>
-                 <button 
-                   className="w-full px-4 py-2.5 rounded-xl text-sm font-bold bg-brand-primary hover:bg-brand-light text-white transition-colors shadow-lg shadow-brand-primary/20 h-[42px]" 
-                   onClick={() => fetchAiSavingsPlan({ goals: [{ name: goalName, target_amount: Number(goalAmount), target_date: goalDate, priority: 1 }] })}
-                 >
-                   Ajánlás Kérése
-                 </button>
-               </div>
-               {!!aiSavingsPlan?.monthly_allocation_plan?.length && (
-                 <div className="mt-6 flex flex-col gap-2">
-                   {aiSavingsPlan.monthly_allocation_plan.map((row: { goal: string; monthly_allocation: number }) => (
-                     <div key={row.goal} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/10">
-                       <span className="text-sm font-bold text-slate-200">{row.goal}</span>
-                       <span className="text-sm font-black text-brand-primary">{formatHUF(row.monthly_allocation)} <span className="text-xs text-slate-500 font-medium">/ hó</span></span>
-                     </div>
-                   ))}
-                 </div>
-               )}
-             </div>
-          </div>
+              {/* ÁLLAMPAPÍROK & BEFEKTETÉSEK */}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-4 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/50" />
+                    <h3 className="text-sm font-black text-slate-200 uppercase tracking-wider">Állampapírok & Kincstári számlák</h3>
+                    <span className="text-[0.65rem] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/10">{investments.length} db</span>
+                  </div>
+                  <button 
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"
+                    onClick={() => setIsNewInvestmentModalOpen(true)}
+                  >
+                    <Plus size={14} /> Új állampapír
+                  </button>
+                </div>
+                {investments.length === 0 ? (
+                  <div className="text-sm font-medium text-slate-500 py-6 bg-slate-900/20 rounded-3xl border border-dashed border-white/5 text-center">
+                    Nincs még állampapír vagy befektetés hozzáadva.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                    {investments.map(inv => {
+                      const { accruedInterest, totalValue, daysPassed } = getInvestmentValue(inv);
+                      return (
+                        <div 
+                          key={inv.id} 
+                          className={`bg-slate-900/50 backdrop-blur-xl border border-emerald-500/10 rounded-3xl p-5 md:p-6 shadow-2xl flex flex-col transition-all duration-300 hover:border-emerald-500/30 hover:shadow-emerald-500/5
+                            ${inv.countInSavings === false ? 'opacity-50 hover:opacity-75 grayscale-[0.3]' : ''}
+                          `}
+                        >
+                          <div className="flex justify-between items-start mb-4">
+                             <div>
+                                <div className="text-lg font-black text-white mb-0.5">{inv.name}</div>
+                                <div className="text-xs font-bold text-slate-500">{inv.owner} • {inv.type === 'bond' ? 'Állampapír' : inv.type}</div>
+                             </div>
+                             <button 
+                               onClick={() => deleteInvestment(inv.id)} 
+                               className="p-1.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                             >
+                               <Trash2 size={16} />
+                             </button>
+                          </div>
+                          
+                          <div className="flex flex-col gap-2 mb-4">
+                             <div>
+                               <div className="text-[0.65rem] font-bold text-slate-500 uppercase flex items-center justify-between">
+                                  <span>{editingInvId === inv.id ? 'Valós érték beírása (Ft)' : 'AKTUÁLIS ÉRTÉK (MOBILKINCSTÁR)'}</span>
+                                  {editingInvId !== inv.id && (
+                                     <button 
+                                       onClick={() => {
+                                          setEditingInvId(inv.id);
+                                          setEditingInvValue(inv.currentValue ? String(inv.currentValue) : Math.round(totalValue).toString());
+                                       }}
+                                       className="text-[0.65rem] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-bold transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/10"
+                                     >
+                                        <Pencil size={10} /> Módosít
+                                     </button>
+                                  )}
+                               </div>
+                               {editingInvId === inv.id ? (
+                                 <div className="flex items-center gap-2 mt-1">
+                                   <input 
+                                     type="number"
+                                     className="bg-slate-950/80 border border-emerald-500/30 rounded-xl px-3 py-1.5 text-sm text-white font-black w-full focus:border-emerald-500 outline-none"
+                                     value={editingInvValue}
+                                     onChange={(e) => setEditingInvValue(e.target.value)}
+                                     autoFocus
+                                     onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                           updateInvestment(inv.id, { currentValue: Number(editingInvValue) });
+                                           setEditingInvId(null);
+                                        } else if (e.key === 'Escape') {
+                                           setEditingInvId(null);
+                                        }
+                                     }}
+                                   />
+                                   <button 
+                                      onClick={() => {
+                                         updateInvestment(inv.id, { currentValue: Number(editingInvValue) });
+                                         setEditingInvId(null);
+                                      }}
+                                      className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-colors h-[32px] flex items-center justify-center shrink-0"
+                                   >
+                                      Mentés
+                                   </button>
+                                   <button 
+                                      onClick={() => setEditingInvId(null)}
+                                      className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-300 rounded-xl text-xs font-bold transition-colors h-[32px] flex items-center justify-center shrink-0"
+                                   >
+                                      Mégse
+                                   </button>
+                                 </div>
+                               ) : (
+                                 <div className="text-2xl font-black text-emerald-400 tracking-tight flex items-center gap-2 mt-0.5">
+                                    {formatHUF(totalValue)}
+                                    {inv.currentValue ? (
+                                       <span className="text-[0.55rem] font-black bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider">MÁK Valós</span>
+                                    ) : (
+                                       <span className="text-[0.55rem] font-bold bg-white/5 border border-white/10 text-slate-500 px-1.5 py-0.5 rounded uppercase tracking-wider">Becsült</span>
+                                    )}
+                                 </div>
+                               )}
+                             </div>
+                            <div className="grid grid-cols-2 gap-2 border-t border-white/5 pt-2">
+                              <div>
+                                <div className="text-[0.55rem] font-bold text-slate-500 uppercase">Tőke</div>
+                                <div className="text-xs font-bold text-slate-300">{formatHUF(inv.principalAmount)}</div>
+                              </div>
+                              <div>
+                                <div className="text-[0.55rem] font-bold text-slate-500 uppercase">Kamatláb (éves)</div>
+                                <div className="text-xs font-bold text-slate-300">{inv.annualInterestRate}%</div>
+                              </div>
+                              {(() => {
+                                const mAmount = getMaturityAmount(inv);
+                                if (!mAmount) return null;
+                                return (
+                                  <div>
+                                    <div className="text-[0.55rem] font-bold text-slate-500 uppercase">Névérték / Lejáratkor</div>
+                                    <div className="text-xs font-black text-amber-400">{formatHUF(mAmount)}</div>
+                                  </div>
+                                );
+                              })()}
+                              {(() => {
+                                const payout = getEstimatedPayout(inv);
+                                if (!payout) return null;
+                                return (
+                                  <div>
+                                    <div className="text-[0.55rem] font-bold text-slate-500 uppercase flex items-center justify-between gap-1.5">
+                                      <span className="flex items-center gap-1.5">
+                                        <span>{payout.label || 'Következő kamat'}</span>
+                                        {payout.isEstimated && (
+                                          <span className="text-[0.5rem] font-bold text-emerald-400/80 bg-emerald-500/10 border border-emerald-500/10 px-1 py-0.5 rounded leading-none shrink-0 scale-90">Auto</span>
+                                        )}
+                                      </span>
+                                      {editingPayoutInvId !== inv.id && (
+                                        <button 
+                                          onClick={() => {
+                                            setEditingPayoutInvId(inv.id);
+                                            setEditingPayoutAmount(payout.amount ? String(payout.amount) : '');
+                                            setEditingPayoutDate(payout.date || '');
+                                          }}
+                                          className="text-[0.65rem] text-emerald-400 hover:text-emerald-300 font-bold transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 px-1.5 py-0.2 rounded border border-emerald-500/10"
+                                        >
+                                          Módosít
+                                        </button>
+                                      )}
+                                    </div>
+                                    {editingPayoutInvId === inv.id ? (
+                                      <div className="flex flex-col gap-2 mt-1.5 p-2 bg-slate-950/90 rounded-xl border border-emerald-500/20 col-span-2">
+                                        <div>
+                                          <label className="text-[0.55rem] font-bold text-slate-500 uppercase block mb-0.5">Kamat összege (Ft)</label>
+                                          <input 
+                                            type="number"
+                                            className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-xs text-white font-bold w-full focus:border-emerald-500 outline-none"
+                                            value={editingPayoutAmount}
+                                            onChange={(e) => setEditingPayoutAmount(e.target.value)}
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="text-[0.55rem] font-bold text-slate-500 uppercase block mb-0.5">Dátum</label>
+                                          <input 
+                                            type="date"
+                                            className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-xs text-white font-bold w-full focus:border-emerald-500 outline-none [color-scheme:dark]"
+                                            value={editingPayoutDate}
+                                            onChange={(e) => setEditingPayoutDate(e.target.value)}
+                                          />
+                                        </div>
+                                        <div className="flex gap-1.5 mt-1">
+                                          <button 
+                                            onClick={() => {
+                                              updateInvestment(inv.id, { 
+                                                nextPayoutAmount: Number(editingPayoutAmount),
+                                                nextPayoutDate: editingPayoutDate || null
+                                              });
+                                              setEditingPayoutInvId(null);
+                                            }}
+                                            className="flex-1 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-[0.65rem] font-bold transition-colors"
+                                          >
+                                            Mentés
+                                          </button>
+                                          <button 
+                                            onClick={() => setEditingPayoutInvId(null)}
+                                            className="flex-1 py-1 bg-white/5 hover:bg-white/10 text-slate-400 rounded text-[0.65rem] font-bold transition-colors"
+                                          >
+                                            Mégse
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs font-black text-emerald-400 mt-0.5">
+                                        +{formatHUF(payout.amount)}
+                                        {payout.date && <span className="text-[0.55rem] font-bold text-slate-400 block mt-0.5">{formatDate(payout.date)}</span>}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                              <div>
+                                <div className="text-[0.55rem] font-bold text-slate-500 uppercase">Eddigi Hozam ({daysPassed} nap)</div>
+                                <div className={`text-xs font-bold ${accruedInterest >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                  {accruedInterest >= 0 ? '+' : ''}{formatHUF(accruedInterest)}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-[0.55rem] font-bold text-slate-500 uppercase">Vásárlás / Lejárat</div>
+                                <div className="text-[0.65rem] font-medium text-slate-400">
+                                  {formatDate(inv.purchaseDate)}
+                                  {inv.maturityDate && ` / ${formatDate(inv.maturityDate)}`}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-auto pt-2">
+                            <label className="flex items-center gap-3 text-xs font-bold text-slate-300 cursor-pointer select-none group">
+                              <div
+                                onClick={(e) => { e.preventDefault(); updateInvestment(inv.id, { countInSavings: !inv.countInSavings }); }}
+                                  className={`w-10 h-5 rounded-full relative transition-colors duration-300 shrink-0
+                                    ${inv.countInSavings !== false ? 'bg-emerald-500' : 'bg-white/10'}
+                                  `}
+                              >
+                                <div 
+                                  className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all duration-300 shadow-md
+                                    ${inv.countInSavings !== false ? 'left-[22px]' : 'left-0.5'}
+                                  `}
+                                />
+                              </div>
+                              <span className="group-hover:text-white transition-colors">Beleszámít a megtakarításba</span>
+                            </label>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+           </div>
         );
       })()}
 
@@ -969,6 +1394,104 @@ export default function BudgetClient() {
 
             <div className="flex gap-3 mt-2">
                <button type="button" className="flex-1 py-3 rounded-xl text-sm font-bold bg-transparent hover:bg-white/5 text-slate-300 transition-colors" onClick={() => setIsNewSavingsModalOpen(false)}>Mégse</button>
+               <button type="submit" className="flex-1 py-3 rounded-xl text-sm font-bold bg-brand-primary hover:bg-brand-light text-white transition-colors shadow-lg shadow-brand-primary/20">Létrehozás</button>
+            </div>
+         </form>
+      </Modal>
+
+      {/* NEW INVESTMENT MODAL */}
+      <Modal isOpen={isNewInvestmentModalOpen} onClose={() => setIsNewInvestmentModalOpen(false)} title="Új állampapír / befektetés hozzáadása" overflowVisible={true}>
+         <form onSubmit={handleInvestmentSubmit} className="flex flex-col gap-5">
+            <div className="flex flex-col gap-1.5">
+               <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Állampapír / Megnevezés</label>
+               <input type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="pl. PMÁP 2032/J, DKJ D260722" value={invName} onChange={e=>setInvName(e.target.value)} required />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+               <div className="flex flex-col gap-1.5">
+                  <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Típus</label>
+                  <select className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white appearance-none" value={invType} onChange={e=>setInvType(e.target.value)}>
+                     <option value="bond" className="bg-slate-800 text-white">Állampapír (Bond)</option>
+                     <option value="stock" className="bg-slate-800 text-white">Részvény (Stock)</option>
+                     <option value="other" className="bg-slate-800 text-white">Egyéb</option>
+                  </select>
+               </div>
+               <div className="flex flex-col gap-1.5">
+                    <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Tulajdonos</label>
+                    <select 
+                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white appearance-none" 
+                       value={invOwner === 'Közös' || invOwner === 'Little Loom' ? invOwner : 'custom'} 
+                       onChange={e => {
+                          if (e.target.value === 'custom') setInvOwner('');
+                          else setInvOwner(e.target.value);
+                       }}
+                    >
+                       <option value="Közös" className="bg-slate-800 text-white">Közös</option>
+                       <option value="Little Loom" className="bg-slate-800 text-white">Little Loom</option>
+                       <option value="custom" className="bg-slate-800 text-white">Egyedi...</option>
+                    </select>
+                    {invOwner !== 'Közös' && invOwner !== 'Little Loom' && (
+                       <input 
+                          type="text" 
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white mt-2" 
+                          placeholder="Pl. Szandi, Dani" 
+                          value={invOwner} 
+                          onChange={e => setInvOwner(e.target.value)} 
+                          required 
+                       />
+                    )}
+                 </div>
+            </div>
+
+            <div className="text-[0.65rem] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 mb-2 leading-relaxed">
+               💡 <strong>DKJ (Diszkont Kincstárjegy) esetén:</strong> Hagyhatod a Kamat mezőt üresen! Csak add meg a vásárlási Tőkét, a lejárati Névértéket és a Lejárat dátumát, és a rendszerünk automatikusan kiszámolja neked az éves hozamot!
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                 <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Tőke / Kifizetett összeg (Ft)</label>
+                 <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="0" value={invPrincipal} onChange={e=>setInvPrincipal(e.target.value)} required />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                 <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Névérték / Lejárati összeg (Ft)</label>
+                 <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="pl. 7000000" value={invMaturityValue} onChange={e=>setInvMaturityValue(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div className="flex flex-col gap-1.5">
+                 <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Éves Kamat / Hozam (%)</label>
+                 <input type="number" step="0.01" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="pl. 5.15 (DKJ esetén üresen hagyható)" value={invRate} onChange={e=>setInvRate(e.target.value)} required={!invMaturityValue} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                 <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Vásárlás dátuma</label>
+                 <DatePicker value={invPurchaseDate} onChange={setInvPurchaseDate} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                 <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Lejárat dátuma (opcionális)</label>
+                 <DatePicker value={invMaturityDate} onChange={setInvMaturityDate} />
+              </div>
+            </div>
+
+            <div className="border-t border-white/5 pt-4 flex flex-col gap-4">
+               <h4 className="text-[0.65rem] font-black text-slate-400 uppercase tracking-widest">Kamatkifizetés (Opcionális - pl. FixMÁP)</h4>
+               <div className="grid grid-cols-2 gap-4">
+                 <div className="flex flex-col gap-1.5">
+                    <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Következő kamatkifizetés (Ft)</label>
+                    <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="pl. 72630" value={invNextPayoutAmount} onChange={e=>setInvNextPayoutAmount(e.target.value)} />
+                 </div>
+                 <div className="flex flex-col gap-1.5">
+                    <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Kamatkifizetés dátuma</label>
+                    <DatePicker value={invNextPayoutDate} onChange={setInvNextPayoutDate} />
+                 </div>
+               </div>
+            </div>
+
+            <div className="flex gap-3 mt-2">
+               <button type="button" className="flex-1 py-3 rounded-xl text-sm font-bold bg-transparent hover:bg-white/5 text-slate-300 transition-colors" onClick={() => setIsNewInvestmentModalOpen(false)}>Mégse</button>
                <button type="submit" className="flex-1 py-3 rounded-xl text-sm font-bold bg-brand-primary hover:bg-brand-light text-white transition-colors shadow-lg shadow-brand-primary/20">Létrehozás</button>
             </div>
          </form>

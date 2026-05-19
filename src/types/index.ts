@@ -12,7 +12,7 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   email: string;
-  role: 'admin' | 'member';
+  role: 'admin' | 'editor' | 'reader';
   permissions?: string[];
   household?: {
     id: number;
@@ -20,6 +20,20 @@ export interface UserProfile {
     invite_code: string;
     users?: UserProfile[];
     categories?: string[];
+    manual_balance?: number;
+    manualBalance?: number;
+    business_enabled?: boolean;
+    businessEnabled?: boolean;
+    business_name?: string;
+    businessName?: string;
+    shopify_shop_url?: string;
+    shopifyShopUrl?: string;
+    shopify_access_token?: string;
+    shopifyAccessToken?: string;
+    utility_split_enabled?: boolean;
+    utilitySplitEnabled?: boolean;
+    utility_split_partner_id?: number | null;
+    utilitySplitPartnerId?: number | null;
   };
 }
 
@@ -38,6 +52,20 @@ export interface RawApiUser {
     invite_code: string;
     users?: RawApiUser[];
     categories?: string[];
+    manual_balance?: number;
+    manualBalance?: number;
+    business_enabled?: boolean;
+    businessEnabled?: boolean;
+    business_name?: string;
+    businessName?: string;
+    shopify_shop_url?: string;
+    shopifyShopUrl?: string;
+    shopify_access_token?: string;
+    shopifyAccessToken?: string;
+    utility_split_enabled?: boolean;
+    utilitySplitEnabled?: boolean;
+    utility_split_partner_id?: number | null;
+    utilitySplitPartnerId?: number | null;
   };
 }
 
@@ -72,6 +100,22 @@ export interface SavingsAccount {
   owner: string;
   count_in_savings: boolean;
   ledger: LedgerEntry[];
+}
+
+export interface Investment {
+  id: number;
+  name: string;
+  type: string;
+  principalAmount: number;
+  annualInterestRate: number;
+  purchaseDate: string;
+  maturityDate: string | null;
+  owner: string;
+  countInSavings: boolean;
+  currentValue?: number | null;
+  maturityAmount?: number | null;
+  nextPayoutAmount?: number | null;
+  nextPayoutDate?: string | null;
 }
 
 // ==============================

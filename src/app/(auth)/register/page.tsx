@@ -14,7 +14,7 @@ export default function RegisterPage() {
     email: '',
     password: '',
     password_confirmation: '',
-    inviteCode: ''
+    householdName: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -37,7 +37,7 @@ export default function RegisterPage() {
         email: formData.email,
         password: formData.password,
         password_confirmation: formData.password_confirmation,
-        invite_code: formData.inviteCode
+        household_name: formData.householdName
       });
       
       if (res.data.access_token) {
@@ -46,7 +46,7 @@ export default function RegisterPage() {
       }
     } catch (err) {
       const apiErr = err as { response?: { data?: { message?: string } } };
-      const msg = apiErr.response?.data?.message || 'Hiba történt a regisztráció során. Ellenőrizd a meghívó kódot!';
+      const msg = apiErr.response?.data?.message || 'Hiba történt a regisztráció során. Ellenőrizd az adatokat!';
       setError(msg);
     } finally {
       setLoading(false);
@@ -156,15 +156,15 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-1.5 pt-2">
-                 <label className="text-[0.6rem] font-black text-brand-secondary uppercase tracking-[0.2em] ml-1">Meghívó Kód (Kötelező)</label>
+                 <label className="text-[0.6rem] font-black text-brand-secondary uppercase tracking-[0.2em] ml-1">Háztartás Neve (Pl. Kovács Család)</label>
                  <div className="relative group">
                     <ShieldCheck size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-secondary/50 group-focus-within:text-brand-secondary transition-colors" />
                     <input 
                       type="text" 
-                      className="w-full bg-brand-secondary/5 border border-brand-secondary/20 rounded-xl py-4 pl-12 pr-4 text-brand-secondary text-sm font-black tracking-widest outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary/50 transition-all uppercase placeholder:text-brand-secondary/20"
-                      placeholder="PILOT123"
-                      value={formData.inviteCode}
-                      onChange={e => setFormData({...formData, inviteCode: e.target.value})}
+                      className="w-full bg-brand-secondary/5 border border-brand-secondary/20 rounded-xl py-4 pl-12 pr-4 text-brand-secondary text-sm font-black tracking-wide outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary/50 transition-all placeholder:text-brand-secondary/20"
+                      placeholder="Kovács Család"
+                      value={formData.householdName}
+                      onChange={e => setFormData({...formData, householdName: e.target.value})}
                       required
                     />
                  </div>

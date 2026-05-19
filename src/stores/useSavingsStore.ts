@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import { SavingsAccount, AiSavingsPlan, LedgerEntry } from '@/types';
-import { savingsClient, aiFinanceClient } from '@/api';
+import { SavingsAccount, AiSavingsPlan, LedgerEntry, Investment } from '@/types';
+import { savingsClient, investmentsClient, aiFinanceClient } from '@/api';
 
 interface SavingsState {
   savings: SavingsAccount[];
+  investments: Investment[];
   aiSavingsPlan: AiSavingsPlan | null;
   isLoading: boolean;
 
@@ -15,6 +16,11 @@ interface SavingsState {
   addLedgerEntry: (savingsId: number, entry: Omit<LedgerEntry, 'id'>) => Promise<void>;
   deleteLedgerEntry: (savingsId: number, entryId: number) => Promise<void>;
   
+  fetchInvestments: () => Promise<void>;
+  addInvestment: (i: Omit<Investment, 'id'>) => Promise<void>;
+  updateInvestment: (id: number, i: Partial<Omit<Investment, 'id'>>) => Promise<void>;
+  deleteInvestment: (id: number) => Promise<void>;
+
   fetchAiSavingsPlan: (payload: {
     goals: Array<{ name: string; target_amount: number; target_date: string; priority?: number }>;
     constraints?: { min_buffer?: number };
@@ -23,6 +29,7 @@ interface SavingsState {
 
 export const useSavingsStore = create<SavingsState>((set, get) => ({
   savings: [],
+  investments: [],
   aiSavingsPlan: null,
   isLoading: false,
 
@@ -69,6 +76,33 @@ export const useSavingsStore = create<SavingsState>((set, get) => ({
         s.id === savingsId ? res.data : s
       ),
     });
+  },
+
+  fetchInvestments: async () => {
+    set({ isLoading: true });
+    try {
+      const res = await investmentsClient.getAll();
+      set({ investments: res.data });
+    } catch (e) {
+      console.error('Failed to fetch investments', e);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  addInvestment: async (i) => {
+    const res = await investmentsClient.create(i);
+    set({ investments: [...get().investments, res.data] });
+  },
+
+  updateInvestment: async (id, i) => {
+    const res = await investmentsClient.update(id, i);
+    set({ investments: get().investments.map((inv) => (inv.id === id ? res.data : inv)) });
+  },
+
+  deleteInvestment: async (id) => {
+    await investmentsClient.delete(id);
+    set({ investments: get().investments.filter((i) => i.id !== id) });
   },
 
   fetchAiSavingsPlan: async (payload) => {
