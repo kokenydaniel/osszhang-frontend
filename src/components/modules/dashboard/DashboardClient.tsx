@@ -431,13 +431,10 @@ export default function DashboardClient() {
     <div className="flex flex-col gap-6 w-full">
       
       {/* HOUSEHOLD HERO CARD */}
-      <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-slate-900/60 backdrop-blur-xl shadow-2xl">
-        {/* Animated gradient background */}
+      <div className="relative overflow-hidden rounded-3xl shadow-2xl" style={{ background: 'linear-gradient(135deg, rgba(22,27,39,0.9) 0%, rgba(18,23,36,0.95) 100%)', border: '1px solid rgba(129,140,248,0.12)', boxShadow: '0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+        {/* Gradient orbs */}
         <div className={`absolute inset-0 bg-gradient-to-br ${greetingGradient} pointer-events-none`} />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-brand-primary/8 via-transparent to-transparent pointer-events-none" />
-        {/* Decorative orbs */}
-        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-brand-primary/5 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-purple-500/5 blur-2xl pointer-events-none" />
+        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(129,140,248,0.08) 0%, transparent 70%)' }} />
 
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-6 p-6 md:p-8">
           {/* Left: Household identity */}
@@ -475,24 +472,26 @@ export default function DashboardClient() {
               <Calendar size={13} className="text-slate-500" />
               <span className="text-xs font-bold text-slate-400 capitalize">{todayFormatted}</span>
             </div>
-            {/* Members avatars */}
-            {householdMembers.length > 0 && (
+        {/* Members */}
+        {householdMembers.length > 0 && (
               <div className="flex items-center gap-2">
-                <span className="text-[0.6rem] font-black text-slate-600 uppercase tracking-widest mr-1">Tagok</span>
+                <span className="section-label mr-1">Tagok</span>
                 <div className="flex -space-x-2">
                   {householdMembers.slice(0, 4).map((member: any, idx: number) => {
                     const initials = ((member.firstName || '?')[0] + (member.lastName || '?')[0]).toUpperCase();
-                    const colors = [
-                      'bg-brand-primary/30 text-brand-primary border-brand-primary/40',
-                      'bg-purple-500/30 text-purple-300 border-purple-500/40',
-                      'bg-emerald-500/30 text-emerald-300 border-emerald-500/40',
-                      'bg-amber-500/30 text-amber-300 border-amber-500/40',
+                    const memberColors = [
+                      { bg: 'rgba(129,140,248,0.2)', color: '#818cf8', border: 'rgba(129,140,248,0.3)' },
+                      { bg: 'rgba(167,139,250,0.2)', color: '#a78bfa', border: 'rgba(167,139,250,0.3)' },
+                      { bg: 'rgba(52,211,153,0.2)', color: '#34d399', border: 'rgba(52,211,153,0.3)' },
+                      { bg: 'rgba(251,191,36,0.2)', color: '#fbbf24', border: 'rgba(251,191,36,0.3)' },
                     ];
+                    const mc = memberColors[idx % memberColors.length];
                     return (
                       <div
                         key={member.id}
                         title={`${member.firstName || ''} ${member.lastName || ''}`.trim()}
-                        className={`w-8 h-8 rounded-xl border-2 border-slate-900 flex items-center justify-center text-[0.6rem] font-black ${colors[idx % colors.length]} shadow-lg`}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center text-[0.6rem] font-black shadow-lg"
+                        style={{ background: mc.bg, color: mc.color, border: `1px solid ${mc.border}`, outline: '2px solid #0b0f1a', outlineOffset: '-1px' }}
                       >
                         {initials}
                       </div>
@@ -500,7 +499,7 @@ export default function DashboardClient() {
                   })}
                 </div>
                 {householdMembers.length > 4 && (
-                  <div className="w-8 h-8 rounded-xl border-2 border-slate-900 bg-white/5 flex items-center justify-center text-[0.6rem] font-black text-slate-500 -ml-2">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[0.6rem] font-black text-slate-500 -ml-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', outline: '2px solid #0b0f1a', outlineOffset: '-1px' }}>
                     +{householdMembers.length - 4}
                   </div>
                 )}
@@ -552,39 +551,60 @@ export default function DashboardClient() {
         </div>
       )}
 
-      {/* MAIN EXCEL METRICS (Replaces AI Hero) */}
+      {/* MAIN METRIC CARDS */}
       {hasPermission('budget') && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
            {/* Még fizetendő */}
-           <div className="bg-red-500/10 border border-red-500/20 rounded-3xl p-6 shadow-xl relative overflow-hidden group">
-              <div className="text-[0.65rem] font-black text-red-500 uppercase tracking-widest mb-2">Még fizetendő:</div>
-              <div className="text-3xl font-black text-red-500 tracking-tight">{formatHUF(unpaidExpenses)}</div>
+           <div className="rounded-2xl p-5 relative overflow-hidden group transition-all hover:-translate-y-0.5" style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.18)', boxShadow: '0 4px 20px rgba(248,113,113,0.06)' }}>
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(248,113,113,0.15)', color: '#f87171' }}>
+                  <TrendingDown size={18} />
+                </div>
+                <span className="section-label" style={{ color: 'rgba(248,113,113,0.6)' }}>fizetendő</span>
+              </div>
+              <div className="text-2xl md:text-3xl font-black tracking-tight" style={{ color: '#f87171' }}>{formatHUF(unpaidExpenses)}</div>
+              <div className="text-xs font-semibold mt-1" style={{ color: 'rgba(248,113,113,0.5)' }}>Ebben a hónapban</div>
            </div>
 
            {/* Van még */}
-           <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-3xl p-6 shadow-xl relative overflow-hidden group">
-              <div className="text-[0.65rem] font-black text-emerald-500 uppercase tracking-widest mb-2">Van még:</div>
-              <div className="text-3xl font-black text-white tracking-tight">{formatHUF(Number(manualBalance))}</div>
+           <div className="rounded-2xl p-5 relative overflow-hidden group transition-all hover:-translate-y-0.5" style={{ background: 'rgba(22,27,39,0.8)', border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(129,140,248,0.12)', color: '#818cf8' }}>
+                  <Wallet size={18} />
+                </div>
+                <span className="section-label">egyenleg</span>
+              </div>
+              <div className="text-2xl md:text-3xl font-black tracking-tight text-white">{formatHUF(Number(manualBalance))}</div>
+              <div className="text-xs font-semibold mt-1" style={{ color: '#475569' }}>Jelenlegi keret</div>
            </div>
 
            {/* Maradt */}
-           <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-3xl p-6 shadow-xl relative overflow-hidden group">
-              <div className="text-[0.65rem] font-black text-emerald-500 uppercase tracking-widest mb-2">Maradt:</div>
-              <div className="text-3xl font-black text-emerald-400 tracking-tight">{formatHUF(maradt)}</div>
+           <div className="rounded-2xl p-5 relative overflow-hidden group transition-all hover:-translate-y-0.5" style={{ background: 'rgba(52,211,153,0.07)', border: '1px solid rgba(52,211,153,0.15)', boxShadow: '0 4px 20px rgba(52,211,153,0.05)' }}>
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}>
+                  <TrendingUp size={18} />
+                </div>
+                <span className="section-label" style={{ color: 'rgba(52,211,153,0.5)' }}>maradt</span>
+              </div>
+              <div className="text-2xl md:text-3xl font-black tracking-tight" style={{ color: '#34d399' }}>{formatHUF(maradt)}</div>
+              <div className="text-xs font-semibold mt-1" style={{ color: 'rgba(52,211,153,0.5)' }}>Fizetések után</div>
            </div>
 
            {/* Lejárt */}
-           <div className={`rounded-3xl p-6 shadow-xl relative overflow-hidden border group
-             ${overdueExpenses > 0 ? 'bg-red-600 border-red-500' : 'bg-red-500/5 border-white/5'}
-           `}>
-              <div className={`text-[0.65rem] font-black uppercase tracking-widest mb-2
-                ${overdueExpenses > 0 ? 'text-white' : 'text-red-500'}
-              `}>
-                Lejárt:
+           <div className={`rounded-2xl p-5 relative overflow-hidden group transition-all hover:-translate-y-0.5`}
+             style={overdueExpenses > 0
+               ? { background: 'linear-gradient(135deg, #dc2626, #b91c1c)', border: '1px solid rgba(248,113,113,0.4)', boxShadow: '0 4px 20px rgba(220,38,38,0.3)' }
+               : { background: 'rgba(22,27,39,0.8)', border: '1px solid rgba(255,255,255,0.05)' }
+             }
+           >
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={overdueExpenses > 0 ? { background: 'rgba(255,255,255,0.15)', color: 'white' } : { background: 'rgba(248,113,113,0.12)', color: '#f87171' }}>
+                  <AlertCircle size={18} />
+                </div>
+                <span className="section-label" style={{ color: overdueExpenses > 0 ? 'rgba(255,255,255,0.6)' : 'rgba(248,113,113,0.5)' }}>lejárt</span>
               </div>
-              <div className={`text-3xl font-black tracking-tight ${overdueExpenses > 0 ? 'text-white' : 'text-red-500'}`}>
-                {formatHUF(overdueExpenses)}
-              </div>
+              <div className="text-2xl md:text-3xl font-black tracking-tight" style={{ color: overdueExpenses > 0 ? 'white' : '#f87171' }}>{formatHUF(overdueExpenses)}</div>
+              <div className="text-xs font-semibold mt-1" style={{ color: overdueExpenses > 0 ? 'rgba(255,255,255,0.5)' : 'rgba(248,113,113,0.4)' }}>Határidő lejárt</div>
            </div>
         </div>
       )}
@@ -593,69 +613,67 @@ export default function DashboardClient() {
       {(() => {
         const activeSecondaryCards = [
           hasPermission('savings') && (
-            <div key="savings" className="bg-white/5 border border-white/5 rounded-3xl p-5 flex flex-col justify-between min-h-[110px] hover:bg-white/[0.08] hover:border-white/10 transition-all">
-               <div>
-                  <div className="text-[0.6rem] font-bold text-slate-500 uppercase flex items-center gap-1.5"><Wallet size={10} /> Összes Vagyon</div>
-                  <div className="text-base font-black text-slate-300 mt-1">{formatHUF(totalSavings)}</div>
+            <div key="savings" className="glass-card glass-card-hover rounded-2xl p-5 flex flex-col justify-between min-h-[100px]">
+               <div className="flex items-center gap-3 mb-3">
+                 <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(129,140,248,0.12)', color: '#818cf8' }}><Wallet size={16} /></div>
+                 <span className="section-label">Összes Vagyon</span>
                </div>
-               <div className="text-[0.55rem] text-slate-500 font-medium leading-normal mt-2 border-t border-white/5 pt-1.5">Saját számlák és állampapírok napi értéke</div>
+               <div className="text-lg font-black" style={{ color: '#c7d2fe' }}>{formatHUF(totalSavings)}</div>
+               <div className="text-xs text-slate-600 font-medium mt-1.5">Számlák és állampapírok</div>
             </div>
           ),
           businessEnabled && (
-            <div key="business" className="bg-white/5 border border-white/5 rounded-3xl p-5 flex flex-col justify-between min-h-[110px] hover:bg-white/[0.08] hover:border-white/10 transition-all">
-               <div>
-                  <div className="text-[0.6rem] font-bold text-slate-500 uppercase flex items-center gap-1.5"><TrendingUp size={10} /> {businessName}</div>
-                  <div className="text-base font-black text-blue-400 mt-1">{formatHUF(businessTotal)}</div>
+            <div key="business" className="glass-card glass-card-hover rounded-2xl p-5 flex flex-col justify-between min-h-[100px]">
+               <div className="flex items-center gap-3 mb-3">
+                 <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(6,182,212,0.12)', color: '#06b6d4' }}><TrendingUp size={16} /></div>
+                 <span className="section-label">{businessName}</span>
                </div>
-               <div className="text-[0.55rem] text-slate-500 font-medium leading-normal mt-2 border-t border-white/5 pt-1.5">A(z) {businessName} tárgyhavi árbevétele</div>
+               <div className="text-lg font-black" style={{ color: '#67e8f9' }}>{formatHUF(businessTotal)}</div>
+               <div className="text-xs text-slate-600 font-medium mt-1.5">Tárgyhavi árbevétel</div>
             </div>
           ),
           hasPermission('utilities') && (
-            <div key="utilities" className={`border rounded-3xl p-5 flex flex-col justify-between min-h-[110px] transition-all
-              ${utilitySplitEnabled
+            <div key="utilities" className={`rounded-2xl p-5 flex flex-col justify-between min-h-[100px] transition-all hover:-translate-y-0.5`}
+              style={utilitySplitEnabled
                 ? rezsiBalance >= 0
-                  ? 'bg-emerald-500/10 border-emerald-500/20 hover:border-emerald-500/40'
-                  : 'bg-red-500/10 border-red-500/20 hover:border-red-500/40'
-                : 'bg-white/5 border-white/5 hover:bg-white/[0.08] hover:border-white/10'
+                  ? { background: 'rgba(52,211,153,0.07)', border: '1px solid rgba(52,211,153,0.15)' }
+                  : { background: 'rgba(248,113,113,0.07)', border: '1px solid rgba(248,113,113,0.15)' }
+                : { background: 'rgba(22,27,39,0.7)', border: '1px solid rgba(255,255,255,0.06)' }
               }
-            `}>
+            >
                {utilitySplitEnabled ? (
                  <>
-                   <div>
-                      <div className={`text-[0.6rem] font-bold uppercase flex items-center gap-1.5 ${rezsiBalance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        <Users size={10} /> Rezsi Mérleg
-                      </div>
-                      <div className={`text-base font-black mt-1 ${rezsiBalance >= 0 ? 'text-emerald-300' : 'text-red-400'}`}>
-                        {rezsiBalance >= 0 ? '+' : '-'}{formatHUF(Math.abs(rezsiBalance))}
-                      </div>
+                   <div className="flex items-center gap-3 mb-3">
+                     <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={rezsiBalance >= 0 ? { background: 'rgba(52,211,153,0.15)', color: '#34d399' } : { background: 'rgba(248,113,113,0.15)', color: '#f87171' }}><Users size={16} /></div>
+                     <span className="section-label">Rezsi Mérleg</span>
                    </div>
-                   <div className={`text-xs font-black leading-normal mt-2 border-t pt-2 ${rezsiBalance >= 0 ? 'text-emerald-300 border-emerald-500/20' : 'text-red-300 border-red-500/20'}`}>
-                     {rezsiBalance > 0
-                       ? `${partnerName} tartozik neked`
-                       : rezsiBalance < 0
-                         ? `Te tartozol ${partnerName}-nek`
-                         : 'Rendezve ✓'
-                     }
+                   <div className="text-lg font-black" style={{ color: rezsiBalance >= 0 ? '#34d399' : '#f87171' }}>
+                     {rezsiBalance >= 0 ? '+' : ''}{formatHUF(rezsiBalance)}
+                   </div>
+                   <div className="text-xs font-bold mt-1.5" style={{ color: rezsiBalance >= 0 ? 'rgba(52,211,153,0.6)' : 'rgba(248,113,113,0.6)' }}>
+                     {rezsiBalance > 0 ? `${partnerName} tartozik neked` : rezsiBalance < 0 ? `Te tartozol ${partnerName}-nek` : 'Rendezve ✓'}
                    </div>
                  </>
                ) : (
                  <>
-                   <div>
-                      <div className="text-[0.6rem] font-bold text-slate-500 uppercase flex items-center gap-1.5"><Droplets size={10} className="text-cyan-400" /> Havi Rezsi</div>
-                      <div className="text-base font-black text-slate-300 mt-1">{formatHUF(totalBillsThisMonth)}</div>
+                   <div className="flex items-center gap-3 mb-3">
+                     <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(6,182,212,0.12)', color: '#06b6d4' }}><Droplets size={16} /></div>
+                     <span className="section-label">Havi Rezsi</span>
                    </div>
-                   <div className="text-[0.55rem] text-slate-500 font-medium leading-normal mt-2 border-t border-white/5 pt-1.5">Tárgyhavi közüzemi és egyéb számlák összege</div>
+                   <div className="text-lg font-black text-slate-200">{formatHUF(totalBillsThisMonth)}</div>
+                   <div className="text-xs text-slate-600 font-medium mt-1.5">Közüzemi számlák</div>
                  </>
                )}
             </div>
           ),
           hasPermission('debts') && (
-            <div key="debts" className="bg-white/5 border border-white/5 rounded-3xl p-5 flex flex-col justify-between min-h-[110px] hover:bg-white/[0.08] hover:border-white/10 transition-all">
-               <div>
-                  <div className="text-[0.6rem] font-bold text-slate-500 uppercase flex items-center gap-1.5"><TrendingDown size={10} /> Tartozások</div>
-                  <div className="text-base font-black text-slate-300 mt-1">{formatHUF(externalDebts)}</div>
+            <div key="debts" className="glass-card glass-card-hover rounded-2xl p-5 flex flex-col justify-between min-h-[100px]">
+               <div className="flex items-center gap-3 mb-3">
+                 <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(248,113,113,0.1)', color: '#f87171' }}><TrendingDown size={16} /></div>
+                 <span className="section-label">Tartozások</span>
                </div>
-               <div className="text-[0.55rem] text-slate-500 font-medium leading-normal mt-2 border-t border-white/5 pt-1.5">Külső aktív hitelek és kölcsönök egyenlege</div>
+               <div className="text-lg font-black text-slate-200">{formatHUF(externalDebts)}</div>
+               <div className="text-xs text-slate-600 font-medium mt-1.5">Aktív hitelek és kölcsönök</div>
             </div>
           )
         ].filter(Boolean);
