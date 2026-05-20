@@ -217,13 +217,19 @@
     opacity: 0.55;
 }
 
-/* Text gradient — for hero numbers */
+/* Text gradient — solid fallback when background-clip:text is unsupported */
 .text-gradient {
-    background: linear-gradient(135deg, var(--primary) 0%, oklch(0.62 0.16 200) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
+    color: var(--primary);
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+    .text-gradient {
+        background: linear-gradient(135deg, var(--primary) 0%, oklch(0.62 0.16 200) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+    }
 }
 
 /* ============================== */
@@ -240,10 +246,17 @@
 .gradient-brand { background: linear-gradient(135deg, var(--primary), oklch(0.62 0.16 200)); }
 .gradient-accent { background: linear-gradient(135deg, oklch(0.62 0.16 200), oklch(0.65 0.18 150)); }
 .text-gradient-brand {
-    background: linear-gradient(135deg, var(--primary), oklch(0.62 0.16 200));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: var(--primary);
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+    .text-gradient-brand {
+        background: linear-gradient(135deg, var(--primary), oklch(0.62 0.16 200));
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+    }
 }
 .glass { background-color: oklch(1 0 0 / 0.7); backdrop-filter: blur(10px) saturate(160%); }
 .gradient-mesh-hero {

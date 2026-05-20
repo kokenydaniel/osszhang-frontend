@@ -257,7 +257,7 @@ export default function SavingsClient() {
           <p
             className={cn(
               'text-2xl font-semibold tracking-tight tabular-nums leading-none',
-              accent === 'primary' ? 'text-gradient' : 'text-rose-600',
+              accent === 'primary' ? 'text-primary' : 'text-rose-600',
             )}
           >
             {formatCurrencyAmount(balance, acc.currency)}
