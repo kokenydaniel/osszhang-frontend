@@ -1,9 +1,48 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/api';
-import { Mail, Lock, Rocket, ShieldCheck, RefreshCw } from 'lucide-react';
+import {
+  Mail,
+  Lock,
+  Command,
+  ShieldCheck,
+  Loader2,
+  ArrowRight,
+  TrendingUp,
+  Home,
+  PiggyBank,
+  Sparkles,
+  Users,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { FieldLabel } from '@/components/ui/FieldLabel';
+import { HELP } from '@/lib/helpTexts';
+import { motion } from 'motion/react';
+
+const features = [
+  {
+    icon: TrendingUp,
+    title: 'Cashflow & költségvetés',
+    text: 'Bevételek, kiadások, kategóriák — átláthatóan.',
+    gradient: 'from-primary to-violet-500',
+  },
+  {
+    icon: Home,
+    title: 'Rezsi és mérőórák',
+    text: 'Számlák és fogyasztás automatikus elszámolással.',
+    gradient: 'from-blue-500 to-cyan-500',
+  },
+  {
+    icon: PiggyBank,
+    title: 'Megtakarítások',
+    text: 'Számlák, állampapírok és vagyon egy nézetben.',
+    gradient: 'from-emerald-500 to-teal-500',
+  },
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,7 +55,6 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       const res = await authClient.login({ email, password });
       if (res.data.access_token) {
@@ -25,129 +63,229 @@ export default function LoginPage() {
       }
     } catch (err) {
       const apiErr = err as { response?: { status?: number } };
-      if (apiErr.response?.status === 401 || apiErr.response?.status === 422) {
-        setError('Hibás felhasználónév vagy jelszó.');
-      } else {
-        setError('Hiba történt a bejelentkezés során.');
-      }
+      setError(
+        apiErr.response?.status === 401 || apiErr.response?.status === 422
+          ? 'Hibás felhasználónév vagy jelszó.'
+          : 'Hiba történt a bejelentkezés során.',
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#020617] relative overflow-hidden font-sans selection:bg-brand-primary/30">
-      
-      {/* BACKGROUND BLOBS */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-primary/20 rounded-full blur-[120px] animate-pulse pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-brand-secondary/10 rounded-full blur-[150px] animate-pulse pointer-events-none"></div>
-      <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"></div>
+    <div className="min-h-screen grid lg:grid-cols-[1fr_460px] xl:grid-cols-[1fr_500px] bg-background">
+      {/* Left – content panel with mesh gradient */}
+      <div className="relative hidden lg:flex flex-col justify-between px-12 xl:px-16 py-12 overflow-hidden">
+        {/* Background mesh */}
+        <div
+          className="absolute inset-0 -z-10"
+          style={{
+            background: `
+              radial-gradient(circle at 20% 20%, oklch(0.56 0.24 275 / 0.12) 0%, transparent 50%),
+              radial-gradient(circle at 80% 70%, oklch(0.62 0.16 200 / 0.10) 0%, transparent 50%),
+              radial-gradient(circle at 50% 90%, oklch(0.65 0.18 150 / 0.08) 0%, transparent 50%),
+              oklch(0.992 0.003 250)
+            `,
+          }}
+        />
+        <div className="absolute inset-0 -z-10 opacity-[0.04]" style={{
+          backgroundImage: 'radial-gradient(circle, oklch(0.20 0.02 265) 1px, transparent 1px)',
+          backgroundSize: '20px 20px',
+        }} />
 
-      <div className="w-full max-w-md px-6 relative z-10">
-        
-        {/* LOGO SECTION */}
-        <div className="flex flex-col items-center mb-10">
-           <div className="w-20 h-20 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-3xl flex items-center justify-center shadow-[0_0_50px_-12px_rgba(124,106,247,0.5)] mb-6 group transition-transform hover:scale-110 duration-500">
-              <Rocket size={40} className="text-white group-hover:rotate-12 transition-transform" />
-           </div>
-           <h1 className="text-4xl font-black text-white tracking-tighter mb-2 uppercase">
-             Pénz<span className="text-brand-primary italic">Pilot</span>
-           </h1>
-           <p className="text-slate-400 text-[0.65rem] font-black uppercase tracking-[0.4em] ml-1">Intelligens Háztartáskezelő</p>
+        {/* Brand */}
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gradient-to-br from-primary to-violet-500 shadow-glow">
+            <Command size={18} className="text-primary-foreground" strokeWidth={2.5} />
+          </div>
+          <span className="text-base font-semibold tracking-tight">PénzPilot</span>
         </div>
 
-        {/* LOGIN CARD */}
-        <div className="bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative overflow-hidden transition-all duration-500">
-           
-           {/* GLOWING BORDER ACCENT */}
-           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-brand-primary/50 to-transparent"></div>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="max-w-md space-y-10"
+        >
+          <div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/8 px-3 py-1 mb-5"
+            >
+              <Sparkles size={11} className="text-primary" strokeWidth={2.3} />
+              <span className="text-[0.65rem] font-semibold uppercase tracking-wider text-primary">
+                Háztartás menedzser
+              </span>
+            </motion.div>
+            <h2 className="text-4xl xl:text-[3.25rem] font-semibold tracking-tight text-foreground leading-[1.02]">
+              Pénzügyek,
+              <br />
+              <span className="text-gradient">kapcsolva.</span>
+            </h2>
+            <p className="mt-5 text-base text-muted-foreground/90 max-w-sm leading-relaxed">
+              Bevételek, kiadások, rezsi, megtakarítások és tartozások —
+              egyetlen letisztult, modern felületen.
+            </p>
+          </div>
 
-           <div className="mb-8 text-center md:text-left">
-              <h2 className="text-2xl font-black text-white mb-2">Üdvözlünk újra!</h2>
-              <p className="text-slate-400 text-sm">Lépj be a vezérlőterembe az adatok kezeléséhez.</p>
-           </div>
-
-           {error && (
-             <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-2xl text-xs font-bold mb-6 flex items-center gap-3 animate-shake">
-                <span className="text-lg">⚠️</span> {error}
-             </div>
-           )}
-
-           <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                 <label className="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest ml-1">E-mail cím</label>
-                 <div className="relative group">
-                    <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-brand-primary transition-colors" />
-                    <input 
-                      type="email" 
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/50 transition-all placeholder:text-slate-600 font-medium"
-                      placeholder="nev@example.com"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      required
-                    />
-                 </div>
-              </div>
-
-              <div className="space-y-2">
-                 <label className="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest ml-1">Jelszó</label>
-                 <div className="relative group">
-                    <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-brand-primary transition-colors" />
-                    <input 
-                      type="password" 
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white text-sm outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/50 transition-all placeholder:text-slate-600 font-medium"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      required
-                    />
-                 </div>
-              </div>
-
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-brand-primary to-brand-primary/80 hover:to-brand-primary text-white font-black py-4 rounded-2xl shadow-[0_10px_30px_-10px_rgba(124,106,247,0.5)] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group relative overflow-hidden mt-8"
+          <ul className="space-y-3.5">
+            {features.map(({ icon: Icon, title, text, gradient }, i) => (
+              <motion.li
+                key={title}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.35, delay: 0.2 + i * 0.08 }}
+                className="flex items-start gap-3 group"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 pointer-events-none"></div>
-                {loading ? (
-                  <RefreshCw size={20} className="animate-spin" />
-                ) : (
-                  <>
-                    <span>Bejelentkezés</span>
-                    <RefreshCw size={18} className="opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                  </>
-                )}
-              </button>
-           </form>
+                <div
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gradient-to-br ${gradient} text-white shadow-sm group-hover:shadow-md transition-shadow`}
+                >
+                  <Icon size={14} strokeWidth={2.2} />
+                </div>
+                <div className="min-w-0 pt-0.5">
+                  <p className="text-sm font-semibold text-foreground">{title}</p>
+                  <p className="text-[0.8rem] text-muted-foreground">{text}</p>
+                </div>
+              </motion.li>
+            ))}
+          </ul>
+        </motion.div>
 
-           <div className="mt-8 pt-8 border-t border-white/5 flex flex-col items-center gap-4">
-              <div className="flex items-center justify-center gap-2 text-[0.65rem] font-black text-slate-500 uppercase tracking-widest">
-                 <ShieldCheck size={14} className="text-brand-secondary" />
-                 Privát családi rendszer
-              </div>
-              <div className="text-[0.6rem] font-bold text-slate-600 italic">
-                 Új tagokat csak az Adminisztrátor vehet fel
-              </div>
-           </div>
+        <div className="flex items-center justify-between gap-4 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-2">
+            <ShieldCheck size={13} className="text-primary" />
+            Privát családi rendszer · {new Date().getFullYear()}
+          </span>
         </div>
-
-        {/* FOOTER */}
-        <p className="text-center mt-10 text-[0.6rem] font-black text-slate-700 uppercase tracking-[0.4em]">
-          PénzPilot Engine v2.0 • {new Date().getFullYear()}
-        </p>
       </div>
 
-      <style jsx global>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-5px); }
-          75% { transform: translateX(5px); }
-        }
-        .animate-shake {
-          animation: shake 0.3s ease-in-out;
-        }
-      `}</style>
+      {/* Right – form */}
+      <div className="relative flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-12 border-l border-border bg-card">
+        <div className="lg:hidden flex items-center gap-2 mb-10">
+          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gradient-to-br from-primary to-violet-500 shadow-glow">
+            <Command size={17} className="text-primary-foreground" strokeWidth={2.5} />
+          </div>
+          <span className="text-base font-semibold">PénzPilot</span>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="w-full max-w-sm mx-auto"
+        >
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">Üdv újra</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Lépj be a fiókodba a folytatáshoz.</p>
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive flex items-center gap-2"
+            >
+              {error}
+            </motion.div>
+          )}
+
+          <form onSubmit={handleSubmit} className="mt-7 space-y-5">
+            <div className="space-y-1.5">
+              <FieldLabel className="text-xs font-medium text-foreground" info={HELP.auth.email}>
+                E-mail
+              </FieldLabel>
+              <div className="relative">
+                <Mail
+                  size={15}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                />
+                <Input
+                  type="email"
+                  className="pl-9 h-10"
+                  placeholder="nev@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <FieldLabel className="text-xs font-medium text-foreground" info={HELP.auth.password}>
+                Jelszó
+              </FieldLabel>
+              <div className="relative">
+                <Lock
+                  size={15}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                />
+                <Input
+                  type="password"
+                  className="pl-9 h-10"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+            </div>
+
+            <Button type="submit" disabled={loading} size="lg" className="w-full mt-2 shadow-glow">
+              {loading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <>
+                  Bejelentkezés
+                  <ArrowRight size={15} />
+                </>
+              )}
+            </Button>
+          </form>
+
+          {/* Divider */}
+          <div className="relative my-7">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-card px-3 text-[0.7rem] uppercase tracking-wider font-medium text-muted-foreground">
+                Még nem vagy fent
+              </span>
+            </div>
+          </div>
+
+          {/* Create household CTA */}
+          <Link
+            href="/register"
+            className="group block rounded-lg border border-border bg-gradient-to-br from-primary/[0.04] via-card to-card p-4 hover:border-primary/30 hover:shadow-soft transition-all"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-primary to-violet-500 text-primary-foreground shadow-sm">
+                <Users size={15} strokeWidth={2.2} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground inline-flex items-center gap-1.5">
+                  Új háztartás létrehozása
+                  <ArrowRight
+                    size={13}
+                    className="text-primary transition-transform group-hover:translate-x-0.5"
+                  />
+                </p>
+                <p className="text-[0.78rem] text-muted-foreground mt-0.5 leading-snug">
+                  Indítsd el a saját családi pénzügyi rendszered néhány perc alatt.
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          <p className="mt-6 text-center text-[0.7rem] text-muted-foreground">
+            Új tagokat az adminisztrátor a beállításokban vehet fel.
+          </p>
+        </motion.div>
+      </div>
     </div>
   );
 }

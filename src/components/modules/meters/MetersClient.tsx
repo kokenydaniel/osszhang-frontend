@@ -9,41 +9,72 @@ import { Meter, MeterReading } from '@/types';
 import { formatNumber, formatDate } from '@/utils';
 import { aiFinanceClient } from '@/api';
 import { Modal } from '@/components/ui/Modal';
-import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ToggleOptionCard } from '@/components/ui/toggle-option-card';
+import { FieldLabel } from '@/components/ui/FieldLabel';
+import { HELP } from '@/lib/helpTexts';
+import {
+  bracketAnchorReadings,
+  canInterpolateBetween,
+  interpolateMeterValue,
+  isAnchorReading,
+  listAllGapMonthsBetweenAnchors,
+  parseAiConsumption,
+  seasonalConsumptionEstimate,
+  sortReadingsByDate,
+  targetDateForMonth,
+} from '@/lib/meterEstimation';
 import { ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
-import { 
-  Zap, 
-  Droplets, 
-  Flame, 
-  MapPin, 
-  Plus, 
-  Edit3, 
-  Trash2, 
-  RefreshCw, 
-  History,
+import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  PageHeader,
+  DataTable,
+  Section,
+  InsightBanner,
+  AccentPanel,
+  StatusPill,
+  EmptyState,
+  type DataTableColumn,
+} from '@/components/design';
+import {
+  Zap,
+  Droplets,
+  Flame,
+  MapPin,
+  Edit3,
+  Trash2,
+  RefreshCw,
   ChevronDown,
   ChevronUp,
   Bot,
   PlusCircle,
-  Sparkles
+  Sparkles,
+  Calendar,
+  Gauge,
+  Building2,
+  Replace,
+  ClipboardCheck,
 } from 'lucide-react';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Már', 'Ápr', 'Máj', 'Jún', 'Júl', 'Aug', 'Szep', 'Okt', 'Nov', 'Dec'];
 
 function getChartData(
-  meter: Meter, 
-  selectedYear: number, 
-  getPreviousYearValue: (meterId: number, month: number, currentYear: number) => number | null
+  meter: Meter,
+  selectedYear: number,
+  getPreviousYearValue: (meterId: number, month: number, currentYear: number) => number | null,
 ) {
   const result = [];
-  for(let m = 1; m <= 12; m++) {
+  for (let m = 1; m <= 12; m++) {
     const cyData = meter.readings.find((r: MeterReading) => r.month === m && r.year === selectedYear);
     const pyData = getPreviousYearValue(meter.id, m, selectedYear);
     result.push({
-      monthName: MONTH_NAMES[m-1],
+      monthName: MONTH_NAMES[m - 1],
       idei: cyData ? cyData.consumption : null,
-      tavalyi: pyData !== null ? pyData : null
+      tavalyi: pyData !== null ? pyData : null,
     });
   }
   return result;
@@ -51,27 +82,23 @@ function getChartData(
 
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: Array<{
-    name: string;
-    value: number;
-    stroke?: string;
-    color?: string;
-    fill?: string;
-  }>;
+  payload?: Array<{ name: string; value: number; color?: string }>;
   label?: string;
 }
 
 const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-slate-900/95 backdrop-blur-md border border-white/10 p-3 rounded-2xl shadow-2xl">
-        <p className="text-[0.65rem] font-black text-slate-400 uppercase tracking-widest mb-2">{label}</p>
-        <div className="flex flex-col gap-2">
-          {payload.map((entry: { name: string; value: number; color?: string }, index: number) => (
-            <div key={index} className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full" style={{ background: entry.color }}></div>
-              <div className="flex-1 text-xs font-bold text-white">{entry.name}:</div>
-              <div className="text-sm font-black" style={{ color: entry.color }}>{formatNumber(entry.value)}</div>
+      <div className="rounded-md bg-popover border border-border px-3 py-2 shadow-md">
+        <p className="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+        <div className="flex flex-col gap-1">
+          {payload.map((entry, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: entry.color }} />
+              <span className="text-foreground/70">{entry.name}:</span>
+              <span className="font-semibold tabular-nums" style={{ color: entry.color }}>
+                {formatNumber(entry.value)}
+              </span>
             </div>
           ))}
         </div>
@@ -81,58 +108,91 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   return null;
 };
 
-const getMeterIcon = (name: string, size = 24) => {
-  if (name.includes('Villany')) return <Zap size={size} className="text-amber-500" />;
-  if (name.includes('Víz')) return <Droplets size={size} className="text-blue-500" />;
-  if (name.includes('Gáz')) return <Flame size={size} className="text-red-500" />;
-  return <Zap size={size} className="text-brand-primary" />;
+const getMeterMeta = (name: string) => {
+  if (name.includes('Villany'))
+    return {
+      Icon: Zap,
+      iconBg: 'bg-gradient-to-br from-amber-400 to-orange-500 text-white',
+      surface: 'from-amber-50/70 via-amber-50/20',
+      bar: 'bg-gradient-to-b from-amber-400 to-orange-500',
+      accent: 'oklch(0.72 0.16 60)',
+    };
+  if (name.includes('Víz'))
+    return {
+      Icon: Droplets,
+      iconBg: 'bg-gradient-to-br from-sky-400 to-cyan-500 text-white',
+      surface: 'from-sky-50/70 via-sky-50/20',
+      bar: 'bg-gradient-to-b from-sky-400 to-cyan-500',
+      accent: 'oklch(0.62 0.16 200)',
+    };
+  if (name.includes('Gáz'))
+    return {
+      Icon: Flame,
+      iconBg: 'bg-gradient-to-br from-rose-400 to-orange-500 text-white',
+      surface: 'from-rose-50/70 via-rose-50/20',
+      bar: 'bg-gradient-to-b from-rose-400 to-orange-500',
+      accent: 'oklch(0.62 0.22 25)',
+    };
+  return {
+    Icon: Gauge,
+    iconBg: 'bg-gradient-to-br from-primary to-violet-500 text-white',
+    surface: 'from-primary/8 via-primary/2',
+    bar: 'bg-gradient-to-b from-primary to-violet-500',
+    accent: 'oklch(0.55 0.22 275)',
+  };
 };
 
-function MeterCard({ 
-  meter, 
-  selectedYear, 
-  getPreviousYearValue, 
-  deleteMeterReading, 
-  onAiClick, 
-  onEditReading, 
-  onAddReading, 
-  onDeleteMeter, 
-  onDeleteReading 
-}: { 
+function MeterPanel({
+  meter,
+  selectedYear,
+  getPreviousYearValue,
+  onAiClick,
+  onEditReading,
+  onAddReading,
+  onDeleteMeter,
+  onDeleteReading,
+}: {
   meter: Meter;
   selectedYear: number;
   getPreviousYearValue: (meterId: number, month: number, currentYear: number) => number | null;
-  deleteMeterReading: (meterId: number, readingId: number) => Promise<void>;
   onAiClick: (id: number) => void;
   onEditReading: (m: Meter, r: MeterReading) => void;
   onAddReading: (m: Meter) => void;
   onDeleteMeter: (id: number) => void;
   onDeleteReading: (mId: number, rId: number) => void;
 }) {
+  const [showHistory, setShowHistory] = useState(false);
   const [showFullHistory, setShowFullHistory] = useState(false);
   const { user } = useAuthStore();
   const isReader = user?.role === 'reader';
-  const isAdmin = user?.role === 'admin';
-  const [calcValue, setCalcValue] = useState<string>('');
+  const [calcValue, setCalcValue] = useState('');
   const { addMeterReading } = useMetersStore();
 
   const chartData = getChartData(meter, selectedYear, getPreviousYearValue);
-  
-  const yearReadings = meter.readings.filter((r: MeterReading) => r.year === selectedYear).sort((a: MeterReading, b: MeterReading) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const otherReadings = meter.readings.filter((r: MeterReading) => r.year !== selectedYear).sort((a: MeterReading, b: MeterReading) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  
+  const meta = getMeterMeta(meter.name);
+  const { Icon, iconBg, surface, bar, accent } = meta;
+
+  const yearReadings = meter.readings
+    .filter((r: MeterReading) => r.year === selectedYear)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const otherReadings = meter.readings
+    .filter((r: MeterReading) => r.year !== selectedYear)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const displayReadings = showFullHistory ? [...yearReadings, ...otherReadings] : yearReadings;
 
-  const sortedAllReadings = [...meter.readings].sort((a: MeterReading, b: MeterReading) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const sortedAllReadings = [...meter.readings].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  );
   const latestReading = sortedAllReadings[0];
   const currentVal = parseFloat(calcValue);
   const diff = latestReading && !isNaN(currentVal) ? currentVal - latestReading.value : 0;
 
   const sortedOfficialReadings = [...meter.readings]
-    .filter((r: MeterReading) => r.isOfficial || r.is_official)
-    .sort((a: MeterReading, b: MeterReading) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    .filter((r) => r.isOfficial || r.is_official)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const latestOfficialReading = sortedOfficialReadings[0];
-  const consumptionSinceOfficial = latestReading && latestOfficialReading ? latestReading.value - latestOfficialReading.value : null;
+  const consumptionSinceOfficial =
+    latestReading && latestOfficialReading ? latestReading.value - latestOfficialReading.value : null;
 
   const handleSaveCalc = (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,181 +204,306 @@ function MeterCard({
       year: new Date().getFullYear(),
       value: currentVal,
       isReset: false,
-      isEstimated: false
+      isEstimated: false,
     });
     setCalcValue('');
   };
 
+  const yearTotal = yearReadings.reduce((s, r) => s + r.consumption, 0);
+  const prevYearTotal = meter.readings.filter((r) => r.year === selectedYear - 1).reduce((s, r) => s + r.consumption, 0);
+  const trend = prevYearTotal > 0 ? ((yearTotal - prevYearTotal) / prevYearTotal) * 100 : null;
+
+  const readingColumns: DataTableColumn<MeterReading>[] = [
+    {
+      key: 'value',
+      header: 'Állás',
+      width: '24%',
+      cell: (r) => (
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white shadow-sm', iconBg)}>
+            <Gauge size={13} strokeWidth={2.2} />
+          </div>
+          <div className="min-w-0">
+            <div className="font-semibold text-sm text-foreground tabular-nums">
+              {formatNumber(r.value)}
+              <span className="text-[0.7rem] font-normal text-muted-foreground ml-1">{meter.unit}</span>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'date',
+      header: 'Dátum',
+      width: '16%',
+      cell: (r) => (
+        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
+          <Calendar size={10} strokeWidth={2.2} /> {formatDate(r.date)}
+        </span>
+      ),
+    },
+    {
+      key: 'type',
+      header: 'Típus',
+      width: '30%',
+      cell: (r) => (
+        <div className="flex flex-wrap items-center gap-1">
+          {(r.isOfficial || r.is_official) && (
+            <StatusPill status="success" size="xs">
+              <Building2 size={9} /> szolgáltató leolvasta
+            </StatusPill>
+          )}
+          {(r.isReset || r.is_reset) && (
+            <StatusPill status="danger" size="xs">
+              <RefreshCw size={9} /> csere
+            </StatusPill>
+          )}
+          {(r.isEstimated || r.is_estimated) && (
+            <StatusPill status="primary" size="xs">
+              <Bot size={9} /> AI becslés
+            </StatusPill>
+          )}
+          {!(r.isOfficial || r.is_official) && !(r.isReset || r.is_reset) && !(r.isEstimated || r.is_estimated) && (
+            <span className="text-[0.7rem] text-muted-foreground/70">saját rögzítés</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'consumption',
+      header: 'Fogyasztás',
+      align: 'right',
+      width: '18%',
+      cell: (r) => (
+        <span className="text-sm font-semibold text-foreground tabular-nums">
+          +{formatNumber(r.consumption)}
+          <span className="text-[0.65rem] font-normal text-muted-foreground ml-1">{meter.unit}</span>
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      align: 'right',
+      width: '12%',
+      cell: (r) =>
+        !isReader ? (
+          <div className="flex items-center justify-end gap-0.5">
+            <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground" onClick={() => onEditReading(meter, r)}>
+              <Edit3 size={13} />
+            </Button>
+            <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-destructive" onClick={() => onDeleteReading(meter.id, r.id)}>
+              <Trash2 size={13} />
+            </Button>
+          </div>
+        ) : null,
+    },
+  ];
+
   return (
-    <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden flex flex-col shadow-2xl">
-      <div className="p-5 md:p-6 bg-white/5 flex flex-wrap items-center justify-between gap-4 border-b border-white/5">
-         <div className="flex items-center gap-4">
-           <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-white/5 flex items-center justify-center shrink-0">
-             {getMeterIcon(meter.name, 28)}
-           </div>
-           <div>
-             <h2 className="text-xl md:text-2xl font-black text-white m-0 tracking-tight">{meter.name}</h2>
-             <div className="flex items-center gap-2 mt-1">
-               <span className="text-[0.65rem] md:text-xs font-black text-slate-500 uppercase tracking-wider">Fogyasztás • {meter.unit}</span>
-               <div className="w-1 h-1 rounded-full bg-slate-600"></div>
-               <span className="text-[0.65rem] md:text-xs font-black text-brand-primary uppercase tracking-wider">{meter.location}</span>
-             </div>
-           </div>
-         </div>
+    <motion.section
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ y: -1 }}
+      className="rounded-lg border border-border bg-card overflow-hidden shadow-soft hover:shadow-lift transition-shadow flex"
+    >
+      <div className={cn('w-[3px] shrink-0', bar)} />
+      <div className="flex-1 min-w-0">
+        {/* Header */}
+        <header className={cn('flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 bg-gradient-to-br to-transparent', surface)}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={cn('h-11 w-11 shrink-0 rounded-lg flex items-center justify-center shadow-sm', iconBg)}>
+              <Icon size={18} strokeWidth={2} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-base font-semibold tracking-tight text-foreground leading-tight truncate">{meter.name}</h3>
+              <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground">
+                <span className="font-medium">{meter.unit}</span>
+                <span className="text-border">·</span>
+                <span className="inline-flex items-center gap-1">
+                  <MapPin size={10} strokeWidth={2.2} /> {meter.location}
+                </span>
+              </div>
+            </div>
+          </div>
           {!isReader && (
-          <div className="flex flex-wrap gap-2 items-center">
-             <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-primary text-white hover:bg-brand-light transition-colors shadow-lg" onClick={() => onAddReading(meter)}>
-               <PlusCircle size={14} /> Leolvasás
-             </button>
-             <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-brand-primary text-brand-primary hover:bg-brand-primary/10 transition-colors" onClick={() => onAiClick(meter.id)}>
-               <Sparkles size={14} /> Becslés (AI)
-             </button>
-             <button className="p-1.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors ml-1" onClick={() => onDeleteMeter(meter.id)}>
-               <Trash2 size={16} />
-             </button>
-          </div>
-       )}
-      </div>
-      
-      <div className="p-5 md:p-6 min-h-[340px]">
-         <div className="flex justify-between items-center py-4">
-            <div className="flex gap-6 flex-wrap">
-               <div>
-                  <div className="text-[0.65rem] text-slate-500 font-black uppercase tracking-widest mb-1">Idei Összes</div>
-                  <div className="text-xl font-black text-white">{formatNumber(yearReadings.reduce((s, r)=>s+r.consumption, 0))} {meter.unit}</div>
-               </div>
-               <div className="w-px bg-white/10"></div>
-               <div>
-                  <div className="text-[0.65rem] text-slate-500 font-black uppercase tracking-widest mb-1">Tavalyi Összes</div>
-                  <div className="text-xl font-black text-slate-400">{formatNumber(meter.readings.filter(r=>r.year === selectedYear -1).reduce((s, r)=>s+r.consumption, 0))} {meter.unit}</div>
-               </div>
-               <div className="w-px bg-white/10"></div>
-               <div>
-                  <div className="text-[0.65rem] text-brand-primary font-black uppercase tracking-widest mb-1">Hivatalos leolvasás óta</div>
-                  {consumptionSinceOfficial !== null && latestOfficialReading ? (
-                     <div className="text-xl font-black text-emerald-400">
-                        {formatNumber(consumptionSinceOfficial)} {meter.unit}
-                        <span className="text-[0.65rem] text-slate-500 font-bold block normal-case mt-0.5">({formatDate(latestOfficialReading.date)} óta)</span>
-                     </div>
-                  ) : (
-                     <div className="text-sm font-bold text-slate-500 mt-1">Nincs hivatalos állás</div>
-                  )}
-               </div>
+            <div className="flex items-center gap-1.5">
+              <Button size="sm" onClick={() => onAddReading(meter)}>
+                <PlusCircle size={13} /> Leolvasás
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => onAiClick(meter.id)}>
+                <Sparkles size={13} /> AI
+              </Button>
+              <Button size="icon-sm" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => onDeleteMeter(meter.id)}>
+                <Trash2 size={13} />
+              </Button>
             </div>
-         </div>
+          )}
+        </header>
 
-         {latestReading && (
-            <div className="mb-6 p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-wrap items-center justify-between gap-4">
-               <div className="flex flex-col gap-1">
-                  <div className="text-[0.65rem] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                     <span className="w-1.5 h-1.5 rounded-full bg-brand-primary"></span>
-                     Részleges Fogyasztás Kalkulátor
-                  </div>
-                  <div className="text-xs text-slate-300">
-                     Utolsó mentett állás: <b className="text-white">{formatNumber(latestReading.value)} {meter.unit}</b> ({formatDate(latestReading.date)})
-                  </div>
-               </div>
-               {!isReader && <form onSubmit={handleSaveCalc} className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
-                  <div className="relative">
-                     <input
-                        type="number"
-                        placeholder="Aktuális állás..."
-                        value={calcValue}
-                        onChange={(e) => setCalcValue(e.target.value)}
-                        className="bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-primary w-40"
-                     />
-                     {calcValue && (
-                        <div className={`absolute left-0 -bottom-5 text-[0.65rem] font-bold ${diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                           {diff >= 0 ? `+${formatNumber(diff)} ${meter.unit}` : `${formatNumber(diff)} ${meter.unit} (Kisebb!)`}
-                        </div>
-                     )}
-                  </div>
+      {/* KPI row */}
+      <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
+        <div className="px-5 py-3">
+          <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">Idei összes</p>
+          <p className="text-lg font-semibold tabular-nums text-foreground mt-1">
+            {formatNumber(yearTotal)}
+            <span className="text-xs text-muted-foreground font-normal ml-1">{meter.unit}</span>
+          </p>
+          {trend !== null && (
+            <p className={cn('text-[0.65rem] mt-0.5 font-medium tabular-nums', trend < 0 ? 'text-emerald-600' : trend > 0 ? 'text-rose-600' : 'text-muted-foreground')}>
+              {trend > 0 ? '+' : ''}
+              {trend.toFixed(1)}% vs tavaly
+            </p>
+          )}
+        </div>
+        <div className="px-5 py-3">
+          <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">Tavalyi összes</p>
+          <p className="text-lg font-semibold tabular-nums text-muted-foreground mt-1">
+            {formatNumber(prevYearTotal)}
+            <span className="text-xs font-normal ml-1">{meter.unit}</span>
+          </p>
+          <p className="text-[0.65rem] mt-0.5 text-muted-foreground/70">{selectedYear - 1} teljes év</p>
+        </div>
+        <div className="px-5 py-3">
+          <p className="text-[0.65rem] font-medium uppercase tracking-wider text-primary">Szolgáltatói leolvasás óta</p>
+          {consumptionSinceOfficial !== null && latestOfficialReading ? (
+            <>
+              <p className="text-lg font-semibold tabular-nums text-foreground mt-1">
+                {formatNumber(consumptionSinceOfficial)}
+                <span className="text-xs text-muted-foreground font-normal ml-1">{meter.unit}</span>
+              </p>
+              <p className="text-[0.65rem] mt-0.5 text-muted-foreground/70">{formatDate(latestOfficialReading.date)} óta</p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground mt-2">Még nem volt szolgáltatói helyszíni leolvasás</p>
+          )}
+        </div>
+      </div>
+
+      {/* Quick capture calculator */}
+      {latestReading && !isReader && (
+        <div className="border-b border-border px-5 py-3 bg-muted/20">
+          <form onSubmit={handleSaveCalc} className="flex flex-wrap items-center gap-3">
+            <div className="flex-1 min-w-[180px] flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                Új állás:
+              </span>
+              <span>utolsó: {formatNumber(latestReading.value)} {meter.unit} · {formatDate(latestReading.date)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Input
+                  type="number"
+                  placeholder="Aktuális állás"
+                  value={calcValue}
+                  onChange={(e) => setCalcValue(e.target.value)}
+                  className="w-40 h-8 text-xs"
+                />
+                {calcValue && (
+                  <span className={cn('absolute -bottom-4 left-0 text-[0.65rem] font-medium tabular-nums', diff >= 0 ? 'text-emerald-600' : 'text-rose-600')}>
+                    {diff >= 0 ? `+${formatNumber(diff)}` : formatNumber(diff)} {meter.unit}
+                    {diff < 0 ? ' · kisebb!' : ''}
+                  </span>
+                )}
+              </div>
+              <Button type="submit" size="sm" disabled={!calcValue || isNaN(currentVal) || diff < 0}>
+                Rögzítés
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Chart */}
+      <div className="border-b border-border px-2 py-3">
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={chartData} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
+            <defs>
+              <linearGradient id={`colorIdei-${meter.id}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={accent} stopOpacity={0.25} />
+                <stop offset="100%" stopColor={accent} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="oklch(0.92 0.004 250)" />
+            <XAxis dataKey="monthName" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'oklch(0.50 0.012 260)' }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'oklch(0.50 0.012 260)' }} />
+            <Tooltip content={<CustomTooltip />} />
+            <Area
+              type="monotone"
+              dataKey="tavalyi"
+              stroke="oklch(0.65 0.012 260)"
+              strokeWidth={1.5}
+              strokeDasharray="4 4"
+              fill="transparent"
+              name={`${selectedYear - 1}`}
+            />
+            <Area
+              type="monotone"
+              dataKey="idei"
+              stroke={accent}
+              strokeWidth={2}
+              fillOpacity={1}
+              fill={`url(#colorIdei-${meter.id})`}
+              name={`${selectedYear}`}
+              activeDot={{ r: 4, fill: accent, stroke: 'white', strokeWidth: 2 }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Readings toggle */}
+      <button
+        type="button"
+        onClick={() => setShowHistory(!showHistory)}
+        className="w-full flex items-center justify-between px-5 py-3 text-xs font-medium text-muted-foreground hover:bg-muted/40 transition-colors"
+      >
+        <span className="inline-flex items-center gap-2">
+          <Calendar size={12} strokeWidth={2.2} />
+          {meter.readings.length} leolvasás összesen · {yearReadings.length} idén
+        </span>
+        {showHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+      </button>
+
+      <AnimatePresence initial={false}>
+        {showHistory && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="overflow-hidden border-t border-border"
+          >
+            {displayReadings.length === 0 ? (
+              <EmptyState icon={Gauge} title="Nincs leolvasás" description="Még nincs rögzített állás ebben az időszakban." className="m-4" />
+            ) : (
+              <>
+                <div className="p-4">
+                  <DataTable
+                    columns={readingColumns}
+                    data={displayReadings}
+                    rowKey={(r) => r.id}
+                    minWidth="640px"
+                    className="!shadow-none !border-border/70"
+                    dense
+                  />
+                </div>
+                {otherReadings.length > 0 && !showFullHistory && (
                   <button
-                     type="submit"
-                     disabled={!calcValue || isNaN(currentVal) || diff < 0}
-                     className="px-3 py-2 bg-brand-primary hover:bg-brand-light disabled:bg-slate-800 disabled:text-slate-500 text-xs font-bold text-white rounded-xl transition-all shadow-md"
+                    onClick={() => setShowFullHistory(true)}
+                    className="w-full px-5 py-2.5 text-xs font-medium text-primary hover:bg-muted/40 transition-colors border-t border-border"
                   >
-                     Rögzítés új leolvasásként
+                    További {otherReadings.length} leolvasás megjelenítése…
                   </button>
-               </form>}
-            </div>
-         )}
-
-         <div className="h-[240px] w-full">
-            <ResponsiveContainer width="100%" height={240}>
-               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                  <linearGradient id={`colorIdei-${meter.id}`} x1="0" y1="0" x2="0" y2="1">
-                     <stop offset="5%" stopColor="#7c6af7" stopOpacity={0.4}/>
-                     <stop offset="100%" stopColor="#7c6af7" stopOpacity={0}/>
-                  </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="monthName" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="tavalyi" stroke="rgba(255,255,255,0.2)" strokeWidth={2} strokeDasharray="5 5" fill="transparent" name="Tavaly" />
-                  <Area type="monotone" dataKey="idei" stroke="#7c6af7" strokeWidth={3} fillOpacity={1} fill={`url(#colorIdei-${meter.id})`} name="Idén" activeDot={{ r: 6, fill: '#7c6af7', stroke: 'white', strokeWidth: 2 }} />
-               </AreaChart>
-            </ResponsiveContainer>
-         </div>
-      </div>
-
-      <div className="overflow-x-auto border-t border-white/5 custom-scrollbar">
-        <table className="w-full text-left border-collapse min-w-[500px]">
-          <thead>
-            <tr className="bg-white/5 border-b border-white/5 text-[0.65rem] uppercase tracking-wider text-slate-400 font-black">
-              <th className="p-4 pl-6">Dátum</th>
-              <th className="p-4 text-right">Állás</th>
-              <th className="p-4">Megjegyzés</th>
-              <th className="p-4 text-right">Fogyasztás</th>
-              <th className="p-4 pr-6 text-right">Műveletek</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {displayReadings.map((r: MeterReading) => (
-              <tr key={r.id} className="hover:bg-white/5 transition-colors group">
-                <td className="p-4 pl-6 text-xs font-bold text-white">{formatDate(r.date)}</td>
-                <td className="p-4 text-right font-black text-slate-200">{formatNumber(r.value)} <span className="text-[0.65rem] text-slate-500 font-bold">{meter.unit}</span></td>
-                <td className="p-4">
-                  <div className="flex gap-2">
-                    {(r.isOfficial || r.is_official) && <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[0.6rem] font-black">🏢 HIVATALOS</span>}
-                    {(r.isReset || r.is_reset) && <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 text-[0.6rem] font-black"><RefreshCw size={10} /> CSAPERE</span>}
-                    {(r.isEstimated || r.is_estimated) && <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-brand-primary text-[0.6rem] font-black"><Bot size={10} /> AI</span>}
-                  </div>
-                </td>
-                <td className="p-4 text-right font-black text-brand-primary">
-                  {formatNumber(r.consumption)} <span className="text-[0.65rem] text-brand-primary/50 font-bold">{meter.unit}</span>
-                </td>
-                <td className="p-4 pr-6 text-right">
-                    {!isReader && (
-                      <div className="flex justify-end gap-2 opacity-100 transition-opacity">
-                        <button onClick={() => onEditReading(meter, r)} className="p-1 text-slate-500 hover:text-white transition-colors"><Edit3 size={14} /></button>
-                        <button onClick={() => onDeleteReading(meter.id, r.id)} className="p-1 text-red-500/50 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
-                      </div>
-                    )}
-                </td>
-              </tr>
-            ))}
-            {displayReadings.length === 0 && (
-              <tr><td colSpan={5} className="p-6 text-center text-slate-500 text-sm font-medium">Nincs leolvasás ebben az időszakban.</td></tr>
+                )}
+              </>
             )}
-          </tbody>
-        </table>
-        
-        {otherReadings.length > 0 && (
-          <div className="p-4 text-center bg-white/[0.01]">
-            <button 
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-colors" 
-              onClick={() => setShowFullHistory(!showFullHistory)}
-            >
-              {showFullHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              {showFullHistory ? 'Korábbiak elrejtése' : `További ${otherReadings.length} leolvasás...`}
-            </button>
-          </div>
+          </motion.div>
         )}
+      </AnimatePresence>
       </div>
-    </div>
+    </motion.section>
   );
 }
 
@@ -328,10 +513,10 @@ export default function MetersClient() {
   const { meters, addMeter, deleteMeter, addMeterReading, updateMeterReading, deleteMeterReading } = useMetersStore();
   const { selectedMonth, selectedYear } = usePreferenceStore();
   const { aiUtilityAnomalies, fetchAiUtilityAnomalies } = useUtilitiesStore();
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingReading, setEditingReading] = useState<{ meter: Meter, reading: MeterReading } | null>(null);
-  
+  const [editingReading, setEditingReading] = useState<{ meter: Meter; reading: MeterReading } | null>(null);
+
   const [meterId, setMeterId] = useState<number>(0);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [value, setValue] = useState('');
@@ -349,8 +534,7 @@ export default function MetersClient() {
   const [newMeterUnit, setNewMeterUnit] = useState('kWh');
   const [newMeterLoc, setNewMeterLoc] = useState('Otthon');
 
-  const [confirmMeterDelete, setConfirmMeterDelete] = useState<number | null>(null);
-  const [confirmReadingDelete, setConfirmReadingDelete] = useState<{ mId: number, rId: number } | null>(null);
+  const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
 
   useEffect(() => {
     fetchAiUtilityAnomalies(selectedYear, selectedMonth);
@@ -368,119 +552,150 @@ export default function MetersClient() {
     if (!value) return;
     if (editingReading) updateMeterReading(editingReading.meter.id, editingReading.reading.id, { date, value: Number(value), isReset, isOfficial });
     else addMeterReading(meterId, { date, month: new Date(date).getMonth() + 1, year: new Date(date).getFullYear(), value: Number(value), isReset, isOfficial, isEstimated: false });
-    setIsModalOpen(false); setValue(''); setIsReset(false); setIsOfficial(false);
+    setIsModalOpen(false);
+    setValue('');
+    setIsReset(false);
+    setIsOfficial(false);
   };
 
   const openEdit = (m: Meter, r: MeterReading) => {
-    setEditingReading({ meter: m, reading: r }); setMeterId(m.id); setDate(r.date); setValue(r.value.toString()); setIsReset(r.isReset); setIsOfficial(r.isOfficial || false); setIsModalOpen(true);
+    setEditingReading({ meter: m, reading: r });
+    setMeterId(m.id);
+    setDate(r.date);
+    setValue(r.value.toString());
+    setIsReset(r.isReset);
+    setIsOfficial(r.isOfficial || false);
+    setIsModalOpen(true);
   };
 
   const getPreviousYearValue = (mId: number, month: number, year: number): number | null => {
-    const meter = meters.find(m => m.id === mId);
+    const meter = meters.find((m) => m.id === mId);
     if (!meter) return null;
-    const py = meter.readings.find(r => r.month === month && r.year === year - 1);
+    const py = meter.readings.find((r) => r.month === month && r.year === year - 1);
     return py ? py.consumption : null;
+  };
+
+  const estimateOneMonth = async (meter: Meter, year: number, month: number): Promise<boolean> => {
+    const targetDateStr = targetDateForMonth(year, month);
+    const targetDate = new Date(targetDateStr);
+    const sortedReadings = sortReadingsByDate(meter.readings);
+
+    if (sortedReadings.some((r) => r.year === year && r.month === month)) {
+      return false;
+    }
+
+    const immediatePrev = sortedReadings.filter((r) => new Date(r.date) < targetDate).at(-1) ?? null;
+    if (!immediatePrev) {
+      alert('Nincs korábbi leolvasás, amihez a becslést rögzíteni lehetne.');
+      return false;
+    }
+
+    const { previous: prevAnchor, next: nextAnchor } = bracketAnchorReadings(sortedReadings, targetDate);
+
+    if (
+      prevAnchor &&
+      nextAnchor &&
+      canInterpolateBetween(prevAnchor, nextAnchor)
+    ) {
+      const value = interpolateMeterValue(prevAnchor, nextAnchor, targetDateStr);
+      await addMeterReading(meter.id, {
+        date: targetDateStr,
+        month,
+        year,
+        value,
+        isReset: false,
+        isEstimated: true,
+      });
+      return true;
+    }
+
+    const prevYearSameMonth = getPreviousYearValue(meter.id, month, year);
+    const historicalReadings = sortedReadings
+      .filter((r) => isAnchorReading(r) && new Date(r.date) < targetDate)
+      .map((r) => ({ month: r.month, consumption: Math.max(0, r.consumption) }));
+    const monthSeries = historicalReadings
+      .map((r) => `${r.month}. hónap: ${r.consumption}`)
+      .join(', ');
+
+    const prompt = `Becsüld meg egy közműóra (${meter.name}) havi fogyasztását (kWh vagy ${meter.unit}, különbség az előző és jelen állás között).
+Célhónap: ${year}-${String(month).padStart(2, '0')}
+Múlt év azonos hónapja: ${prevYearSameMonth !== null ? prevYearSameMonth : 'nincs'}
+Korábbi havi fogyasztások (csak saját rögzítés): ${monthSeries || 'nincs'}
+
+Válasz: egyetlen egész szám, semmi más.`;
+
+    let estimatedConsumption: number;
+    try {
+      const res = await aiFinanceClient.query(prompt, false);
+      const parsed = parseAiConsumption(res.data.answer);
+      estimatedConsumption =
+        parsed !== null
+          ? parsed
+          : seasonalConsumptionEstimate(historicalReadings, month, prevYearSameMonth);
+    } catch {
+      estimatedConsumption = seasonalConsumptionEstimate(historicalReadings, month, prevYearSameMonth);
+    }
+    estimatedConsumption = Math.max(1, estimatedConsumption);
+
+    await addMeterReading(meter.id, {
+      date: targetDateStr,
+      month,
+      year,
+      value: immediatePrev.value + estimatedConsumption,
+      isReset: false,
+      isEstimated: true,
+    });
+    return true;
   };
 
   const handleAiSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const meter = meters.find(m => m.id === aiTargetMeter);
+    const meter = meters.find((m) => m.id === aiTargetMeter);
     if (!meter) return;
-    
     setIsAiLoading(true);
     try {
-        const targetDate = new Date(`${aiYear}-${aiMonth.toString().padStart(2, '0')}-15`);
-        const sortedReadings = [...meter.readings].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-        const existingForTarget = sortedReadings.find(r => r.year === aiYear && r.month === aiMonth);
-        if (existingForTarget) {
-          alert('Erre a hónapra már van leolvasás. AI becslés csak hiányzó hónapra készíthető.');
-          return;
-        }
-
-        let previousReading: MeterReading | null = null;
-        let nextReading: MeterReading | null = null;
-        for (const reading of sortedReadings) {
-          const readingDate = new Date(reading.date);
-          if (readingDate < targetDate) previousReading = reading;
-          if (readingDate > targetDate) {
-            nextReading = reading;
-            break;
-          }
-        }
-
-        if (!previousReading) {
-          alert('Nincs korábbi leolvasás, amihez az AI becslést rögzíteni lehetne.');
-          return;
-        }
-
-        const prevYearSameMonth = getPreviousYearValue(aiTargetMeter, aiMonth, aiYear);
-        const historicalReadings = sortedReadings
-          .filter(r => new Date(r.date) < targetDate)
-          .map(r => ({
-            year: r.year,
-            month: r.month,
-            consumption: Math.max(0, r.consumption),
-            value: r.value
-          }));
-
-        const monthSeries = historicalReadings
-          .map(r => `${r.year}-${String(r.month).padStart(2, '0')}: ${r.consumption}`)
-          .join(', ');
-
-        const sameMonthHistory = historicalReadings
-          .filter(r => r.month === aiMonth)
-          .map(r => r.consumption);
-
-        const lastSixConsumptions = historicalReadings.slice(-6).map(r => r.consumption);
-
-        const prompt = `Becsüld meg egy közműóra (${meter.name}) fogyasztását a célhónapra. 
-Ez NEM egyszerű átlag feladat: szezonális mintát (tél/nyár), trendet és anomáliákat is értelmezned kell.
-
-Célidőszak: ${aiYear}-${String(aiMonth).padStart(2, '0')}
-Mértékegység: ${meter.unit}
-Múlt év azonos hónapja: ${prevYearSameMonth !== null ? prevYearSameMonth : 'Nincs adat'}
-Azonos hónap korábbi évei: ${sameMonthHistory.length ? sameMonthHistory.join(', ') : 'Nincs adat'}
-Legutóbbi 6 ismert havi fogyasztás: ${lastSixConsumptions.length ? lastSixConsumptions.join(', ') : 'Nincs adat'}
-Teljes historikus idősor (YYYY-MM: fogyasztás): ${monthSeries || 'Nincs adat'}
-
-Feladat:
-1) Elemezd a szezonalitást és trendet.
-2) Adj reális becslést a célhónapra.
-3) Válaszod CSAK egyetlen egész szám legyen (szöveg és mértékegység nélkül).`;
-
-        const res = await aiFinanceClient.query(prompt, false);
-        const aiAnswer = res.data.answer.replace(/[^0-9]/g, '');
-        let estimatedConsumption = parseInt(aiAnswer, 10);
-        
-        if (isNaN(estimatedConsumption)) {
-            if (sameMonthHistory.length > 0) {
-              estimatedConsumption = Math.round(sameMonthHistory.reduce((s, c) => s + c, 0) / sameMonthHistory.length);
-            } else if (lastSixConsumptions.length > 0) {
-              const weights = lastSixConsumptions.map((_, i) => i + 1);
-              const weightedSum = lastSixConsumptions.reduce((s, c, i) => s + c * weights[i], 0);
-              const totalWeight = weights.reduce((s, w) => s + w, 0);
-              estimatedConsumption = Math.round(weightedSum / totalWeight);
-            } else if (prevYearSameMonth !== null) {
-              estimatedConsumption = Math.round(prevYearSameMonth);
-            } else {
-              estimatedConsumption = 1;
-            }
-        }
-        estimatedConsumption = Math.max(1, estimatedConsumption);
-
-        if (nextReading && !nextReading.isReset) {
-          const maxAllowed = Math.max(0, nextReading.value - previousReading.value);
-          estimatedConsumption = Math.min(estimatedConsumption, maxAllowed);
-        }
-
-        await addMeterReading(aiTargetMeter, { date: `${aiYear}-${aiMonth.toString().padStart(2, '0')}-15`, month: aiMonth, year: aiYear, value: previousReading.value + estimatedConsumption, isReset: false, isEstimated: true });
-        setIsAiModalOpen(false);
+      const ok = await estimateOneMonth(meter, aiYear, aiMonth);
+      if (!ok) {
+        alert('Erre a hónapra már van leolvasás. Becslés csak hiányzó hónapra készíthető.');
+        return;
+      }
+      setIsAiModalOpen(false);
     } catch (err) {
-        console.error(err);
-        alert('Hiba az AI becslés során. Kérlek ellenőrizd az OPENAI_API_KEY beállítását a szerveren.');
+      console.error(err);
+      alert('Hiba a becslés során. Ellenőrizd a hálózatot és az OPENAI_API_KEY beállítást.');
     } finally {
-        setIsAiLoading(false);
+      setIsAiLoading(false);
+    }
+  };
+
+  const handleFillAllGaps = async () => {
+    const meter = meters.find((m) => m.id === aiTargetMeter);
+    if (!meter) return;
+    const gaps = listAllGapMonthsBetweenAnchors(sortReadingsByDate(meter.readings));
+    if (gaps.length === 0) {
+      alert('Nincs kitölthető hiány: legalább két saját rögzítésű leolvasás között lehet interpolálni.');
+      return;
+    }
+    setIsAiLoading(true);
+    try {
+      for (const gap of gaps) {
+        const targetDateStr = targetDateForMonth(gap.year, gap.month);
+        const value = interpolateMeterValue(gap.prev, gap.next, targetDateStr);
+        await addMeterReading(meter.id, {
+          date: targetDateStr,
+          month: gap.month,
+          year: gap.year,
+          value,
+          isReset: false,
+          isEstimated: true,
+        });
+      }
+      setIsAiModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert('Hiba a hiányzó hónapok kitöltésekor.');
+    } finally {
+      setIsAiLoading(false);
     }
   };
 
@@ -491,164 +706,227 @@ Feladat:
   }, {} as Record<string, Meter[]>);
 
   return (
-    <div className="flex flex-col gap-8 w-full">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black mb-1 flex items-center gap-2">
-            <History size={24} className="text-brand-primary" /> Közműórák Figyelése
-          </h1>
-          <p className="text-slate-400 text-sm">Mérőóra állások, trendek és AI-alapú becslések</p>
-        </div>
-        {!isReader && (
-          <div className="flex gap-2">
-            <button 
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-brand-primary hover:bg-brand-light text-white transition-colors shadow-lg shadow-brand-primary/20" 
-              onClick={() => setIsNewMeterModalOpen(true)}
-            >
-              <PlusCircle size={16} /> Új Mérőóra
-            </button>
-          </div>
-        )}
-      </div>
+    <div className="flex flex-col gap-7 w-full max-w-[1500px] mx-auto">
+      <PageHeader
+        breadcrumbs={[{ label: 'Közmű' }, { label: 'Mérőórák' }]}
+        title="Óraállások és trendek"
+        description="Mérőóra állások, fogyasztás és AI-alapú becslések."
+        actions={
+          !isReader ? (
+            <Button size="sm" onClick={() => setIsNewMeterModalOpen(true)}>
+              <PlusCircle size={13} /> Új mérőóra
+            </Button>
+          ) : undefined
+        }
+      />
 
       {!!aiUtilityAnomalies?.anomalies?.length && (
-        <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-2xl flex flex-col gap-3">
-          <div className="flex flex-wrap justify-between items-center gap-4">
-            <div className="text-[0.65rem] font-black uppercase text-amber-500 tracking-widest">AI anomáliák ezen a hónapon</div>
-            <button 
-              className="px-3 py-1.5 rounded-lg text-xs font-bold border border-white/10 text-slate-300 hover:bg-white/5 transition-colors" 
-              onClick={() => fetchAiUtilityAnomalies(selectedYear, selectedMonth)}
-            >
-              Frissítés
-            </button>
-          </div>
-          <div className="flex flex-col gap-1 text-sm text-slate-300">
-             {aiUtilityAnomalies.anomalies.map((a: { meter_id: number; meter_name: string; actual: number; expected: number; reason: string }) => (
-               <div key={`${a.meter_id}-${a.actual}`}><b className="text-white">{a.meter_name}</b>: {a.reason}</div>
-             ))}
-          </div>
-        </div>
+        <AccentPanel
+          tone="warning"
+          icon={Sparkles}
+          title="AI anomáliák ezen a hónapon"
+          titleInfo={HELP.meters.aiAnomaly}
+          description="A modell az alábbi szokatlan értékeket észlelte"
+          action={
+            <Button variant="ghost" size="xs" onClick={() => fetchAiUtilityAnomalies(selectedYear, selectedMonth)}>
+              <RefreshCw size={11} /> Frissítés
+            </Button>
+          }
+        >
+          <ul className="space-y-1.5">
+            {aiUtilityAnomalies.anomalies.map((a: { meter_id: number; meter_name: string; actual: number; expected: number; reason: string }) => (
+              <li key={`${a.meter_id}-${a.actual}`} className="text-foreground/80 flex items-start gap-2">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                <span>
+                  <b className="font-medium text-foreground">{a.meter_name}</b>: {a.reason}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </AccentPanel>
       )}
 
-      {Object.keys(locationGroups).map(loc => (
-        <div key={loc} className="flex flex-col gap-5">
-           <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-slate-500">
-             <MapPin size={16} className="text-brand-primary" /> {loc}
-           </h2>
-           <div className="flex flex-col gap-6">
-             {locationGroups[loc].map((meter) => (
-                <MeterCard 
-                   key={meter.id} 
-                   meter={meter} 
-                   selectedYear={selectedYear} 
-                   getPreviousYearValue={getPreviousYearValue} 
-                   deleteMeterReading={deleteMeterReading} 
-                   onAiClick={(id) => { setAiTargetMeter(id); setIsAiModalOpen(true); }} 
-                   onEditReading={openEdit} 
-                   onAddReading={(m) => { setEditingReading(null); setMeterId(m.id); setValue(''); setDate(new Date().toISOString().split('T')[0]); setIsReset(false); setIsOfficial(false); setIsModalOpen(true); }}
-                   onDeleteMeter={(id) => setConfirmMeterDelete(id)}
-                   onDeleteReading={(mId, rId) => setConfirmReadingDelete({ mId, rId })}
+      {Object.keys(locationGroups).length === 0 ? (
+        <EmptyState
+          icon={Gauge}
+          title="Még nincs mérőóra"
+          description="Adj hozzá egy mérőórát az óraállások és fogyasztás követéséhez."
+          action={
+            !isReader ? (
+              <Button size="sm" onClick={() => setIsNewMeterModalOpen(true)}>
+                <PlusCircle size={13} /> Új mérőóra
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : (
+        Object.keys(locationGroups).map((loc) => (
+          <Section
+            key={loc}
+            title={
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin size={12} className="text-primary" />
+                {loc}
+              </span>
+            }
+            description={`${locationGroups[loc].length} mérőóra`}
+          >
+            <div className="flex flex-col gap-4">
+              {locationGroups[loc].map((meter) => (
+                <MeterPanel
+                  key={meter.id}
+                  meter={meter}
+                  selectedYear={selectedYear}
+                  getPreviousYearValue={getPreviousYearValue}
+                  onAiClick={(id) => {
+                    setAiTargetMeter(id);
+                    setIsAiModalOpen(true);
+                  }}
+                  onEditReading={openEdit}
+                  onAddReading={(m) => {
+                    setEditingReading(null);
+                    setMeterId(m.id);
+                    setValue('');
+                    setDate(new Date().toISOString().split('T')[0]);
+                    setIsReset(false);
+                    setIsOfficial(false);
+                    setIsModalOpen(true);
+                  }}
+                  onDeleteMeter={(id) => {
+                    const m = meters.find((x) => x.id === id);
+                    requestDelete({
+                      title: 'Mérőóra törlése',
+                      message: `Biztosan törlöd a „${m?.name ?? 'mérőóra'}" mérőórát az összes állással együtt? Ez a művelet nem vonható vissza.`,
+                      onConfirm: () => deleteMeter(id),
+                    });
+                  }}
+                  onDeleteReading={(mId, rId) => {
+                    requestDelete({
+                      title: 'Leolvasás törlése',
+                      message: 'Biztosan törlöd ezt az óraállást? A fogyasztási adatok újraszámolásra kerülnek.',
+                      onConfirm: () => deleteMeterReading(mId, rId),
+                    });
+                  }}
                 />
-             ))}
-           </div>
-        </div>
-      ))}
-
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Mérőóra rögzítése">
-         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <div className="flex flex-col gap-1.5">
-               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Melyik mérőóra?</label>
-               <select 
-                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all text-white appearance-none" 
-                 value={meterId} 
-                 onChange={e=>setMeterId(Number(e.target.value))} 
-                 disabled={!!editingReading}
-               >
-                  <option value={0} disabled className="bg-slate-800">Válassz mérőórát...</option>
-                  {meters.map(m => (
-                     <option key={m.id} value={m.id} className="bg-slate-800">{m.name} ({m.location})</option>
-                  ))}
-               </select>
+              ))}
             </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dátum</label>
+          </Section>
+        ))
+      )}
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingReading ? 'Leolvasás szerkesztése' : 'Mérőóra rögzítése'}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="space-y-1.5">
+            <FieldLabel info={HELP.meters.meterSelect}>Melyik mérőóra?</FieldLabel>
+            <select
+              className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
+              value={meterId}
+              onChange={(e) => setMeterId(Number(e.target.value))}
+              disabled={!!editingReading}
+            >
+              <option value={0} disabled>Válassz mérőórát…</option>
+              {meters.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name} ({m.location})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <FieldLabel info={HELP.meters.readingDate}>Dátum</FieldLabel>
             <DatePicker value={date} onChange={setDate} />
           </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mérőóra állás</label>
-              <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all text-white" value={value} onChange={e=>setValue(e.target.value)} required />
-            </div>
-            <label className="flex items-center gap-3 text-sm font-bold text-slate-300 cursor-pointer p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-              <input type="checkbox" className="w-4 h-4 accent-brand-primary border-white/20" checked={isReset} onChange={e=>setIsReset(e.target.checked)} /> 
-              Óracsere történt
-            </label>
-            <label className="flex items-center gap-3 text-sm font-bold text-slate-300 cursor-pointer p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-              <input type="checkbox" className="w-4 h-4 accent-brand-primary border-white/20" checked={isOfficial} onChange={e=>setIsOfficial(e.target.checked)} /> 
-              🏢 Szolgáltató általi hivatalos leolvasás
-            </label>
-            <button type="submit" className="mt-2 bg-brand-primary hover:bg-brand-light text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-brand-primary/20">Mentés</button>
-         </form>
+          <div className="space-y-1.5">
+            <FieldLabel info={HELP.meters.readingValue}>Mérőóra állás</FieldLabel>
+            <Input type="number" value={value} onChange={(e) => setValue(e.target.value)} required />
+          </div>
+          <div className="flex flex-col gap-2.5">
+            <ToggleOptionCard
+              checked={isReset}
+              onCheckedChange={setIsReset}
+              icon={Replace}
+              title="Óracsere történt"
+              description="Új mérő került felszerelésre; a fogyasztás ettől a ponttól újraszámolódik."
+              iconClassName="bg-rose-500/15 text-rose-600 dark:text-rose-400"
+              activeClassName="border-rose-500/25 ring-rose-500/10"
+            />
+            <ToggleOptionCard
+              checked={isOfficial}
+              onCheckedChange={setIsOfficial}
+              icon={ClipboardCheck}
+              title="Szolgáltató leolvasta"
+              description="A szolgáltató kint járt és helyszínen leolvasta az órát — nem saját rögzítés."
+              iconClassName="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+              activeClassName="border-emerald-500/25 ring-emerald-500/10"
+            />
+          </div>
+          <Button type="submit" className="mt-1">
+            Mentés
+          </Button>
+        </form>
       </Modal>
 
-      <Modal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} title="AI BECSLÉS">
-         <form onSubmit={handleAiSubmit} className="flex flex-col gap-5">
-            <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl text-sm font-medium text-slate-200">
-              Célirányosan pótolhatod a kimaradt hónapokat a trendek alapján.
+      <Modal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} title="AI fogyasztás-becslés" icon={<Sparkles size={16} />}>
+        <form onSubmit={handleAiSubmit} className="flex flex-col gap-4">
+          <InsightBanner tone="ai">
+            Két saját rögzítés között az óraállás időarányosan kerül kitöltésre (nem ismétlődik ugyanaz az érték).
+            A legutolsó ismert pont után az AI becsli a havi fogyasztást.
+          </InsightBanner>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <FieldLabel info={HELP.meters.estimateYear}>Év</FieldLabel>
+              <Input type="number" value={aiYear} onChange={(e) => setAiYear(Number(e.target.value))} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Év</label>
-                <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all text-white" value={aiYear} onChange={e=>setAiYear(Number(e.target.value))} />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hónap</label>
-                <select className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all text-white appearance-none" value={aiMonth} onChange={e=>setAiMonth(Number(e.target.value))}>
-                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(m=><option key={m} value={m} className="bg-slate-800">{m}. Hónap</option>)}
-                </select>
-              </div>
+            <div className="space-y-1.5">
+              <FieldLabel info={HELP.meters.estimateMonth}>Hónap</FieldLabel>
+              <select
+                className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
+                value={aiMonth}
+                onChange={(e) => setAiMonth(Number(e.target.value))}
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
+                  <option key={m} value={m}>
+                    {m}. hónap
+                  </option>
+                ))}
+              </select>
             </div>
-            <button type="submit" className="mt-2 flex items-center justify-center gap-2 bg-brand-primary hover:bg-brand-light text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-brand-primary/20" disabled={isAiLoading}>
-              {isAiLoading && <RefreshCw size={16} className="animate-spin" />}
-              {isAiLoading ? 'Becslés folyamatban...' : 'Generálás'}
-            </button>
-         </form>
+          </div>
+          <div className="flex flex-col gap-2 mt-1">
+            <Button type="submit" disabled={isAiLoading}>
+              {isAiLoading && <RefreshCw size={14} className="animate-spin" />}
+              {isAiLoading ? 'Becslés…' : 'Egy hónap becslése'}
+            </Button>
+            <Button type="button" variant="outline" disabled={isAiLoading} onClick={handleFillAllGaps}>
+              Összes hiány kitöltése (két saját rögzítés között)
+            </Button>
+          </div>
+        </form>
       </Modal>
 
       <Modal isOpen={isNewMeterModalOpen} onClose={() => setIsNewMeterModalOpen(false)} title="Új mérőóra hozzáadása">
-         <form onSubmit={handleMeterSubmit} className="flex flex-col gap-5">
-            <div className="flex flex-col gap-1.5">
-               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mérőóra megnevezése</label>
-               <input type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all text-white" placeholder="pl. Villanyóra, Vízóra (Nappali)" value={newMeterName} onChange={e=>setNewMeterName(e.target.value)} required />
+        <form onSubmit={handleMeterSubmit} className="flex flex-col gap-4">
+          <div className="space-y-1.5">
+            <FieldLabel info={HELP.meters.newMeterName}>Megnevezés</FieldLabel>
+            <Input placeholder="pl. Villanyóra, Vízóra (Nappali)" value={newMeterName} onChange={(e) => setNewMeterName(e.target.value)} required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <FieldLabel info={HELP.meters.newMeterUnit}>Mértékegység</FieldLabel>
+              <Input value={newMeterUnit} onChange={(e) => setNewMeterUnit(e.target.value)} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-               <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mértékegység</label>
-                  <input type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all text-white" value={newMeterUnit} onChange={e=>setNewMeterUnit(e.target.value)} />
-               </div>
-               <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Helyszín</label>
-                  <input type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all text-white" value={newMeterLoc} onChange={e=>setNewMeterLoc(e.target.value)} />
-               </div>
+            <div className="space-y-1.5">
+              <FieldLabel info={HELP.meters.newMeterLocation}>Helyszín</FieldLabel>
+              <Input value={newMeterLoc} onChange={(e) => setNewMeterLoc(e.target.value)} />
             </div>
-            <button type="submit" className="mt-2 bg-brand-primary hover:bg-brand-light text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-brand-primary/20">Mérőóra létrehozása</button>
-         </form>
+          </div>
+          <Button type="submit" className="mt-1">
+            Mérőóra létrehozása
+          </Button>
+        </form>
       </Modal>
 
-      <ConfirmModal 
-        isOpen={!!confirmMeterDelete} 
-        onClose={() => setConfirmMeterDelete(null)} 
-        onConfirm={() => confirmMeterDelete && deleteMeter(confirmMeterDelete)}
-        title="Mérőóra törlése"
-        message="Biztosan törlöd ezt a mérőórát az összes állással együtt? Ez a művelet nem vonható vissza."
-      />
-
-      <ConfirmModal 
-        isOpen={!!confirmReadingDelete} 
-        onClose={() => setConfirmReadingDelete(null)} 
-        onConfirm={() => confirmReadingDelete && deleteMeterReading(confirmReadingDelete.mId, confirmReadingDelete.rId)}
-        title="Leolvasás törlése"
-        message="Biztosan törlöd ezt az óraállást? A fogyasztási adatok újraszámolásra kerülnek."
-      />
+      <ConfirmDeleteModal />
     </div>
   );
 }

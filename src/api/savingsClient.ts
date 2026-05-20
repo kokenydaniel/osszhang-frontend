@@ -7,5 +7,7 @@ export const savingsClient = {
   update: (id: number, data: Partial<Omit<SavingsAccount, 'id' | 'ledger'>>) => apiClient.put<SavingsAccount>(`/savings/${id}`, data),
   delete: (id: number) => apiClient.delete(`/savings/${id}`),
   addEntry: (savingsId: number, data: Omit<LedgerEntry, 'id'>) => apiClient.post<SavingsAccount>(`/savings/${savingsId}/entries`, data),
+  updateEntry: (savingsId: number, entryId: number, data: Partial<Omit<LedgerEntry, 'id'>>) =>
+    apiClient.put<SavingsAccount>(`/savings/${savingsId}/entries/${entryId}`, data),
   deleteEntry: (savingsId: number, entryId: number) => apiClient.delete<SavingsAccount>(`/savings/${savingsId}/entries/${entryId}`),
 };

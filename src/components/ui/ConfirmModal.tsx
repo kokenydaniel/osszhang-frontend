@@ -3,11 +3,13 @@
 import React from 'react';
 import { Modal } from './Modal';
 import { AlertTriangle } from 'lucide-react';
+import { Button } from './button';
+import { cn } from '@/lib/utils';
 
 interface ConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   title: string;
   message: string;
   confirmText?: string;
@@ -16,47 +18,40 @@ interface ConfirmModalProps {
 }
 
 export function ConfirmModal({
-  isOpen,
-  onClose,
-  onConfirm,
-  title,
-  message,
-  confirmText = 'Törlés',
-  cancelText = 'Mégse',
-  type = 'danger'
+  isOpen, onClose, onConfirm, title, message,
+  confirmText = 'Törlés', cancelText = 'Mégse', type = 'danger',
 }: ConfirmModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
-      <div className="flex flex-col gap-5 py-2">
-        <div className="flex gap-4 items-start">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0
-            ${type === 'danger' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}
-          `}>
-            <AlertTriangle size={20} />
+      <div className="flex flex-col gap-4 py-1">
+        <div className="flex gap-3 items-start">
+          <div className={cn(
+            'h-9 w-9 rounded-md flex items-center justify-center shrink-0',
+            type === 'danger' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-700',
+          )}>
+            <AlertTriangle size={18} />
           </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-400 leading-relaxed">{message}</p>
-          </div>
+          <p className="text-sm text-foreground leading-relaxed pt-1">{message}</p>
         </div>
-        
-        <div className="flex gap-3 mt-2">
-          <button 
-            className="flex-1 py-2.5 px-4 rounded-xl font-bold text-sm bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors" 
-            onClick={onClose}
-          >
+        <div className="flex gap-2 justify-end mt-1">
+          <Button variant="outline" onClick={onClose}>
             {cancelText}
-          </button>
-          <button 
-            className={`flex-1 py-2.5 px-4 rounded-xl font-bold text-sm text-white transition-colors
-              ${type === 'danger' ? 'bg-red-600 hover:bg-red-500' : 'bg-brand-primary hover:bg-brand-light'}
-            `}
+          </Button>
+          <Button
+            variant={type === 'danger' ? 'destructive' : 'default'}
             onClick={() => {
-              onConfirm();
-              onClose();
+              void (async () => {
+                try {
+                  await onConfirm();
+                  onClose();
+                } catch {
+                  // Dialógus nyitva marad; hibaüzenet máshol
+                }
+              })();
             }}
           >
             {confirmText}
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

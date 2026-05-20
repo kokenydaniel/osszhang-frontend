@@ -9,33 +9,61 @@ import { useBusinessStore } from '@/stores/useBusinessStore';
 import { useDebtsStore } from '@/stores/useDebtsStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { formatHUF } from '@/utils';
+import { isLegacySettlementBill } from '@/lib/utilityBills';
+import { computeUtilityNetBalance } from '@/lib/utilityBalance';
 import { LedgerEntry } from '@/types';
-import { aiFinanceClient } from '@/api';
 import Link from 'next/link';
-import React, { useState, useEffect, useMemo } from 'react';
-import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, AreaChart, Area } from 'recharts';
-import { 
-  Rocket, 
-  Wallet, 
-  TrendingUp, 
-  Users, 
-  AlertCircle, 
-  Cpu, 
-  Zap, 
-  Droplets, 
-  Flame, 
-  ArrowRight,
+import React, { useEffect, useMemo, useState } from 'react';
+import { ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { HELP } from '@/lib/helpTexts';
+import {
+  PageHeader,
+  MetricStrip,
+  DataTable,
+  Section,
+  StatusPill,
+  EmptyState,
+  AccentPanel,
+  type MetricItem,
+  type DataTableColumn,
+} from '@/components/design';
+import {
+  Wallet,
+  TrendingUp,
+  Users,
+  AlertCircle,
+  Zap,
+  Droplets,
+  Flame,
   TrendingDown,
-  Info,
   RefreshCw,
   Check,
   Calendar,
-  Home,
   Sun,
   Sunset,
   Moon,
-  Sparkles
+  PiggyBank,
+  ReceiptText,
+  ChevronRight,
+  Sparkles,
 } from 'lucide-react';
+
+type Investment = {
+  id: number;
+  name: string;
+  owner: string;
+  principalAmount: number;
+  currentValue?: number | null;
+  annualInterestRate: number;
+  purchaseDate: string;
+  maturityDate?: string | null;
+  maturityAmount?: number | null;
+  nextPayoutAmount?: number | null;
+  nextPayoutDate?: string | null;
+  countInSavings?: boolean;
+};
 
 export default function DashboardClient() {
   const { user, aiDashboardAdvice, lastAiFingerprint, setAiDashboardAdvice } = useAuthStore();
@@ -43,167 +71,122 @@ export default function DashboardClient() {
   const userPermissions = user?.permissions || [];
   const hasPermission = (mod: string) => isAdmin || userPermissions.includes(mod);
 
-  const businessEnabled = (user?.household?.businessEnabled ?? user?.household?.business_enabled ?? true) && hasPermission('business');
+  const businessEnabled =
+    (user?.household?.businessEnabled ?? user?.household?.business_enabled ?? true) && hasPermission('business');
   const businessName = user?.household?.businessName ?? user?.household?.business_name ?? 'Vállalkozás';
-  const utilitySplitEnabled = (user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? true) && hasPermission('utilities');
-  
+  const utilitySplitEnabled =
+    (user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? true) &&
+    hasPermission('utilities');
+
   const partnerId = user?.household?.utilitySplitPartnerId ?? user?.household?.utility_split_partner_id;
-  const partnerUser = (user?.id && partnerId && Number(user.id) === Number(partnerId))
-    ? user?.household?.users?.find(hu => Number(hu.id) !== Number(user.id))
-    : (user?.household?.users?.find(hu => Number(hu.id) === Number(partnerId)) || user?.household?.users?.find(hu => Number(hu.id) !== Number(user.id)));
+  const partnerUser =
+    user?.id && partnerId && Number(user.id) === Number(partnerId)
+      ? user?.household?.users?.find((hu) => Number(hu.id) !== Number(user.id))
+      : user?.household?.users?.find((hu) => Number(hu.id) === Number(partnerId)) ||
+        user?.household?.users?.find((hu) => Number(hu.id) !== Number(user.id));
   const partnerName = partnerUser?.firstName || 'Családtag';
 
   const householdName = user?.household?.name || 'Otthon';
   const householdMembers = user?.household?.users || [];
 
-  const { greeting, GreetingIcon, greetingGradient } = useMemo(() => {
+  const { greeting, GreetingIcon } = useMemo(() => {
     const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return {
-      greeting: 'Jó reggelt',
-      GreetingIcon: Sun,
-      greetingGradient: 'from-amber-500/20 via-orange-500/10 to-transparent'
-    };
-    if (hour >= 12 && hour < 18) return {
-      greeting: 'Jó napot',
-      GreetingIcon: Sun,
-      greetingGradient: 'from-sky-500/20 via-blue-500/10 to-transparent'
-    };
-    if (hour >= 18 && hour < 21) return {
-      greeting: 'Jó estét',
-      GreetingIcon: Sunset,
-      greetingGradient: 'from-purple-500/20 via-pink-500/10 to-transparent'
-    };
-    return {
-      greeting: 'Jó éjszakát',
-      GreetingIcon: Moon,
-      greetingGradient: 'from-indigo-500/20 via-slate-500/10 to-transparent'
-    };
+    if (hour >= 5 && hour < 12) return { greeting: 'Jó reggelt', GreetingIcon: Sun };
+    if (hour >= 12 && hour < 18) return { greeting: 'Jó napot', GreetingIcon: Sun };
+    if (hour >= 18 && hour < 21) return { greeting: 'Jó estét', GreetingIcon: Sunset };
+    return { greeting: 'Jó éjszakát', GreetingIcon: Moon };
   }, []);
 
-  const todayFormatted = useMemo(() => {
-    return new Date().toLocaleDateString('hu-HU', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  }, []);
+  const todayFormatted = useMemo(
+    () =>
+      new Date().toLocaleDateString('hu-HU', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+    [],
+  );
 
   const { transactions, updateTransaction, aiWeeklyBriefing, fetchAiWeeklyBriefing } = useBudgetStore();
-  const { bills, updateBill, aiUtilityAnomalies, fetchAiUtilityAnomalies } = useUtilitiesStore();
+  const { bills, settlements, updateBill, aiUtilityAnomalies, fetchAiUtilityAnomalies } = useUtilitiesStore();
   const { savings, investments } = useSavingsStore();
   const { meters } = useMetersStore();
   const { orders } = useBusinessStore();
   const { debts } = useDebtsStore();
   const { selectedMonth, selectedYear, exchangeRates } = usePreferenceStore();
-  
-  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  const [, setIsAiLoading] = useState(false);
 
   const selectedYearMonthPrefix = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
-  const convertToHUF = (amount: number, currency: string) => {
-    const rate = exchangeRates[currency] || 1;
-    return amount * rate;
-  };
+  const convertToHUF = (amount: number, currency: string) => (exchangeRates[currency] || 1) * amount;
 
-  // --- BUSINESS ANALYTICS ---
-  const monthlyOrders = orders.filter(o => o.date.startsWith(selectedYearMonthPrefix));
-  const businessTotal = monthlyOrders.reduce((s,o) => s + o.amount, 0);
-  const businessPending = monthlyOrders.filter(o => o.state !== 'RENDBEN').reduce((s,o) => s + o.amount, 0);
+  const monthlyOrders = orders.filter((o) => o.date.startsWith(selectedYearMonthPrefix));
+  const businessTotal = monthlyOrders.reduce((s, o) => s + o.amount, 0);
 
-  // --- MONTHLY CASHFLOW HEALTH ---
-  const monthTransactions = transactions.filter(t => t.dueDate.startsWith(selectedYearMonthPrefix));
-  const monthIncomes = monthTransactions.filter(t => t.type === 'income');
-  const monthExpenses = monthTransactions.filter(t => t.type === 'expense');
-  const monthBills = bills.filter(b => b.dueDate.startsWith(selectedYearMonthPrefix));
+  const monthTransactions = transactions.filter((t) => t.dueDate.startsWith(selectedYearMonthPrefix));
+  const monthIncomes = monthTransactions.filter((t) => t.type === 'income');
+  const monthExpenses = monthTransactions.filter((t) => t.type === 'expense');
+  const utilityBills = bills.filter((b) => !isLegacySettlementBill(b));
+  const monthBills = utilityBills.filter((b) => b.dueDate.startsWith(selectedYearMonthPrefix));
+  const monthSettlement = settlements.find(
+    (s) => s.year === selectedYear && s.month === selectedMonth,
+  );
 
-  const incomeReceived = monthIncomes
-    .filter(t => !!t.paidDate)
-    .reduce((sum, t) => sum + t.amount, 0);
+  const incomeReceived = monthIncomes.filter((t) => !!t.paidDate).reduce((sum, t) => sum + t.amount, 0);
 
-  const actualSpent = monthExpenses.reduce((sum, tx) => {
-    if (tx.isBudget && tx.subItems && tx.subItems.length > 0) {
-      return sum + tx.subItems.reduce((subSum, si) => subSum + Math.abs(si.amount), 0);
-    }
-    return sum + (tx.paidDate ? tx.amount : 0);
-  }, 0) + monthBills
-    .filter(b => !!b.paidDate)
-    .reduce((sum, b) => {
-      const isOurPrivate = isAdmin ? (b.splitRule === 'dani-private') : (b.splitRule === 'ildi-private');
-      const ourPortion = b.splitRule === 'shared' ? b.total / 2 : (isOurPrivate ? b.total : 0);
-      return sum + ourPortion;
-    }, 0);
+  const actualSpent =
+    monthExpenses.reduce((sum, tx) => {
+      if (tx.isBudget && tx.subItems && tx.subItems.length > 0) {
+        return sum + tx.subItems.reduce((subSum, si) => subSum + Math.abs(si.amount), 0);
+      }
+      return sum + (tx.paidDate ? tx.amount : 0);
+    }, 0) +
+    monthBills
+      .filter((b) => !!b.paidDate)
+      .reduce((sum, b) => {
+        const isOurPrivate = isAdmin ? b.splitRule === 'dani-private' : b.splitRule === 'ildi-private';
+        const ourPortion = b.splitRule === 'shared' ? b.total / 2 : isOurPrivate ? b.total : 0;
+        return sum + ourPortion;
+      }, 0);
 
   const monthlyBalance = incomeReceived - actualSpent;
   const isOverspentThisMonth = monthlyBalance < 0;
 
-  // --- UTILITIES & DEBTS ---
-  let partnerOwesUs = 0;
-  let weOwePartner = 0;
-  bills.forEach(b => {
-    // If the logged-in user paid:
-    const wePaid = isAdmin ? (b.paidBy === 'Mi') : (b.paidBy === 'Ildi');
-    const partnerPaid = isAdmin ? (b.paidBy === 'Ildi') : (b.paidBy === 'Mi');
-    
-    // Who owns/benefited from the bill private portion?
-    const isOurPrivate = isAdmin ? (b.splitRule === 'dani-private') : (b.splitRule === 'ildi-private');
-    const isPartnerPrivate = isAdmin ? (b.splitRule === 'ildi-private') : (b.splitRule === 'dani-private');
-
-    if (wePaid) {
-       if (b.splitRule === 'shared') partnerOwesUs += b.total / 2;
-       if (isPartnerPrivate) partnerOwesUs += b.total;
-    } else if (partnerPaid) {
-       if (b.splitRule === 'shared') weOwePartner += b.total / 2;
-       if (isOurPrivate) weOwePartner += b.total;
-    }
-  });
-  const rezsiBalance = partnerOwesUs - weOwePartner;
+  const { netBalance: rawRezsiBalance } = computeUtilityNetBalance(
+    monthBills,
+    isAdmin,
+    utilitySplitEnabled,
+  );
+  const rezsiBalance = monthSettlement ? 0 : rawRezsiBalance;
   const totalBillsThisMonth = monthBills.reduce((s, b) => s + b.total, 0);
   const externalDebts = debts.reduce((s, d) => s + (d.targetAmount - d.paidAmount), 0);
 
-  // --- CONSUMPTION ---
-  const consumptionData = meters.map(m => {
-    const reading = m.readings.find(r => r.month === selectedMonth && r.year === selectedYear);
-    return { name: m.name, value: reading?.consumption || 0, unit: m.unit };
+  const consumptionData = meters.map((m) => {
+    const reading = m.readings.find((r) => r.month === selectedMonth && r.year === selectedYear);
+    return { id: m.id, name: m.name, location: m.location, value: reading?.consumption || 0, unit: m.unit };
   });
 
-  const getInvestmentValue = (inv: any) => {
+  const getInvestmentValue = (inv: Investment) => {
     const purchase = new Date(inv.purchaseDate);
     const now = new Date();
-    
-    const diffTime = Math.max(0, now.getTime() - purchase.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+    const diffDays = Math.ceil(Math.max(0, now.getTime() - purchase.getTime()) / (1000 * 60 * 60 * 24));
     if (inv.currentValue !== undefined && inv.currentValue !== null && Number(inv.currentValue) > 0) {
       const totalValue = Number(inv.currentValue);
-      const accruedInterest = totalValue - Number(inv.principalAmount);
-      return {
-        accruedInterest,
-        totalValue,
-        daysPassed: diffDays,
-        isManualOverride: true
-      };
+      return { totalValue, accruedInterest: totalValue - Number(inv.principalAmount), daysPassed: diffDays, isManualOverride: true };
     }
-    
-    const dailyRate = (Number(inv.annualInterestRate) / 100) / 365.25;
+    const dailyRate = Number(inv.annualInterestRate) / 100 / 365.25;
     const accruedInterest = Number(inv.principalAmount) * diffDays * dailyRate;
     const totalValue = Number(inv.principalAmount) + accruedInterest;
-    
-    return {
-      accruedInterest,
-      totalValue,
-      daysPassed: diffDays,
-      isManualOverride: false
-    };
+    return { totalValue, accruedInterest, daysPassed: diffDays, isManualOverride: false };
   };
 
-  const getMaturityAmount = (inv: any) => {
+  const getMaturityAmount = (inv: Investment) => {
     if (inv.maturityAmount) return inv.maturityAmount;
-    
     if (inv.name.toUpperCase().includes('DKJ') && inv.maturityDate) {
       const purchase = new Date(inv.purchaseDate);
       const maturity = new Date(inv.maturityDate);
-      const diffTime = Math.max(0, maturity.getTime() - purchase.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const diffDays = Math.ceil(Math.max(0, maturity.getTime() - purchase.getTime()) / (1000 * 60 * 60 * 24));
       if (diffDays > 0) {
         const rate = Number(inv.annualInterestRate) / 100;
         return Math.round(Number(inv.principalAmount) * (1 + rate * (diffDays / 365.25)));
@@ -212,184 +195,135 @@ export default function DashboardClient() {
     return null;
   };
 
-  const getEstimatedPayout = (inv: any) => {
+  const getEstimatedPayout = (inv: Investment) => {
     if (inv.nextPayoutAmount && inv.nextPayoutDate) {
-      return {
-        amount: inv.nextPayoutAmount,
-        date: inv.nextPayoutDate,
-        isEstimated: false,
-        label: 'Következő kamat'
-      };
+      return { amount: inv.nextPayoutAmount, date: inv.nextPayoutDate, isEstimated: false, label: 'Következő kamat' };
     }
-
     const nameUpper = inv.name.toUpperCase();
     const now = new Date();
-    
     if (nameUpper.includes('DKJ')) {
       const date = inv.maturityDate ? new Date(inv.maturityDate) : null;
       const amount = getMaturityAmount(inv) || inv.principalAmount;
-      return {
-        amount,
-        date: date ? date.toISOString().split('T')[0] : null,
-        isEstimated: true,
-        label: 'Lejárati kifizetés'
-      };
+      return { amount, date: date ? date.toISOString().split('T')[0] : null, isEstimated: true, label: 'Lejárati kifizetés' };
     }
-
     if (nameUpper.includes('FIXMÁP') || nameUpper.includes('FIX MÁP')) {
       const principal = getMaturityAmount(inv) || inv.principalAmount;
       const yearlyRate = Number(inv.annualInterestRate) || 7;
-      
       const currentYear = now.getFullYear();
       const payoutMonths = [0, 3, 6, 9];
       let nextPayoutDateObj = new Date(currentYear, 6, 23);
-      
       for (const m of payoutMonths) {
         const candidate = new Date(currentYear, m, 23);
-        if (candidate > now) {
-          nextPayoutDateObj = candidate;
-          break;
-        }
+        if (candidate > now) { nextPayoutDateObj = candidate; break; }
       }
-      if (nextPayoutDateObj <= now) {
-        nextPayoutDateObj = new Date(currentYear + 1, 0, 23);
-      }
-      
-      const amount = Math.round(Number(principal) * (yearlyRate / 100) / 4);
-      
-      return {
-        amount,
-        date: nextPayoutDateObj.toISOString().split('T')[0],
-        isEstimated: true,
-        label: 'Következő kamat'
-      };
+      if (nextPayoutDateObj <= now) nextPayoutDateObj = new Date(currentYear + 1, 0, 23);
+      const amount = Math.round((Number(principal) * (yearlyRate / 100)) / 4);
+      return { amount, date: nextPayoutDateObj.toISOString().split('T')[0], isEstimated: true, label: 'Következő kamat' };
     }
-
     if (nameUpper.includes('PMÁP') || nameUpper.includes('PMAP')) {
       const maturity = inv.maturityDate ? new Date(inv.maturityDate) : null;
       const principal = getMaturityAmount(inv) || inv.principalAmount;
       const yearlyRate = Number(inv.annualInterestRate) || 0;
-      
       let nextPayoutDateObj = new Date();
       if (maturity) {
         const payMonth = maturity.getMonth();
         const payDay = maturity.getDate();
         const currentYear = now.getFullYear();
         nextPayoutDateObj = new Date(currentYear, payMonth, payDay);
-        if (nextPayoutDateObj <= now) {
-          nextPayoutDateObj = new Date(currentYear + 1, payMonth, payDay);
-        }
+        if (nextPayoutDateObj <= now) nextPayoutDateObj = new Date(currentYear + 1, payMonth, payDay);
       } else {
         const purchase = new Date(inv.purchaseDate);
         nextPayoutDateObj = new Date(now.getFullYear(), purchase.getMonth(), purchase.getDate());
-        if (nextPayoutDateObj <= now) {
-          nextPayoutDateObj = new Date(now.getFullYear() + 1, purchase.getMonth(), purchase.getDate());
-        }
+        if (nextPayoutDateObj <= now) nextPayoutDateObj = new Date(now.getFullYear() + 1, purchase.getMonth(), purchase.getDate());
       }
-      
       const amount = Math.round(Number(principal) * (yearlyRate / 100));
-      return {
-        amount,
-        date: nextPayoutDateObj.toISOString().split('T')[0],
-        isEstimated: true,
-        label: 'Következő kamat'
-      };
+      return { amount, date: nextPayoutDateObj.toISOString().split('T')[0], isEstimated: true, label: 'Következő kamat' };
     }
-
     if (inv.maturityDate) {
-      return {
-        amount: getMaturityAmount(inv) || inv.principalAmount,
-        date: inv.maturityDate,
-        isEstimated: true,
-        label: 'Lejárati kifizetés'
-      };
+      return { amount: getMaturityAmount(inv) || inv.principalAmount, date: inv.maturityDate, isEstimated: true, label: 'Lejárati kifizetés' };
     }
-
     return null;
   };
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    return dateStr.replace(/-/g, '.');
-  };
-
   const savingsAccountsTotal = savings
-    .filter(acc => acc.count_in_savings !== false)
-    .reduce((sum, acc) => sum + convertToHUF(acc.ledger.reduce((s,l)=>s+l.amount, 0), acc.currency), 0);
+    .filter((acc) => acc.count_in_savings !== false)
+    .reduce((sum, acc) => sum + convertToHUF(acc.ledger.reduce((s, l) => s + l.amount, 0), acc.currency), 0);
 
-  const totalInvestmentsValue = investments
-    .filter(i => i.countInSavings !== false)
+  const totalInvestmentsValue = (investments as Investment[])
+    .filter((i) => i.countInSavings !== false)
     .reduce((sum, inv) => sum + getInvestmentValue(inv).totalValue, 0);
 
   const totalSavings = savingsAccountsTotal + totalInvestmentsValue;
-  const alerts = [];
-  const unpaidBills = bills.filter(b => !b.paidDate && b.dueDate.startsWith(selectedYearMonthPrefix));
-  if (unpaidBills.length > 0 && hasPermission('utilities')) {
-    alerts.push({ type: 'danger', msg: 'Lejárt rezsi várakozik', icon: <AlertCircle size={14} /> });
-  }
-  if (utilitySplitEnabled && rezsiBalance !== 0 && hasPermission('utilities')) {
-    if (rezsiBalance < 0) {
-      alerts.push({ type: 'warning', msg: `Tartozásod van ${partnerName}-nek`, icon: <AlertCircle size={14} /> });
-    } else {
-      alerts.push({ type: 'warning', msg: `${partnerName} tartozik neked`, icon: <AlertCircle size={14} /> });
-    }
-  }
 
+  const unpaidBills = bills.filter((b) => !b.paidDate && b.dueDate.startsWith(selectedYearMonthPrefix));
   const manualBalance = user?.household?.manualBalance ?? user?.household?.manual_balance ?? 0;
 
-  const unpaidExpenses = (hasPermission('budget') ? monthExpenses.filter(t => !t.paidDate).reduce((s, t) => {
-    if (t.isBudget) {
-      const spent = t.subItems ? t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0) : 0;
-      return s + Math.max(0, t.amount - spent);
-    }
-    return s + t.amount;
-  }, 0) : 0) + (hasPermission('utilities') ? monthBills.filter(b => !b.paidDate).reduce((s, b) => {
-    const isOurPrivate = isAdmin ? (b.splitRule === 'dani-private') : (b.splitRule === 'ildi-private');
-    const ourPortion = b.splitRule === 'shared' ? b.total / 2 : (isOurPrivate ? b.total : 0);
-    return s + ourPortion;
-  }, 0) : 0);
+  const unpaidExpensesTotal =
+    (hasPermission('budget')
+      ? monthExpenses
+          .filter((t) => !t.paidDate)
+          .reduce((s, t) => {
+            if (t.isBudget) {
+              const spent = t.subItems ? t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0) : 0;
+              return s + Math.max(0, t.amount - spent);
+            }
+            return s + t.amount;
+          }, 0)
+      : 0) +
+    (hasPermission('utilities')
+      ? monthBills.filter((b) => !b.paidDate).reduce((s, b) => {
+          const isOurPrivate = isAdmin ? b.splitRule === 'dani-private' : b.splitRule === 'ildi-private';
+          return s + (b.splitRule === 'shared' ? b.total / 2 : isOurPrivate ? b.total : 0);
+        }, 0)
+      : 0);
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const overdueExpenses = (hasPermission('budget') ? monthExpenses.filter(t => !t.paidDate && t.dueDate < todayStr).reduce((s, t) => {
-    if (t.isBudget) {
-      const spent = t.subItems ? t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0) : 0;
-      return s + Math.max(0, t.amount - spent);
-    }
-    return s + t.amount;
-  }, 0) : 0) + (hasPermission('utilities') ? monthBills.filter(b => !b.paidDate && b.dueDate < todayStr).reduce((s, b) => {
-    const isOurPrivate = isAdmin ? (b.splitRule === 'dani-private') : (b.splitRule === 'ildi-private');
-    const ourPortion = b.splitRule === 'shared' ? b.total / 2 : (isOurPrivate ? b.total : 0);
-    return s + ourPortion;
-  }, 0) : 0);
+  const overdueExpensesTotal =
+    (hasPermission('budget')
+      ? monthExpenses
+          .filter((t) => !t.paidDate && t.dueDate < todayStr)
+          .reduce((s, t) => {
+            if (t.isBudget) {
+              const spent = t.subItems ? t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0) : 0;
+              return s + Math.max(0, t.amount - spent);
+            }
+            return s + t.amount;
+          }, 0)
+      : 0) +
+    (hasPermission('utilities')
+      ? monthBills
+          .filter((b) => !b.paidDate && b.dueDate < todayStr)
+          .reduce((s, b) => {
+            const isOurPrivate = isAdmin ? b.splitRule === 'dani-private' : b.splitRule === 'ildi-private';
+            return s + (b.splitRule === 'shared' ? b.total / 2 : isOurPrivate ? b.total : 0);
+          }, 0)
+      : 0);
 
-  const maradt = Number(manualBalance) - unpaidExpenses;
+  const maradt = Number(manualBalance) - unpaidExpensesTotal;
 
   const unpaidItemsList = [
-    ...(hasPermission('budget') ? monthExpenses.filter(t => !t.paidDate).map(t => ({
-      id: t.id as number,
-      type: 'expense' as const,
-      description: t.description,
-      amount: t.isBudget && t.subItems ? t.amount - t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0) : t.amount,
-      dueDate: t.dueDate,
-      category: t.category,
-      rawItem: t
-    })) : []),
-    ...(hasPermission('utilities') ? monthBills.filter(b => !b.paidDate).map(b => {
-      const isOurPrivate = isAdmin ? (b.splitRule === 'dani-private') : (b.splitRule === 'ildi-private');
-      const ourPortion = b.splitRule === 'shared' ? b.total / 2 : (isOurPrivate ? b.total : 0);
-      return {
-        id: b.id as number,
-        type: 'bill' as const,
-        description: `${b.type} számla`,
-        amount: ourPortion,
-        dueDate: b.dueDate,
-        category: 'Rezsi',
-        rawItem: b
-      };
-    }) : [])
+    ...(hasPermission('budget')
+      ? monthExpenses.filter((t) => !t.paidDate).map((t) => ({
+          id: t.id as number,
+          type: 'expense' as const,
+          description: t.description,
+          amount:
+            t.isBudget && t.subItems
+              ? t.amount - t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0)
+              : t.amount,
+          dueDate: t.dueDate,
+          category: t.category,
+        }))
+      : []),
+    ...(hasPermission('utilities')
+      ? monthBills.filter((b) => !b.paidDate).map((b) => {
+          const isOurPrivate = isAdmin ? b.splitRule === 'dani-private' : b.splitRule === 'ildi-private';
+          const ourPortion = b.splitRule === 'shared' ? b.total / 2 : isOurPrivate ? b.total : 0;
+          return { id: b.id as number, type: 'bill' as const, description: `${b.type} számla`, amount: ourPortion, dueDate: b.dueDate, category: 'Rezsi' };
+        })
+      : []),
   ].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
-  // --- AI CACHING LOGIC (Briefly kept for background logic, but UI hidden) ---
   useEffect(() => {
     const currentFingerprint = JSON.stringify({
       totalSavings,
@@ -399,8 +333,8 @@ export default function DashboardClient() {
       rezsiBalance,
       externalDebts,
       unpaidBillsCount: unpaidBills.length,
-      heavyConsumption: consumptionData.some(c => c.name === 'Villany' && c.value > 120),
-      month: selectedYearMonthPrefix
+      heavyConsumption: consumptionData.some((c) => c.name === 'Villany' && c.value > 120),
+      month: selectedYearMonthPrefix,
     });
 
     const fetchAiAdvice = async () => {
@@ -408,564 +342,613 @@ export default function DashboardClient() {
       setIsAiLoading(true);
       try {
         const promises = [];
-        if (hasPermission('budget')) {
-          promises.push(fetchAiWeeklyBriefing());
-        }
-        if (hasPermission('utilities')) {
-          promises.push(fetchAiUtilityAnomalies(selectedYear, selectedMonth));
-        }
+        if (hasPermission('budget')) promises.push(fetchAiWeeklyBriefing());
+        if (hasPermission('utilities')) promises.push(fetchAiUtilityAnomalies(selectedYear, selectedMonth));
         await Promise.all(promises);
         if (hasPermission('budget') && aiWeeklyBriefing?.briefing_text) {
           setAiDashboardAdvice(aiWeeklyBriefing.briefing_text, currentFingerprint);
         } else {
           setAiDashboardAdvice('A havi egyenleg stabil.', currentFingerprint);
         }
-      } catch (err) { console.error(err); } finally { setIsAiLoading(false); }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsAiLoading(false);
+      }
     };
-    
-    const timeoutId = setTimeout(() => { fetchAiAdvice(); }, 1500);
+
+    const timeoutId = setTimeout(fetchAiAdvice, 1500);
     return () => clearTimeout(timeoutId);
-  }, [selectedYearMonthPrefix, totalSavings, businessTotal, incomeReceived, actualSpent, monthlyBalance, isOverspentThisMonth, rezsiBalance, externalDebts, unpaidBills.length, fetchAiWeeklyBriefing, fetchAiUtilityAnomalies, selectedYear, selectedMonth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedYearMonthPrefix, totalSavings, businessTotal, incomeReceived, actualSpent, monthlyBalance, isOverspentThisMonth, rezsiBalance, externalDebts, unpaidBills.length]);
+
+  // Build last-6-month spending sparkline from past expenses + bills
+  const last6MonthsSparkline = useMemo(() => {
+    const result: number[] = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const prefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const txTotal = transactions
+        .filter((t) => t.type === 'expense' && t.dueDate.startsWith(prefix) && t.paidDate)
+        .reduce((s, t) => s + t.amount, 0);
+      const billTotal = bills
+        .filter((b) => b.dueDate.startsWith(prefix) && b.paidDate)
+        .reduce((s, b) => {
+          const isOurPrivate = isAdmin ? b.splitRule === 'dani-private' : b.splitRule === 'ildi-private';
+          return s + (b.splitRule === 'shared' ? b.total / 2 : isOurPrivate ? b.total : 0);
+        }, 0);
+      result.push(txTotal + billTotal);
+    }
+    return result;
+  }, [transactions, bills, isAdmin]);
+
+  const last6MonthsIncome = useMemo(() => {
+    const result: number[] = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const prefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const txTotal = transactions
+        .filter((t) => t.type === 'income' && t.dueDate.startsWith(prefix) && t.paidDate)
+        .reduce((s, t) => s + t.amount, 0);
+      result.push(txTotal);
+    }
+    return result;
+  }, [transactions]);
+
+  const businessSparkline = useMemo(() => {
+    return chartDataBuilder();
+    function chartDataBuilder() {
+      const result: number[] = [];
+      const now = new Date();
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const prefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const total = orders.filter((o) => o.date.startsWith(prefix)).reduce((s, o) => s + o.amount, 0);
+        result.push(total);
+      }
+      return result;
+    }
+  }, [orders]);
+
+  const primaryMetrics: MetricItem[] = [];
+  if (hasPermission('budget')) {
+    primaryMetrics.push(
+      {
+        label: 'Egyenleg',
+        value: formatHUF(Number(manualBalance)),
+        info: HELP.dashboard.balance,
+        hint: 'Jelenlegi keret',
+        icon: Wallet,
+        tone: 'primary',
+        emphasis: true,
+        sparkline: last6MonthsIncome.length > 1 ? last6MonthsIncome : undefined,
+      },
+      {
+        label: 'Fizetendő',
+        value: formatHUF(unpaidExpensesTotal),
+        info: HELP.dashboard.payable,
+        hint: unpaidItemsList.length > 0 ? `${unpaidItemsList.length} tétel` : 'Minden rendezve',
+        icon: ReceiptText,
+        tone: unpaidExpensesTotal > 0 ? 'warning' : 'success',
+        sparkline: last6MonthsSparkline.length > 1 ? last6MonthsSparkline : undefined,
+      },
+      {
+        label: 'Marad',
+        value: formatHUF(maradt),
+        info: HELP.dashboard.remaining,
+        hint: 'Egyenleg − fizetendő',
+        icon: TrendingUp,
+        tone: maradt >= 0 ? 'success' : 'danger',
+      },
+      {
+        label: 'Lejárt',
+        value: formatHUF(overdueExpensesTotal),
+        info: HELP.dashboard.overdue,
+        hint: overdueExpensesTotal > 0 ? 'Sürgős!' : 'Nincs lejárt',
+        icon: AlertCircle,
+        tone: overdueExpensesTotal > 0 ? 'danger' : 'default',
+      },
+    );
+  }
+
+  const secondaryMetrics: MetricItem[] = [];
+  if (hasPermission('savings')) {
+    secondaryMetrics.push({
+      label: 'Vagyon',
+      value: formatHUF(totalSavings),
+      info: HELP.dashboard.wealth,
+      hint: 'Számlák és állampapírok',
+      icon: PiggyBank,
+      tone: 'primary',
+      emphasis: true,
+    });
+  }
+  if (businessEnabled) {
+    secondaryMetrics.push({
+      label: businessName,
+      value: formatHUF(businessTotal),
+      info: HELP.dashboard.business,
+      hint: 'Tárgyhavi árbevétel',
+      icon: TrendingUp,
+      tone: 'info',
+      sparkline: businessSparkline.length > 1 ? businessSparkline : undefined,
+    });
+  }
+  if (hasPermission('utilities')) {
+    secondaryMetrics.push({
+      label: utilitySplitEnabled ? 'Rezsi mérleg' : 'Havi rezsi',
+      value: utilitySplitEnabled ? `${rezsiBalance >= 0 ? '+' : ''}${formatHUF(rezsiBalance)}` : formatHUF(totalBillsThisMonth),
+      info: HELP.dashboard.utilities,
+      hint: utilitySplitEnabled
+        ? rezsiBalance > 0
+          ? `${partnerName} tartozik`
+          : rezsiBalance < 0
+            ? 'Te tartozol'
+            : 'Rendezve'
+        : 'Közüzemi számlák',
+      icon: Users,
+      tone: utilitySplitEnabled ? (rezsiBalance < 0 ? 'danger' : rezsiBalance > 0 ? 'success' : 'default') : 'default',
+    });
+  }
+  if (hasPermission('debts')) {
+    secondaryMetrics.push({
+      label: 'Tartozások',
+      value: formatHUF(externalDebts),
+      info: HELP.dashboard.debts,
+      hint: 'Hitelek és kölcsönök',
+      icon: TrendingDown,
+      tone: externalDebts > 0 ? 'warning' : 'success',
+    });
+  }
+
+  const chartData = Object.entries(
+    orders.reduce((acc, o) => {
+      const k = o.date.substring(0, 7);
+      acc[k] = (acc[k] || 0) + o.amount;
+      return acc;
+    }, {} as Record<string, number>),
+  )
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-6)
+    .map(([k, v]) => ({ name: k.replace('-', '.'), amount: v }));
+
+  const investmentPayouts = (investments as Investment[])
+    .map((inv) => {
+      const p = getEstimatedPayout(inv);
+      if (!p) return null;
+      return { invName: inv.name, owner: inv.owner, ...p };
+    })
+    .filter(Boolean)
+    .sort((a, b) => (!a!.date ? 1 : !b!.date ? -1 : new Date(a!.date!).getTime() - new Date(b!.date!).getTime()));
+
+  const handlePayItem = async (item: typeof unpaidItemsList[number]) => {
+    const today = new Date().toISOString().split('T')[0];
+    if (item.type === 'expense') await updateTransaction(item.id, { paidDate: today });
+    else await updateBill(item.id, { paidDate: today });
+  };
 
   return (
-    <div className="flex flex-col gap-6 w-full">
-      
-      {/* HOUSEHOLD HERO CARD */}
-      <div className="relative overflow-hidden rounded-3xl shadow-2xl" style={{ background: 'linear-gradient(135deg, rgba(22,27,39,0.9) 0%, rgba(18,23,36,0.95) 100%)', border: '1px solid rgba(129,140,248,0.12)', boxShadow: '0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
-        {/* Gradient orbs */}
-        <div className={`absolute inset-0 bg-gradient-to-br ${greetingGradient} pointer-events-none`} />
-        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(129,140,248,0.08) 0%, transparent 70%)' }} />
-
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-6 p-6 md:p-8">
-          {/* Left: Household identity */}
-          <div className="flex items-center gap-5">
-            {/* Household icon */}
-            <div className="relative shrink-0">
-              <div className="w-16 h-16 rounded-2xl bg-brand-primary/15 border border-brand-primary/25 flex items-center justify-center shadow-xl shadow-brand-primary/10">
-                <Home size={28} className="text-brand-primary" />
-              </div>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-                <Sparkles size={12} className="text-emerald-400" />
-              </div>
-            </div>
-            {/* Household name & greeting */}
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest">Háztartás</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none">
-                {householdName}
-              </h1>
-              <div className="flex items-center gap-2 mt-2">
-                <GreetingIcon size={13} className="text-slate-400" />
-                <span className="text-sm text-slate-400 font-medium">
-                  {greeting}, <span className="text-slate-200 font-bold">{user?.firstName || 'Gazda'}</span>!
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Date + Members */}
-          <div className="flex flex-col sm:items-end gap-4">
-            {/* Date */}
+    <div className="flex flex-col gap-7 w-full max-w-[1500px] mx-auto">
+      <PageHeader
+        breadcrumbs={[{ label: 'Háztartás' }, { label: householdName }]}
+        title={`${greeting}, ${user?.firstName || 'Gazda'}`}
+        description={
+          <span className="inline-flex items-center gap-2">
+            <GreetingIcon size={14} className="text-primary" />
+            <span className="capitalize">{todayFormatted}</span>
+            <span className="text-border">·</span>
+            <span>Itt a mai pénzügyi képed.</span>
+          </span>
+        }
+        meta={
+          householdMembers.length > 0 ? (
             <div className="flex items-center gap-2">
-              <Calendar size={13} className="text-slate-500" />
-              <span className="text-xs font-bold text-slate-400 capitalize">{todayFormatted}</span>
+              <span className="text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground">Család</span>
+              <div className="flex -space-x-1.5">
+                {householdMembers.slice(0, 5).map((member: { id: number; firstName?: string; lastName?: string }) => {
+                  const mi = ((member.firstName || '?')[0] + (member.lastName || '?')[0]).toUpperCase();
+                  return (
+                    <div
+                      key={member.id}
+                      title={`${member.firstName || ''} ${member.lastName || ''}`.trim()}
+                      className="h-6 w-6 rounded-full bg-muted text-[0.6rem] font-semibold text-foreground flex items-center justify-center ring-2 ring-background"
+                    >
+                      {mi}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-        {/* Members */}
-        {householdMembers.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="section-label mr-1">Tagok</span>
-                <div className="flex -space-x-2">
-                  {householdMembers.slice(0, 4).map((member: any, idx: number) => {
-                    const initials = ((member.firstName || '?')[0] + (member.lastName || '?')[0]).toUpperCase();
-                    const memberColors = [
-                      { bg: 'rgba(129,140,248,0.2)', color: '#818cf8', border: 'rgba(129,140,248,0.3)' },
-                      { bg: 'rgba(167,139,250,0.2)', color: '#a78bfa', border: 'rgba(167,139,250,0.3)' },
-                      { bg: 'rgba(52,211,153,0.2)', color: '#34d399', border: 'rgba(52,211,153,0.3)' },
-                      { bg: 'rgba(251,191,36,0.2)', color: '#fbbf24', border: 'rgba(251,191,36,0.3)' },
-                    ];
-                    const mc = memberColors[idx % memberColors.length];
+          ) : null
+        }
+      />
+
+      {/* Alert banners */}
+      {(unpaidBills.length > 0 && hasPermission('utilities')) || (utilitySplitEnabled && rezsiBalance !== 0 && hasPermission('utilities')) ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {unpaidBills.length > 0 && hasPermission('utilities') && (
+            <AccentPanel tone="danger" icon={AlertCircle} title="Lejárt rezsi várakozik" description={`${unpaidBills.length} kifizetetlen rezsi-tétel`}>
+              Kattints a tételre a kifizetés rögzítéséhez lent.
+            </AccentPanel>
+          )}
+          {utilitySplitEnabled && rezsiBalance !== 0 && hasPermission('utilities') && (
+            <AccentPanel
+              tone={rezsiBalance < 0 ? 'warning' : 'success'}
+              icon={Users}
+              title={rezsiBalance < 0 ? `Tartozásod van ${partnerName}-nek` : `${partnerName} tartozik neked`}
+              description={`Aktuális rezsi-egyenleg: ${formatHUF(Math.abs(rezsiBalance))}`}
+              action={
+                <Link href="/utilities" className="text-xs font-medium text-primary hover:underline shrink-0 inline-flex items-center gap-0.5">
+                  Részletek <ChevronRight size={11} />
+                </Link>
+              }
+            >
+              <span className="tabular-nums text-lg font-semibold text-foreground">{formatHUF(Math.abs(rezsiBalance))}</span>
+            </AccentPanel>
+          )}
+        </div>
+      ) : null}
+
+      {/* Primary metrics */}
+      {primaryMetrics.length > 0 && <MetricStrip items={primaryMetrics} columns={4} variant="separated" />}
+
+      {/* Secondary metrics */}
+      {secondaryMetrics.length > 0 && (
+        <MetricStrip
+          items={secondaryMetrics}
+          columns={Math.min(4, Math.max(2, secondaryMetrics.length)) as 2 | 3 | 4}
+          variant="separated"
+        />
+      )}
+
+      {/* Main bento grid — adaptive based on permissions */}
+      <div
+        className={cn(
+          'grid grid-cols-1 gap-6',
+          hasPermission('budget') ? 'lg:grid-cols-5' : 'lg:grid-cols-2',
+        )}
+      >
+        {/* Upcoming payments */}
+        {hasPermission('budget') && (
+          <div className="lg:col-span-3">
+            <Section
+              title="Közelgő befizetések"
+              description={`${unpaidItemsList.length} függőben lévő tétel ebben a hónapban`}
+              action={
+                unpaidItemsList.length > 0 ? (
+                  <StatusPill status="primary" dot>
+                    {unpaidItemsList.length} tétel
+                  </StatusPill>
+                ) : null
+              }
+            >
+              {unpaidItemsList.length === 0 ? (
+                <EmptyState
+                  icon={Check}
+                  title="Minden rendezve"
+                  description="Ebben a hónapban nincs több fizetendő tétel."
+                />
+              ) : (
+                <DataTable
+                  columns={[
+                    {
+                      key: 'desc',
+                      header: 'Tétel',
+                      width: '40%',
+                      cell: (item) => {
+                        const overdue = item.dueDate < todayStr;
+                        const Icon = item.type === 'bill' ? ReceiptText : Wallet;
+                        const toneCls = overdue ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700';
+                        return (
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-md', toneCls)}>
+                              <Icon size={13} strokeWidth={2.2} />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-medium text-sm text-foreground truncate">{item.description}</div>
+                              <div className="text-[0.7rem] text-muted-foreground mt-0.5">{item.category}</div>
+                            </div>
+                          </div>
+                        );
+                      },
+                    },
+                    {
+                      key: 'due',
+                      header: 'Határidő',
+                      width: '22%',
+                      cell: (item) => {
+                        const overdue = item.dueDate < todayStr;
+                        return (
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1.5 text-xs tabular-nums',
+                              overdue ? 'text-rose-600 font-medium' : 'text-muted-foreground',
+                            )}
+                          >
+                            <Calendar size={11} strokeWidth={2.2} />
+                            {item.dueDate.replace(/-/g, '.')}
+                            {overdue && <span className="text-[10px] uppercase tracking-wider">lejárt</span>}
+                          </span>
+                        );
+                      },
+                    },
+                    {
+                      key: 'amount',
+                      header: 'Összeg',
+                      align: 'right',
+                      width: '24%',
+                      cell: (item) => (
+                        <span className="text-sm font-semibold text-foreground tabular-nums">{formatHUF(item.amount)}</span>
+                      ),
+                    },
+                    {
+                      key: 'action',
+                      header: '',
+                      align: 'right',
+                      width: '14%',
+                      cell: (item) => (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handlePayItem(item)}
+                          className="text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"
+                          title="Kifizetve"
+                        >
+                          <Check size={14} />
+                        </Button>
+                      ),
+                    },
+                  ] as DataTableColumn<typeof unpaidItemsList[number]>[]}
+                  data={unpaidItemsList}
+                  rowKey={(item) => `${item.type}-${item.id}`}
+                  minWidth="540px"
+                />
+              )}
+            </Section>
+          </div>
+        )}
+
+        {/* Utility bills snapshot (visible to utilities users w/o budget) */}
+        {!hasPermission('budget') && hasPermission('utilities') && (
+          <Section
+            title="Aktuális rezsi"
+            description={`${monthBills.length} számla ebben a hónapban`}
+            action={
+              <Link href="/utilities" className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-0.5">
+                Részletek <ChevronRight size={11} />
+              </Link>
+            }
+          >
+            {monthBills.length === 0 ? (
+              <EmptyState icon={ReceiptText} title="Nincs rezsi" description="Ebben a hónapban még nincs rögzített számla." />
+            ) : (
+              <div className="rounded-lg border border-border bg-card overflow-hidden shadow-soft">
+                {monthBills
+                  .slice()
+                  .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+                  .slice(0, 6)
+                  .map((b, i) => {
+                    const overdue = !b.paidDate && b.dueDate < todayStr;
                     return (
                       <div
-                        key={member.id}
-                        title={`${member.firstName || ''} ${member.lastName || ''}`.trim()}
-                        className="w-8 h-8 rounded-xl flex items-center justify-center text-[0.6rem] font-black shadow-lg"
-                        style={{ background: mc.bg, color: mc.color, border: `1px solid ${mc.border}`, outline: '2px solid #0b0f1a', outlineOffset: '-1px' }}
+                        key={b.id}
+                        className={cn(
+                          'flex items-center gap-3 px-4 py-3 group hover:bg-muted/30 transition-colors',
+                          i > 0 && 'border-t border-border',
+                        )}
                       >
-                        {initials}
+                        <div
+                          className={cn(
+                            'h-9 w-9 shrink-0 rounded-md flex items-center justify-center text-white shadow-sm',
+                            b.paidDate
+                              ? 'bg-gradient-to-br from-emerald-400 to-teal-500'
+                              : overdue
+                                ? 'bg-gradient-to-br from-rose-400 to-pink-500'
+                                : 'bg-gradient-to-br from-amber-400 to-orange-500',
+                          )}
+                        >
+                          <ReceiptText size={14} strokeWidth={2.2} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-foreground truncate">{b.type}</div>
+                          <div className="text-[0.7rem] text-muted-foreground tabular-nums mt-0.5">
+                            {b.dueDate.replace(/-/g, '.')}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-sm font-semibold text-foreground tabular-nums">{formatHUF(b.total)}</div>
+                          <StatusPill
+                            status={b.paidDate ? 'success' : overdue ? 'danger' : 'warning'}
+                            size="xs"
+                            dot
+                          >
+                            {b.paidDate ? 'kész' : overdue ? 'lejárt' : 'függőben'}
+                          </StatusPill>
+                        </div>
                       </div>
                     );
                   })}
-                </div>
-                {householdMembers.length > 4 && (
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[0.6rem] font-black text-slate-500 -ml-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', outline: '2px solid #0b0f1a', outlineOffset: '-1px' }}>
-                    +{householdMembers.length - 4}
-                  </div>
-                )}
               </div>
             )}
-          </div>
+          </Section>
+        )}
+
+        {/* Side column */}
+        <div className={cn('flex flex-col gap-6', hasPermission('budget') ? 'lg:col-span-2' : '')}>
+          {hasPermission('meters') && consumptionData.length > 0 && (
+            <Section
+              title="Közműfogyasztás"
+              description="Aktuális havi értékek"
+              action={
+                <Link href="/meters" className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-0.5">
+                  Részletek <ChevronRight size={11} />
+                </Link>
+              }
+            >
+              <div className="rounded-lg border border-border bg-card overflow-hidden shadow-soft">
+                {consumptionData.map((m, i) => {
+                  const Icon = m.name.includes('Villany') ? Zap : m.name.includes('Víz') ? Droplets : Flame;
+                  const iconBg = m.name.includes('Villany')
+                    ? 'bg-gradient-to-br from-amber-400 to-orange-500'
+                    : m.name.includes('Víz')
+                      ? 'bg-gradient-to-br from-sky-400 to-cyan-500'
+                      : 'bg-gradient-to-br from-rose-400 to-orange-500';
+                  const maxValue = Math.max(...consumptionData.map((c) => c.value || 1));
+                  const progress = maxValue > 0 ? (m.value / maxValue) * 100 : 0;
+                  return (
+                    <div
+                      key={m.id}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-3 group hover:bg-muted/30 transition-colors',
+                        i > 0 && 'border-t border-border',
+                      )}
+                    >
+                      <div className={cn('h-9 w-9 shrink-0 rounded-md flex items-center justify-center text-white shadow-sm', iconBg)}>
+                        <Icon size={14} strokeWidth={2.2} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="min-w-0 mr-2">
+                            <span className="text-xs font-medium text-foreground block truncate">{m.name}</span>
+                            {m.location && (
+                              <span className="text-[0.65rem] text-muted-foreground truncate block">{m.location}</span>
+                            )}
+                          </div>
+                          <span className="text-sm font-semibold tabular-nums text-foreground shrink-0">
+                            {m.value}
+                            <span className="text-[0.65rem] font-normal text-muted-foreground ml-0.5">{m.unit}</span>
+                          </span>
+                        </div>
+                        <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              'h-full rounded-full transition-all duration-500',
+                              m.name.includes('Villany')
+                                ? 'bg-gradient-to-r from-amber-400 to-orange-500'
+                                : m.name.includes('Víz')
+                                  ? 'bg-gradient-to-r from-sky-400 to-cyan-500'
+                                  : 'bg-gradient-to-r from-rose-400 to-orange-500',
+                            )}
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Section>
+          )}
+
+          {hasPermission('savings') && (
+            <Section
+              title="Állampapír kifizetések"
+              description="Soron következő kamatok"
+              action={
+                <span className="text-xs font-medium text-emerald-600 tabular-nums">
+                  ∑ {formatHUF(totalInvestmentsValue)}
+                </span>
+              }
+            >
+              {investments.length === 0 ? (
+                <EmptyState
+                  icon={PiggyBank}
+                  title="Nincs aktív állampapír"
+                  action={
+                    <Link href="/budget" className="text-xs font-medium text-primary hover:underline">
+                      Befektetések →
+                    </Link>
+                  }
+                />
+              ) : investmentPayouts.length === 0 ? (
+                <EmptyState icon={Calendar} title="Nincs ütemezett kifizetés" description="Nem ismert következő kamatkifizetési dátum." />
+              ) : (
+                <div className="rounded-lg border border-border bg-card overflow-hidden shadow-soft">
+                  {investmentPayouts.slice(0, 4).map((p, idx) => (
+                    <div
+                      key={idx}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-3 group hover:bg-muted/30 transition-colors',
+                        idx > 0 && 'border-t border-border',
+                      )}
+                    >
+                      <div className="h-9 w-9 shrink-0 rounded-md bg-gradient-to-br from-emerald-400 to-teal-500 text-white flex items-center justify-center shadow-sm">
+                        <PiggyBank size={14} strokeWidth={2.2} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-foreground truncate">{p!.invName}</div>
+                        <div className="text-[0.7rem] text-muted-foreground mt-0.5">
+                          {p!.owner} · {p!.label}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-sm font-semibold text-emerald-600 tabular-nums">+{formatHUF(p!.amount)}</div>
+                        <div className="text-[0.65rem] text-muted-foreground tabular-nums">{p!.date ? p!.date.replace(/-/g, '.') : 'Lejáratkor'}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Section>
+          )}
         </div>
       </div>
 
-      {/* ALERTS BANNER */}
-      {alerts.length > 0 && (
-        <div className="flex flex-col gap-3">
-          {alerts.map((a, i) => (
-            <div key={i} className={`flex items-center gap-4 px-5 py-4 rounded-2xl border font-bold
-              ${a.type === 'danger'
-                ? 'bg-red-500/10 text-red-400 border-red-500/25'
-                : 'bg-amber-500/10 text-amber-400 border-amber-500/25'
-              }
-            `}>
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0
-                ${a.type === 'danger' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'}
-              `}>
-                <AlertCircle size={20} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-base font-black">{a.msg}</div>
-                <div className={`text-xs font-medium mt-0.5 ${
-                  a.type === 'danger' ? 'text-red-500/70' : 'text-amber-500/70'
-                }`}>
-                  {a.type === 'danger' ? 'Azonnali intézkedés szükséges' : 'Pénzügyi egyenleg rendezésre vár'}
-                </div>
-              </div>
-              {a.type !== 'danger' && (
-                <div className={`text-[0.65rem] font-black uppercase tracking-widest px-2 py-1 rounded-lg
-                  bg-amber-500/20 text-amber-400 border border-amber-500/20
-                `}>
-                  Figyelj!
-                </div>
-              )}
-              {a.type === 'danger' && (
-                <div className="text-[0.65rem] font-black uppercase tracking-widest px-2 py-1 rounded-lg
-                  bg-red-500/20 text-red-400 border border-red-500/20
-                ">
-                  Sürgős!
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* MAIN METRIC CARDS */}
-      {hasPermission('budget') && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-           {/* Még fizetendő */}
-           <div className="rounded-2xl p-5 relative overflow-hidden group transition-all hover:-translate-y-0.5" style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.18)', boxShadow: '0 4px 20px rgba(248,113,113,0.06)' }}>
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(248,113,113,0.15)', color: '#f87171' }}>
-                  <TrendingDown size={18} />
-                </div>
-                <span className="section-label" style={{ color: 'rgba(248,113,113,0.6)' }}>fizetendő</span>
-              </div>
-              <div className="text-2xl md:text-3xl font-black tracking-tight" style={{ color: '#f87171' }}>{formatHUF(unpaidExpenses)}</div>
-              <div className="text-xs font-semibold mt-1" style={{ color: 'rgba(248,113,113,0.5)' }}>Ebben a hónapban</div>
-           </div>
-
-           {/* Van még */}
-           <div className="rounded-2xl p-5 relative overflow-hidden group transition-all hover:-translate-y-0.5" style={{ background: 'rgba(22,27,39,0.8)', border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(129,140,248,0.12)', color: '#818cf8' }}>
-                  <Wallet size={18} />
-                </div>
-                <span className="section-label">egyenleg</span>
-              </div>
-              <div className="text-2xl md:text-3xl font-black tracking-tight text-white">{formatHUF(Number(manualBalance))}</div>
-              <div className="text-xs font-semibold mt-1" style={{ color: '#475569' }}>Jelenlegi keret</div>
-           </div>
-
-           {/* Maradt */}
-           <div className="rounded-2xl p-5 relative overflow-hidden group transition-all hover:-translate-y-0.5" style={{ background: 'rgba(52,211,153,0.07)', border: '1px solid rgba(52,211,153,0.15)', boxShadow: '0 4px 20px rgba(52,211,153,0.05)' }}>
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}>
-                  <TrendingUp size={18} />
-                </div>
-                <span className="section-label" style={{ color: 'rgba(52,211,153,0.5)' }}>maradt</span>
-              </div>
-              <div className="text-2xl md:text-3xl font-black tracking-tight" style={{ color: '#34d399' }}>{formatHUF(maradt)}</div>
-              <div className="text-xs font-semibold mt-1" style={{ color: 'rgba(52,211,153,0.5)' }}>Fizetések után</div>
-           </div>
-
-           {/* Lejárt */}
-           <div className={`rounded-2xl p-5 relative overflow-hidden group transition-all hover:-translate-y-0.5`}
-             style={overdueExpenses > 0
-               ? { background: 'linear-gradient(135deg, #dc2626, #b91c1c)', border: '1px solid rgba(248,113,113,0.4)', boxShadow: '0 4px 20px rgba(220,38,38,0.3)' }
-               : { background: 'rgba(22,27,39,0.8)', border: '1px solid rgba(255,255,255,0.05)' }
-             }
-           >
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={overdueExpenses > 0 ? { background: 'rgba(255,255,255,0.15)', color: 'white' } : { background: 'rgba(248,113,113,0.12)', color: '#f87171' }}>
-                  <AlertCircle size={18} />
-                </div>
-                <span className="section-label" style={{ color: overdueExpenses > 0 ? 'rgba(255,255,255,0.6)' : 'rgba(248,113,113,0.5)' }}>lejárt</span>
-              </div>
-              <div className="text-2xl md:text-3xl font-black tracking-tight" style={{ color: overdueExpenses > 0 ? 'white' : '#f87171' }}>{formatHUF(overdueExpenses)}</div>
-              <div className="text-xs font-semibold mt-1" style={{ color: overdueExpenses > 0 ? 'rgba(255,255,255,0.5)' : 'rgba(248,113,113,0.4)' }}>Határidő lejárt</div>
-           </div>
-        </div>
-      )}
-
-      {/* SECONDARY METRICS */}
-      {(() => {
-        const activeSecondaryCards = [
-          hasPermission('savings') && (
-            <div key="savings" className="glass-card glass-card-hover rounded-2xl p-5 flex flex-col justify-between min-h-[100px]">
-               <div className="flex items-center gap-3 mb-3">
-                 <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(129,140,248,0.12)', color: '#818cf8' }}><Wallet size={16} /></div>
-                 <span className="section-label">Összes Vagyon</span>
-               </div>
-               <div className="text-lg font-black" style={{ color: '#c7d2fe' }}>{formatHUF(totalSavings)}</div>
-               <div className="text-xs text-slate-600 font-medium mt-1.5">Számlák és állampapírok</div>
-            </div>
-          ),
-          businessEnabled && (
-            <div key="business" className="glass-card glass-card-hover rounded-2xl p-5 flex flex-col justify-between min-h-[100px]">
-               <div className="flex items-center gap-3 mb-3">
-                 <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(6,182,212,0.12)', color: '#06b6d4' }}><TrendingUp size={16} /></div>
-                 <span className="section-label">{businessName}</span>
-               </div>
-               <div className="text-lg font-black" style={{ color: '#67e8f9' }}>{formatHUF(businessTotal)}</div>
-               <div className="text-xs text-slate-600 font-medium mt-1.5">Tárgyhavi árbevétel</div>
-            </div>
-          ),
-          hasPermission('utilities') && (
-            <div key="utilities" className={`rounded-2xl p-5 flex flex-col justify-between min-h-[100px] transition-all hover:-translate-y-0.5`}
-              style={utilitySplitEnabled
-                ? rezsiBalance >= 0
-                  ? { background: 'rgba(52,211,153,0.07)', border: '1px solid rgba(52,211,153,0.15)' }
-                  : { background: 'rgba(248,113,113,0.07)', border: '1px solid rgba(248,113,113,0.15)' }
-                : { background: 'rgba(22,27,39,0.7)', border: '1px solid rgba(255,255,255,0.06)' }
-              }
-            >
-               {utilitySplitEnabled ? (
-                 <>
-                   <div className="flex items-center gap-3 mb-3">
-                     <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={rezsiBalance >= 0 ? { background: 'rgba(52,211,153,0.15)', color: '#34d399' } : { background: 'rgba(248,113,113,0.15)', color: '#f87171' }}><Users size={16} /></div>
-                     <span className="section-label">Rezsi Mérleg</span>
-                   </div>
-                   <div className="text-lg font-black" style={{ color: rezsiBalance >= 0 ? '#34d399' : '#f87171' }}>
-                     {rezsiBalance >= 0 ? '+' : ''}{formatHUF(rezsiBalance)}
-                   </div>
-                   <div className="text-xs font-bold mt-1.5" style={{ color: rezsiBalance >= 0 ? 'rgba(52,211,153,0.6)' : 'rgba(248,113,113,0.6)' }}>
-                     {rezsiBalance > 0 ? `${partnerName} tartozik neked` : rezsiBalance < 0 ? `Te tartozol ${partnerName}-nek` : 'Rendezve ✓'}
-                   </div>
-                 </>
-               ) : (
-                 <>
-                   <div className="flex items-center gap-3 mb-3">
-                     <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(6,182,212,0.12)', color: '#06b6d4' }}><Droplets size={16} /></div>
-                     <span className="section-label">Havi Rezsi</span>
-                   </div>
-                   <div className="text-lg font-black text-slate-200">{formatHUF(totalBillsThisMonth)}</div>
-                   <div className="text-xs text-slate-600 font-medium mt-1.5">Közüzemi számlák</div>
-                 </>
-               )}
-            </div>
-          ),
-          hasPermission('debts') && (
-            <div key="debts" className="glass-card glass-card-hover rounded-2xl p-5 flex flex-col justify-between min-h-[100px]">
-               <div className="flex items-center gap-3 mb-3">
-                 <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(248,113,113,0.1)', color: '#f87171' }}><TrendingDown size={16} /></div>
-                 <span className="section-label">Tartozások</span>
-               </div>
-               <div className="text-lg font-black text-slate-200">{formatHUF(externalDebts)}</div>
-               <div className="text-xs text-slate-600 font-medium mt-1.5">Aktív hitelek és kölcsönök</div>
-            </div>
-          )
-        ].filter(Boolean);
-
-        if (activeSecondaryCards.length === 0) return null;
-        return (
-          <div className={`grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-${activeSecondaryCards.length}`}>
-            {activeSecondaryCards}
+      {/* Business chart full width */}
+      {businessEnabled && chartData.length > 0 && (
+        <Section
+          title="Árbevétel · utolsó 6 hónap"
+          description="Vállalkozás havi forgalom trend"
+          action={
+            <Link href="/business" className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-0.5">
+              Vállalkozás <ChevronRight size={11} />
+            </Link>
+          }
+        >
+          <div className="rounded-lg border border-border bg-card p-4">
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="aG" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="oklch(0.55 0.22 275)" stopOpacity={0.18} />
+                    <stop offset="95%" stopColor="oklch(0.55 0.22 275)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="oklch(0.92 0.004 250)" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'oklch(0.50 0.012 260)' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'oklch(0.50 0.012 260)' }} tickFormatter={(v) => `${v / 1000}k`} />
+                <Tooltip
+                  contentStyle={{
+                    background: 'oklch(0.995 0.002 250)',
+                    border: '1px solid oklch(0.92 0.004 250)',
+                    borderRadius: 8,
+                    fontSize: 12,
+                    boxShadow: '0 4px 12px rgb(0 0 0 / 0.06)',
+                  }}
+                  formatter={(val) => formatHUF(Number(val ?? 0))}
+                />
+                <Area type="monotone" dataKey="amount" stroke="oklch(0.55 0.22 275)" strokeWidth={2} fillOpacity={1} fill="url(#aG)" activeDot={{ r: 4, fill: 'oklch(0.55 0.22 275)' }} />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
-        );
-      })()}
-
-      {/* ÁLLAMPAPÍROK & KIFIZETÉSEK WIDGET */}
-      {hasPermission('savings') && (
-        <div className="bg-slate-900/50 backdrop-blur-xl border border-emerald-500/10 rounded-3xl p-6 md:p-8 shadow-2xl">
-           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6">
-              <div>
-                 <h3 className="text-xs font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                   <div className="w-1.5 h-4 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/50" />
-                   Állampapírok & Kifizetések (MobilKincstár)
-                 </h3>
-                 <p className="text-[0.65rem] text-slate-400 mt-1">Aktuális állampapír-portfólió piaci értéke és a következő garantált kifizetések ütemezése</p>
-              </div>
-              <div className="sm:text-right">
-                 <div className="text-[0.6rem] font-bold text-slate-500 uppercase">ÖSSZES PIACI ÉRTÉK</div>
-                 <div className="text-lg font-black text-emerald-400">{formatHUF(totalInvestmentsValue)}</div>
-              </div>
-           </div>
-
-           {investments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center bg-white/[0.01] border border-dashed border-white/5 rounded-2xl">
-                 <div className="text-sm font-black text-slate-500">Nincs még aktív állampapír rögzítve.</div>
-                 <Link href="/budget" className="text-xs font-bold text-emerald-400 hover:text-emerald-300 mt-1 underline">
-                   Ugrás a befektetések felviteléhez
-                 </Link>
-              </div>
-           ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 {/* Bal oldal: Aktuális készletek */}
-                 <div className="flex flex-col gap-3">
-                    <div className="text-[0.65rem] font-black text-slate-500 uppercase tracking-wider mb-1">Aktív papírok</div>
-                    {investments.map(inv => {
-                       const { accruedInterest, totalValue } = getInvestmentValue(inv);
-                       return (
-                          <div key={inv.id} className="p-4 bg-white/5 border border-white/5 rounded-2xl hover:border-emerald-500/20 transition-all flex justify-between items-center gap-4">
-                             <div>
-                                <div className="text-sm font-bold text-slate-200">{inv.name}</div>
-                                <div className="flex items-center gap-2 mt-1">
-                                   <span className="text-[0.65rem] font-bold text-slate-500 uppercase">{inv.owner}</span>
-                                   <div className="w-1 h-1 bg-slate-700 rounded-full" />
-                                   <span className="text-[0.65rem] font-bold text-slate-400">Tőke: {formatHUF(inv.principalAmount)}</span>
-                                </div>
-                             </div>
-                             <div className="text-right">
-                                <div className="text-sm font-black text-emerald-400">{formatHUF(totalValue)}</div>
-                                <div className="text-[0.65rem] font-bold text-slate-500 uppercase mt-0.5">Piaci érték</div>
-                             </div>
-                          </div>
-                       );
-                    })}
-                 </div>
-
-                 {/* Jobb oldal: Közelgő kifizetések ütemezése */}
-                 <div className="flex flex-col gap-3">
-                    <div className="text-[0.65rem] font-black text-slate-500 uppercase tracking-wider mb-1">Kifizetési naptár (MobilKincstár ütemezés)</div>
-                    {(() => {
-                       const payouts = investments
-                          .map(inv => {
-                             const payout = getEstimatedPayout(inv);
-                             if (!payout) return null;
-                             return {
-                                invName: inv.name,
-                                amount: payout.amount,
-                                date: payout.date,
-                                label: payout.label || 'Kamatkifizetés'
-                             };
-                          })
-                          .filter((p): p is NonNullable<typeof p> => p !== null)
-                          .sort((a, b) => {
-                             if (!a.date) return 1;
-                             if (!b.date) return -1;
-                             return new Date(a.date).getTime() - new Date(b.date).getTime();
-                          });
-
-                       if (payouts.length === 0) {
-                          return <div className="text-xs text-slate-500 italic">Nincs ütemezett kifizetés a közeljövőben.</div>;
-                       }
-
-                       return (
-                          <div className="flex flex-col gap-3">
-                             {payouts.map((p, idx) => (
-                                <div key={idx} className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl flex justify-between items-center gap-4">
-                                   <div className="flex items-center gap-3">
-                                      <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
-                                         <Calendar size={16} />
-                                      </div>
-                                      <div>
-                                         <div className="text-sm font-bold text-slate-200">{p.invName}</div>
-                                         <div className="text-[0.65rem] font-bold text-slate-500 uppercase mt-0.5">{p.label}</div>
-                                      </div>
-                                   </div>
-                                   <div className="text-right">
-                                      <div className="text-sm font-black text-emerald-400">+{formatHUF(p.amount)}</div>
-                                      <div className="text-[0.65rem] font-bold text-slate-400 mt-0.5">{p.date ? p.date.replace(/-/g, '.') : 'Lejáratkor'}</div>
-                                   </div>
-                                </div>
-                             ))}
-                          </div>
-                       );
-                    })()}
-                 </div>
-              </div>
-           )}
-        </div>
+        </Section>
       )}
 
-      {/* KÖZELGŐ & LEJÁRT BEFIZETÉSEK WIDGET */}
-      {hasPermission('budget') && (
-        <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-8 shadow-2xl">
-           <div className="flex justify-between items-center mb-6">
-              <div>
-                 <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                   <AlertCircle size={14} className="text-brand-primary animate-pulse" /> Közelgő és Lejárt Befizetések
-                 </h3>
-                 <p className="text-[0.65rem] text-slate-400 mt-1">Ebben a hónapban esedékes függő tételeid a költségvetésből és rezsiszámlákból</p>
-              </div>
-              {unpaidItemsList.length > 0 && (
-                 <span className="text-[0.65rem] font-black bg-brand-primary/10 text-brand-primary border border-brand-primary/20 px-2 py-1 rounded-lg">
-                    {unpaidItemsList.length} FÜGGŐ TÉTEL
-                 </span>
-              )}
-           </div>
-
-           {unpaidItemsList.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center bg-white/[0.01] border border-dashed border-white/5 rounded-2xl">
-                 <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 mb-3">
-                    <Check size={20} />
-                 </div>
-                 <div className="text-sm font-black text-slate-200">Minden számla és kiadás rendezve!</div>
-                 <div className="text-xs text-slate-500 mt-1">Ebben a hónapban nincs több fizetendő tétel. Gratulálunk!</div>
-              </div>
-           ) : (
-              <div className="flex flex-col gap-3 custom-scrollbar max-h-[300px] overflow-y-auto pr-1">
-                 {unpaidItemsList.map((item) => {
-                    const isOverdueItem = item.dueDate < todayStr;
-                    return (
-                       <div key={`${item.type}-${item.id}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white/5 border border-white/5 rounded-2xl hover:border-white/10 transition-all gap-3 sm:gap-4">
-                          <div className="flex items-start sm:items-center gap-3">
-                             <div className={`w-2.5 h-2.5 rounded-full shrink-0 mt-1.5 sm:mt-0 ${isOverdueItem ? 'bg-red-500 animate-ping' : 'bg-amber-500'}`} />
-                             <div>
-                                <div className="text-sm font-bold text-slate-200">{item.description}</div>
-                                <div className="flex flex-wrap items-center gap-2 mt-1">
-                                   <span className="text-[0.65rem] font-bold text-slate-500 uppercase">{item.category}</span>
-                                   <div className="w-1 h-1 bg-slate-700 rounded-full" />
-                                   <span className={`text-[0.65rem] font-bold flex items-center gap-1 ${isOverdueItem ? 'text-red-400' : 'text-slate-400'}`}>
-                                      <Calendar size={10} /> Határidő: {item.dueDate} {isOverdueItem ? '(Lejárt!)' : ''}
-                                   </span>
-                                </div>
-                             </div>
-                          </div>
-                          <div className="flex items-center justify-between sm:justify-end gap-4 border-t border-white/5 pt-3 sm:border-t-0 sm:pt-0">
-                             <div className="sm:text-right">
-                                <div className="text-sm font-black text-white">{formatHUF(item.amount)}</div>
-                             </div>
-                             <button
-                                onClick={async () => {
-                                   const today = new Date().toISOString().split('T')[0];
-                                   if (item.type === 'expense') {
-                                      await updateTransaction(item.id, { paidDate: today });
-                                   } else {
-                                      await updateBill(item.id, { paidDate: today });
-                                   }
-                                }}
-                                className="flex items-center justify-center p-2 rounded-xl border border-white/10 hover:border-emerald-500/30 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
-                                title="Megjelölés befizetettként"
-                             >
-                                <Check size={16} />
-                             </button>
-                          </div>
-                       </div>
-                    );
-                 })}
-              </div>
-           )}
-        </div>
+      {/* Footer AI advice (subtle) */}
+      {aiDashboardAdvice && hasPermission('budget') && (
+        <AccentPanel
+          tone="ai"
+          icon={Sparkles}
+          title="Heti AI tájékoztató"
+          titleInfo={HELP.dashboard.aiBriefing}
+          description="Az aktuális adatokra szabott összegzés"
+          glow
+        >
+          {aiDashboardAdvice}
+        </AccentPanel>
       )}
-
-      {(() => {
-         const showChart = businessEnabled;
-         const showMeters = hasPermission('meters');
-
-         if (!showChart && !showMeters) return null;
-
-         if (showChart && showMeters) {
-            return (
-               <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                  <div className="lg:col-span-3 bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-8 shadow-2xl">
-                     <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Havi Árbevétel</h3>
-                     <div className="h-[250px] w-full">
-                        <ResponsiveContainer width="100%" height={250}>
-                           <AreaChart data={Object.entries(orders.reduce((acc, o) => {
-                               const monthKey = o.date.substring(0, 7);
-                               acc[monthKey] = (acc[monthKey] || 0) + o.amount;
-                               return acc;
-                           }, {} as Record<string, number>)).sort(([a], [b]) => a.localeCompare(b)).slice(-6).map(([k, v]) => ({ name: k.replace('-', '.'), amount: v }))}>
-                              <defs>
-                                 <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.4}/>
-                                    <stop offset="95%" stopColor="#22d3ee" stopOpacity={0}/>
-                                 </linearGradient>
-                              </defs>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} />
-                              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={v => `${v/1000}k`} />
-                              <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, fontSize: '12px', color: 'white' }} formatter={(val) => formatHUF(Number(val ?? 0))} />
-                              <Area type="monotone" dataKey="amount" stroke="#22d3ee" strokeWidth={3} fillOpacity={1} fill="url(#colorAmount)" activeDot={{ r: 6, fill: '#22d3ee', stroke: 'white', strokeWidth: 2 }} />
-                           </AreaChart>
-                        </ResponsiveContainer>
-                     </div>
-                  </div>
-
-                  <div className="lg:col-span-2 bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col">
-                     <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Közműfogyasztás</h3>
-                     <div className="grid grid-cols-2 gap-3 flex-1 content-start">
-                        {consumptionData.map((m, i) => (
-                          <div key={i} className="p-4 bg-white/5 border border-white/5 rounded-2xl">
-                             <div className="flex items-center gap-2 mb-2">
-                                {m.name.includes('Villany') ? <Zap size={16} className="text-amber-500" /> : m.name.includes('Víz') ? <Droplets size={16} className="text-blue-500" /> : <Flame size={16} className="text-red-500" />}
-                                <span className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">{m.name}</span>
-                             </div>
-                             <div className="text-2xl font-black text-white">{m.value} <span className="text-xs font-bold text-slate-500">{m.unit}</span></div>
-                          </div>
-                        ))}
-                     </div>
-                     <Link href="/meters" className="flex items-center gap-2 mt-6 text-xs font-bold text-brand-primary hover:text-brand-light transition-colors self-start">
-                       Mindent látni akarok <ArrowRight size={14} />
-                     </Link>
-                  </div>
-               </div>
-            );
-         }
-
-         if (showChart) {
-            return (
-               <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-8 shadow-2xl">
-                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Havi Árbevétel</h3>
-                  <div className="h-[250px] w-full">
-                     <ResponsiveContainer width="100%" height={250}>
-                        <AreaChart data={Object.entries(orders.reduce((acc, o) => {
-                            const monthKey = o.date.substring(0, 7);
-                            acc[monthKey] = (acc[monthKey] || 0) + o.amount;
-                            return acc;
-                        }, {} as Record<string, number>)).sort(([a], [b]) => a.localeCompare(b)).slice(-6).map(([k, v]) => ({ name: k.replace('-', '.'), amount: v }))}>
-                           <defs>
-                              <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                                 <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.4}/>
-                                 <stop offset="95%" stopColor="#22d3ee" stopOpacity={0}/>
-                              </linearGradient>
-                           </defs>
-                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} />
-                           <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={v => `${v/1000}k`} />
-                           <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, fontSize: '12px', color: 'white' }} formatter={(val) => formatHUF(Number(val ?? 0))} />
-                           <Area type="monotone" dataKey="amount" stroke="#22d3ee" strokeWidth={3} fillOpacity={1} fill="url(#colorAmount)" activeDot={{ r: 6, fill: '#22d3ee', stroke: 'white', strokeWidth: 2 }} />
-                        </AreaChart>
-                     </ResponsiveContainer>
-                  </div>
-               </div>
-            );
-         }
-
-         return (
-            <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col">
-               <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Közműfogyasztás</h3>
-               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1 content-start">
-                  {consumptionData.map((m, i) => (
-                    <div key={i} className="p-4 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-between gap-4">
-                       <div className="flex items-center gap-2">
-                          {m.name.includes('Villany') ? <Zap size={16} className="text-amber-500" /> : m.name.includes('Víz') ? <Droplets size={16} className="text-blue-500" /> : <Flame size={16} className="text-red-500" />}
-                          <span className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">{m.name}</span>
-                       </div>
-                       <div className="text-2xl font-black text-white">{m.value} <span className="text-xs font-bold text-slate-500">{m.unit}</span></div>
-                    </div>
-                  ))}
-               </div>
-               <Link href="/meters" className="flex items-center gap-2 mt-6 text-xs font-bold text-brand-primary hover:text-brand-light transition-colors self-start">
-                 Mindent látni akarok <ArrowRight size={14} />
-               </Link>
-            </div>
-         );
-      })()}
-
     </div>
   );
 }

@@ -1,9 +1,13 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/Toaster';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
+import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
-  title: 'Háztartás Menedzser — Személyes Pénzügyi Kezelő',
+  title: 'PénzPilot | Háztartás Menedzser',
   description: 'Személyes pénzügyi menedzsment: kifizetések, megtakarítások, Little Loom cashflow, rezsi és közműórák egy helyen.',
   keywords: 'pénzügyi kezelő, megtakarítások, rezsi, kifizetések, Little Loom',
 };
@@ -21,14 +25,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="hu" data-scroll-behavior="smooth">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      </head>
-      <body className="bg-slate-950 text-slate-100 antialiased">
-        <Toaster />
-        {children}
+    <html lang="hu" className={cn(GeistSans.variable, GeistMono.variable)}>
+      <body className="bg-background text-foreground antialiased font-sans">
+        <TooltipProvider delayDuration={200}>
+          <Toaster />
+          {children}
+        </TooltipProvider>
       </body>
     </html>
   );

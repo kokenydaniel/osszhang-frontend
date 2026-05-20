@@ -14,6 +14,7 @@ interface SavingsState {
   deleteSavingsAccount: (id: number) => Promise<void>;
   
   addLedgerEntry: (savingsId: number, entry: Omit<LedgerEntry, 'id'>) => Promise<void>;
+  updateLedgerEntry: (savingsId: number, entryId: number, entry: Partial<Omit<LedgerEntry, 'id'>>) => Promise<void>;
   deleteLedgerEntry: (savingsId: number, entryId: number) => Promise<void>;
   
   fetchInvestments: () => Promise<void>;
@@ -51,8 +52,17 @@ export const useSavingsStore = create<SavingsState>((set, get) => ({
   },
 
   updateSavingsAccount: async (id, s) => {
-    const res = await savingsClient.update(id, s);
-    set({ savings: get().savings.map((acc) => (acc.id === id ? res.data : acc)) });
+    const prev = get().savings;
+    set({
+      savings: prev.map((acc) => (acc.id === id ? { ...acc, ...s } : acc)),
+    });
+    try {
+      const res = await savingsClient.update(id, s);
+      set({ savings: get().savings.map((acc) => (acc.id === id ? res.data : acc)) });
+    } catch (e) {
+      set({ savings: prev });
+      throw e;
+    }
   },
 
   deleteSavingsAccount: async (id) => {
@@ -69,12 +79,17 @@ export const useSavingsStore = create<SavingsState>((set, get) => ({
     });
   },
 
+  updateLedgerEntry: async (savingsId, entryId, entry) => {
+    const res = await savingsClient.updateEntry(savingsId, entryId, entry);
+    set({
+      savings: get().savings.map((s) => (s.id === savingsId ? res.data : s)),
+    });
+  },
+
   deleteLedgerEntry: async (savingsId, entryId) => {
     const res = await savingsClient.deleteEntry(savingsId, entryId);
     set({
-      savings: get().savings.map((s) =>
-        s.id === savingsId ? res.data : s
-      ),
+      savings: get().savings.map((s) => (s.id === savingsId ? res.data : s)),
     });
   },
 
@@ -96,8 +111,17 @@ export const useSavingsStore = create<SavingsState>((set, get) => ({
   },
 
   updateInvestment: async (id, i) => {
-    const res = await investmentsClient.update(id, i);
-    set({ investments: get().investments.map((inv) => (inv.id === id ? res.data : inv)) });
+    const prev = get().investments;
+    set({
+      investments: prev.map((inv) => (inv.id === id ? { ...inv, ...i } : inv)),
+    });
+    try {
+      const res = await investmentsClient.update(id, i);
+      set({ investments: get().investments.map((inv) => (inv.id === id ? res.data : inv)) });
+    } catch (e) {
+      set({ investments: prev });
+      throw e;
+    }
   },
 
   deleteInvestment: async (id) => {

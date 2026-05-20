@@ -1,63 +1,96 @@
 'use client';
 
 import { useBusinessStore } from '@/stores/useBusinessStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
+import {
+  resolveBusinessSettings,
+  pickDefaultChannel,
+  pickDefaultPayment,
+  pickDefaultProvider,
+  pickDefaultDestination,
+} from '@/lib/businessSettings';
+import { OptionsSelect } from '@/components/ui/OptionsSelect';
 import { formatHUF, formatDate } from '@/utils';
 import { useState, useMemo } from 'react';
 import { BusinessOrder } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { FieldLabel } from '@/components/ui/FieldLabel';
+import { LabelWithInfo } from '@/components/ui/InfoTooltip';
+import { HELP } from '@/lib/helpTexts';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Legend } from 'recharts';
 import { aiFinanceClient } from '@/api/aiFinanceClient';
-import { 
-  ShoppingBag, 
-  List, 
-  BarChart3, 
-  Plus, 
-  CheckCircle, 
-  Clock, 
-  Edit3, 
-  Trash2, 
-  ArrowUpRight,
+import { cn } from '@/lib/utils';
+import { useConfirmDelete } from '@/hooks/useConfirmDelete';
+import {
+  PageHeader,
+  MetricStrip,
+  SegmentedControl,
+  DataTable,
+  Section,
+  AccentPanel,
+  StatusPill,
+  EmptyState,
+  type MetricItem,
+  type DataTableColumn,
+} from '@/components/design';
+import {
+  ShoppingBag,
+  List,
+  BarChart3,
+  Plus,
+  CheckCircle,
+  Clock,
+  Edit3,
+  Trash2,
   User,
-  FileText,
   TrendingUp,
   AlertCircle,
   Truck,
   Banknote,
   RefreshCw,
-  Cpu
+  Cpu,
+  Sparkles,
+  FileText,
+  Calendar,
 } from 'lucide-react';
 
 export default function BusinessClient() {
   const { orders, addOrder, deleteOrder, updateOrder, shopifyImport } = useBusinessStore();
+  const { user } = useAuthStore();
   const { selectedMonth, selectedYear } = usePreferenceStore();
+  const bizOptions = useMemo(() => resolveBusinessSettings(user?.household), [user?.household]);
   const [activeTab, setActiveTab] = useState<'monthly' | 'summary'>('monthly');
+  const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
-  
+
   const [realAiAdvice, setRealAiAdvice] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
-  
-  // Form elements matching Google Sheet
+
   const [customer, setCustomer] = useState('');
   const [amount, setAmount] = useState('');
   const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
-  const [channel, setChannel] = useState('Webshop');
-  const [payment, setPayment] = useState('Kártya');
-  const [provider, setProvider] = useState('Shopify payments');
-  const [destination, setDestination] = useState('Szolgáltatónál parkol');
+  const [channel, setChannel] = useState(() => pickDefaultChannel(bizOptions));
+  const [payment, setPayment] = useState(() => pickDefaultPayment(bizOptions));
+  const [provider, setProvider] = useState(() => pickDefaultProvider(bizOptions));
+  const [destination, setDestination] = useState(() => pickDefaultDestination(bizOptions));
   const [paidDate, setPaidDate] = useState<string>('');
   const [invoiceId, setInvoiceId] = useState('');
 
-  // FILTERING logic
   const selectedYearMonthPrefix = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
-  const filteredOrders = useMemo(() => {
-    return orders.filter(o => o.date.startsWith(selectedYearMonthPrefix))
-                 .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [orders, selectedYearMonthPrefix]);
+  const filteredOrders = useMemo(
+    () =>
+      orders
+        .filter((o) => o.date.startsWith(selectedYearMonthPrefix))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [orders, selectedYearMonthPrefix],
+  );
 
   const openForm = (order?: BusinessOrder) => {
     if (order) {
@@ -65,10 +98,10 @@ export default function BusinessClient() {
       setCustomer(order.customerName || '');
       setAmount(String(order.amount || ''));
       setOrderDate(order.date || new Date().toISOString().split('T')[0]);
-      setChannel(order.channel || 'Webshop');
-      setPayment(order.paymentMethod || 'Kártya');
-      setProvider(order.provider || 'Nincs');
-      setDestination(order.destination || 'Szolgáltatónál parkol');
+      setChannel(order.channel || pickDefaultChannel(bizOptions));
+      setPayment(order.paymentMethod || pickDefaultPayment(bizOptions));
+      setProvider(order.provider || pickDefaultProvider(bizOptions));
+      setDestination(order.destination || pickDefaultDestination(bizOptions));
       setPaidDate(order.paidDate || '');
       setInvoiceId(order.invoiceId || '');
     } else {
@@ -76,10 +109,10 @@ export default function BusinessClient() {
       setCustomer('');
       setAmount('');
       setOrderDate(new Date().toISOString().split('T')[0]);
-      setChannel('Webshop');
-      setPayment('Kártya');
-      setProvider('Shopify payments');
-      setDestination('Szolgáltatónál parkol');
+      setChannel(pickDefaultChannel(bizOptions));
+      setPayment(pickDefaultPayment(bizOptions));
+      setProvider(pickDefaultProvider(bizOptions));
+      setDestination(pickDefaultDestination(bizOptions));
       setPaidDate('');
       setInvoiceId('');
     }
@@ -89,7 +122,6 @@ export default function BusinessClient() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || !customer) return;
-
     const payload = {
       date: orderDate,
       customerName: customer,
@@ -100,12 +132,10 @@ export default function BusinessClient() {
       amount: Number(amount),
       paidDate: paidDate || null,
       invoiceId,
-      state: (paidDate ? 'RENDBEN' : 'KINT') as 'RENDBEN' | 'KINT'
+      state: (paidDate ? 'RENDBEN' : 'KINT') as 'RENDBEN' | 'KINT',
     };
-
     if (editId) updateOrder(editId, payload);
     else addOrder(payload);
-    
     setIsModalOpen(false);
   };
 
@@ -120,422 +150,485 @@ export default function BusinessClient() {
     }
   };
 
+  const businessStats = useMemo(() => {
+    const yearOrders = orders.filter((o) => o.date.startsWith(String(selectedYear)));
+    const totalYTD = yearOrders.reduce((s, o) => s + o.amount, 0);
+    const aov = yearOrders.length > 0 ? totalYTD / yearOrders.length : 0;
+    const channelMap = orders.reduce((acc, o) => {
+      acc[o.channel] = (acc[o.channel] || 0) + o.amount;
+      return acc;
+    }, {} as Record<string, number>);
+    const topChannel = Object.entries(channelMap).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Nincs adat';
+    const channelData = Object.entries(channelMap).map(([name, value]) => ({ name, value }));
+    const months = ['Jan', 'Feb', 'Már', 'Ápr', 'Máj', 'Jún', 'Júl', 'Aug', 'Szep', 'Okt', 'Nov', 'Dec'];
+    const chartData = months.map((m, i) => {
+      const mStr = (i + 1).toString().padStart(2, '0');
+      const prefix = `${selectedYear}-${mStr}`;
+      const mOrders = orders.filter((o) => o.date.startsWith(prefix));
+      const received = mOrders.filter((o) => !!o.paidDate).reduce((s, o) => s + o.amount, 0);
+      const pending = mOrders.filter((o) => !o.paidDate).reduce((s, o) => s + o.amount, 0);
+      return { name: m, bevetel: received, kintlevoseg: pending };
+    });
+    let aiAdvice = 'A vállalkozásod adatai stabilak. ';
+    if (topChannel === 'Meska') aiAdvice += 'A Meska kiemelkedően teljesít, érdemes ott egyedi kampányokat indítani. ';
+    if (totalYTD > 1000000) aiAdvice += 'Gratulálunk, átlépted az 1 milliós éves forgalmat! ';
+    if (aov < 5000) aiAdvice += 'Az átlagos kosárérték növeléséhez érdemes kiegészítő termékeket ajánlani a pénztárnál. ';
+    return { totalYTD, aov, topChannel, channelData, chartData, aiAdvice };
+  }, [orders, selectedYear]);
+
   const handleRequestAiAdvice = async () => {
     setIsAiLoading(true);
     try {
       const prompt = `Kérlek, elemezd az alábbi Little Loom (kisvállalkozás, kézműves webshop) rendelési és bevételi adataimat a(z) ${selectedYear}. évre vonatkozóan, és adj egy 3-4 mondatos barátságos, motiváló stratégiát és tanácsot, hogy hogyan tudnám növelni a bevételem.
-      
+
 Adataim:
 - Éves forgalom eddig (YTD): ${businessStats.totalYTD} Ft
 - Átlagos rendelési érték (AOV): ${Math.round(businessStats.aov)} Ft
 - Legjobban teljesítő csatorna: ${businessStats.topChannel}
-- Csatornák szerinti bevételek: ${businessStats.channelData.map(c => c.name + ': ' + c.value + ' Ft').join(', ')}`;
-
+- Csatornák szerinti bevételek: ${businessStats.channelData.map((c) => c.name + ': ' + c.value + ' Ft').join(', ')}`;
       const response = await aiFinanceClient.query(prompt, false);
       setRealAiAdvice(response.data.answer);
     } catch (error) {
       console.error('Failed to get AI advice', error);
-      setRealAiAdvice("Sajnos nem sikerült elérni az AI szolgáltatást. Kérlek próbáld újra később.");
+      setRealAiAdvice('Sajnos nem sikerült elérni az AI szolgáltatást. Kérlek próbáld újra később.');
     } finally {
       setIsAiLoading(false);
     }
   };
 
-  // Yearly & Business Insights Data
-  const businessStats = useMemo(() => {
-    const totalYTD = orders.filter(o => o.date.startsWith(String(selectedYear))).reduce((s,o) => s + o.amount, 0);
-    const orderCount = orders.length;
-    const aov = orderCount > 0 ? totalYTD / orders.filter(o => o.date.startsWith(String(selectedYear))).length : 0;
-    
-    const channelMap = orders.reduce((acc, o) => {
-      acc[o.channel] = (acc[o.channel] || 0) + o.amount;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    const topChannel = Object.entries(channelMap).sort((a,b) => b[1] - a[1])[0]?.[0] || 'Nincs adat';
-    
-    const channelData = Object.entries(channelMap).map(([name, value]) => ({ name, value }));
-
-    const months = ['Jan', 'Feb', 'Már', 'Ápr', 'Máj', 'Jún', 'Júl', 'Aug', 'Szep', 'Okt', 'Nov', 'Dec'];
-    const chartData = months.map((m, i) => {
-      const mStr = (i + 1).toString().padStart(2, '0');
-      const prefix = `${selectedYear}-${mStr}`;
-      const mOrders = orders.filter(o => o.date.startsWith(prefix));
-      const received = mOrders.filter(o => !!o.paidDate).reduce((s,o) => s + o.amount, 0);
-      const pending = mOrders.filter(o => !o.paidDate).reduce((s,o) => s + o.amount, 0);
-      return {
-        name: m,
-        bevetel: received,
-        kintlevoseg: pending
-      };
-    });
-
-    // Simple AI advice logic based on data
-    let aiAdvice = "A vállalkozásod adatai stabilak. ";
-    if (topChannel === 'Meska') aiAdvice += "A Meska kiemelkedően teljesít, érdemes lehet ott egyedi kampányokat indítani. ";
-    if (totalYTD > 1000000) aiAdvice += "Gratulálunk, átlépted az 1 milliós éves forgalmat! ";
-    if (aov < 5000) aiAdvice += "Az átlagos kosárérték növeléséhez próbálj meg kiegészítő termékeket ajánlani a pénztárnál. ";
-
-    return { totalYTD, aov, topChannel, channelData, chartData, aiAdvice };
-  }, [orders, selectedYear]);
-
   const { totalYTD, aov, topChannel, channelData, chartData, aiAdvice } = businessStats;
-
-  const totalMonthlyIncome = filteredOrders.reduce((s,o) => s + o.amount, 0);
-  const totalMonthlyPaid = filteredOrders.filter(o => o.state === 'RENDBEN').reduce((s,o) => s + o.amount, 0);
-  const totalMonthlyPending = filteredOrders.filter(o => o.state !== 'RENDBEN').reduce((s,o) => s + o.amount, 0);
+  const totalMonthlyIncome = filteredOrders.reduce((s, o) => s + o.amount, 0);
+  const totalMonthlyPaid = filteredOrders.filter((o) => o.state === 'RENDBEN').reduce((s, o) => s + o.amount, 0);
+  const totalMonthlyPending = filteredOrders.filter((o) => o.state !== 'RENDBEN').reduce((s, o) => s + o.amount, 0);
 
   const getChannelIcon = (c: string) => {
-    if (c === 'Webshop') return <ShoppingBag size={14} className="text-brand-primary" />;
-    if (c === 'Hello Piac') return <Truck size={14} className="text-amber-500" />;
-    if (c === 'Meska') return <ShoppingBag size={14} className="text-pink-500" />;
-    return <User size={14} className="text-slate-500" />;
+    const l = c.toLowerCase();
+    if (l.includes('webshop') || l.includes('shopify')) return ShoppingBag;
+    if (l.includes('piac') || l.includes('mesk')) return Truck;
+    if (l.includes('privát')) return User;
+    return ShoppingBag;
   };
 
-  return (
-    <div className="flex flex-col gap-6 w-full">
-      
-      {/* HEADER */}
-      <div className="flex flex-wrap justify-between items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-black mb-1 flex items-center gap-2">
-            <ShoppingBag size={24} className="text-brand-primary" /> Little Loom CRM
-          </h1>
-          <p className="text-slate-400 text-sm">{selectedYear}. {selectedMonth}. havi adatok</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button 
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors border
-              ${activeTab === 'monthly' ? 'bg-brand-primary border-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'bg-transparent border-white/10 text-slate-300 hover:bg-white/5 hover:text-white'}
-            `}
-            onClick={() => setActiveTab('monthly')}
-          >
-            <List size={16} /> Rendelések
-          </button>
-          <button 
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors border
-              ${activeTab === 'summary' ? 'bg-brand-primary border-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'bg-transparent border-white/10 text-slate-300 hover:bg-white/5 hover:text-white'}
-            `}
-            onClick={() => setActiveTab('summary')}
-          >
-            <BarChart3 size={16} /> Éves Trendek
-          </button>
-        </div>
-      </div>
+  const monthlySparkline = chartData
+    .slice(Math.max(0, selectedMonth - 6), selectedMonth)
+    .map((d) => d.bevetel + d.kintlevoseg);
+  const incomeSparkline = chartData.slice(Math.max(0, selectedMonth - 6), selectedMonth).map((d) => d.bevetel);
+  const pendingSparkline = chartData.slice(Math.max(0, selectedMonth - 6), selectedMonth).map((d) => d.kintlevoseg);
 
-      {/* KPI ROW */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-         <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 shadow-2xl relative overflow-hidden bg-blue-500/5 border-blue-500/20">
-            <div className="text-[0.65rem] font-black text-brand-primary uppercase tracking-widest mb-2 flex items-center gap-1.5">
-               <TrendingUp size={14} /> Havi Forgalom
+  const monthlyMetrics: MetricItem[] = [
+    {
+      label: 'Havi forgalom',
+      value: formatHUF(totalMonthlyIncome),
+      info: HELP.business.monthlyRevenue,
+      hint: `${filteredOrders.length} rendelés`,
+      icon: TrendingUp,
+      tone: 'primary',
+      emphasis: true,
+      sparkline: monthlySparkline.length > 1 ? monthlySparkline : undefined,
+    },
+    {
+      label: 'Beérkezett',
+      value: formatHUF(totalMonthlyPaid),
+      info: HELP.business.paid,
+      hint: 'Kifizetve / lekönyvelve',
+      icon: CheckCircle,
+      tone: 'success',
+      sparkline: incomeSparkline.length > 1 ? incomeSparkline : undefined,
+    },
+    {
+      label: 'Kintlévőség',
+      value: formatHUF(totalMonthlyPending),
+      info: HELP.business.pending,
+      hint: 'Még nem teljesült',
+      icon: AlertCircle,
+      tone: totalMonthlyPending > 0 ? 'warning' : 'default',
+      sparkline: pendingSparkline.length > 1 ? pendingSparkline : undefined,
+    },
+    {
+      label: 'Konverzió',
+      value: filteredOrders.length > 0 ? `${Math.round((filteredOrders.filter((o) => o.state === 'RENDBEN').length / filteredOrders.length) * 100)}%` : '—',
+      info: HELP.business.conversion,
+      hint: `${filteredOrders.filter((o) => o.state === 'RENDBEN').length}/${filteredOrders.length} fizetve`,
+      icon: CheckCircle,
+      tone: 'info',
+    },
+  ];
+
+  const yearlyTotalsSpark = chartData.map((d) => d.bevetel);
+  const summaryMetrics: MetricItem[] = [
+    {
+      label: 'YTD forgalom',
+      value: formatHUF(totalYTD),
+      info: HELP.business.ytd,
+      hint: `${selectedYear} év eddig`,
+      icon: TrendingUp,
+      tone: 'primary',
+      emphasis: true,
+      sparkline: yearlyTotalsSpark,
+    },
+    {
+      label: 'AOV',
+      value: formatHUF(aov),
+      info: HELP.business.aov,
+      hint: 'Átlagos rendelési érték',
+      icon: Banknote,
+      tone: 'info',
+    },
+    {
+      label: 'Top csatorna',
+      value: topChannel,
+      info: HELP.business.topChannel,
+      hint: 'Legmagasabb bevétel',
+      icon: ShoppingBag,
+      tone: 'success',
+    },
+    {
+      label: 'Csatornák',
+      value: String(channelData.length),
+      info: HELP.business.channelCount,
+      hint: 'Aktív értékesítési csatorna',
+      icon: List,
+      tone: 'default',
+    },
+  ];
+
+  const orderColumns: DataTableColumn<BusinessOrder>[] = [
+    {
+      key: 'customer',
+      header: 'Vevő',
+      width: '24%',
+      cell: (order) => {
+        const ChannelIcon = getChannelIcon(order.channel);
+        const tone = order.state === 'RENDBEN' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700';
+        return (
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-md', tone)}>
+              <ChannelIcon size={13} strokeWidth={2.2} />
             </div>
-            <div className="text-3xl font-black text-white tracking-tight">{formatHUF(totalMonthlyIncome)}</div>
-         </div>
-         <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 shadow-2xl relative overflow-hidden bg-green-500/5 border-green-500/20">
-            <div className="text-[0.65rem] font-black text-green-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-               <CheckCircle size={14} /> Beérkezett
+            <div className="min-w-0">
+              <div className="font-medium text-sm text-foreground truncate">{order.customerName}</div>
+              {order.shopifyOrderNumber && (
+                <div className="text-[0.65rem] font-mono text-muted-foreground mt-0.5">{order.shopifyOrderNumber}</div>
+              )}
             </div>
-            <div className="text-3xl font-black text-green-500 tracking-tight">{formatHUF(totalMonthlyPaid)}</div>
-         </div>
-         <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 shadow-2xl relative overflow-hidden bg-red-500/5 border-red-500/20">
-            <div className="text-[0.65rem] font-black text-red-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-               <AlertCircle size={14} /> Kintlévőség
-            </div>
-            <div className="text-3xl font-black text-red-500 tracking-tight">{formatHUF(totalMonthlyPending)}</div>
-         </div>
-      </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'channel',
+      header: 'Csatorna',
+      width: '14%',
+      cell: (order) => <span className="text-xs text-foreground/85">{order.channel}</span>,
+    },
+    {
+      key: 'payment',
+      header: 'Fizetés',
+      width: '16%',
+      cell: (order) => (
+        <div className="text-xs">
+          <div className="text-foreground/85">{order.paymentMethod}</div>
+          <div className="text-muted-foreground text-[10px]">{order.provider}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'date',
+      header: 'Dátum',
+      width: '12%',
+      cell: (order) => (
+        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
+          <Calendar size={11} strokeWidth={2.2} /> {formatDate(order.date)}
+        </span>
+      ),
+    },
+    {
+      key: 'invoice',
+      header: 'Számla',
+      width: '10%',
+      cell: (order) =>
+        order.invoiceId ? (
+          <span className="inline-flex items-center gap-1 text-[0.7rem] font-mono bg-muted/60 text-foreground/75 px-1.5 py-0.5 rounded">
+            <FileText size={10} strokeWidth={2.2} /> {order.invoiceId}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground/60">—</span>
+        ),
+    },
+    {
+      key: 'amount',
+      header: 'Összeg',
+      align: 'right',
+      width: '12%',
+      cell: (order) => (
+        <span className="text-sm font-semibold text-foreground tabular-nums">{formatHUF(order.amount)}</span>
+      ),
+    },
+    {
+      key: 'state',
+      header: 'Státusz',
+      align: 'center',
+      width: '8%',
+      cell: (order) =>
+        order.state === 'RENDBEN' ? (
+          <StatusPill status="success" dot>Rendben</StatusPill>
+        ) : (
+          <StatusPill status="warning" dot>Kint</StatusPill>
+        ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      align: 'right',
+      width: '8%',
+      cell: (order) => (
+        <div className="flex items-center justify-end gap-0.5">
+          <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground" onClick={() => openForm(order)}>
+            <Edit3 size={13} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="text-muted-foreground hover:text-destructive"
+            onClick={() =>
+              requestDelete({
+                title: 'Rendelés törlése',
+                message: `Biztosan törlöd a „${order.customerName || 'névtelen'}" rendelést? Ez a művelet nem vonható vissza.`,
+                onConfirm: () => deleteOrder(order.id),
+              })
+            }
+          >
+            <Trash2 size={13} />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  const channelColors = ['oklch(0.55 0.22 275)', 'oklch(0.62 0.22 25)', 'oklch(0.72 0.16 60)', 'oklch(0.65 0.18 150)'];
+
+  return (
+    <div className="flex flex-col gap-7 w-full max-w-[1500px] mx-auto">
+      <PageHeader
+        breadcrumbs={[{ label: 'Vállalkozás' }, { label: 'Little Loom' }]}
+        title="Little Loom CRM"
+        description={`${selectedYear}. ${String(selectedMonth).padStart(2, '0')}. havi rendelések, kintlévőségek és éves trendek`}
+        actions={
+          <SegmentedControl
+            value={activeTab}
+            onChange={(v) => setActiveTab(v as 'monthly' | 'summary')}
+            options={[
+              { value: 'monthly', label: 'Rendelések', icon: List, count: filteredOrders.length },
+              { value: 'summary', label: 'Éves trendek', icon: BarChart3 },
+            ]}
+          />
+        }
+      />
+
+      <MetricStrip items={activeTab === 'monthly' ? monthlyMetrics : summaryMetrics} columns={4} variant="separated" />
 
       {activeTab === 'monthly' && (
-        <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl shadow-2xl overflow-hidden">
-          <div className="px-5 md:px-6 py-4 border-b border-white/5 flex flex-wrap justify-between items-center gap-4">
-             <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">HIVATALOS NAPLÓ</h3>
-             <div className="flex flex-wrap gap-3">
-                <button 
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-green-500 bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 transition-colors" 
-                  onClick={handleShopifySync}
-                  disabled={isSyncing}
-                >
-                   <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
-                   {isSyncing ? 'Shopify szinkron...' : 'Shopify Import'}
-                </button>
-                <button 
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-brand-primary hover:bg-brand-light text-white transition-colors shadow-lg shadow-brand-primary/20" 
-                  onClick={() => openForm()}
-                >
-                   <Plus size={16} /> Új Rendelés
-                </button>
-             </div>
-          </div>
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left border-collapse min-w-[1000px]">
-              <thead>
-                <tr className="border-b border-white/5 bg-white/5 text-[0.65rem] md:text-xs uppercase tracking-wider text-slate-400 font-black">
-                  <th className="p-3 md:p-4 pl-4 md:pl-6 font-medium whitespace-nowrap">Rendelés sorszáma</th>
-                  <th className="p-3 md:p-4 font-medium whitespace-nowrap">Vevő</th>
-                  <th className="p-3 md:p-4 font-medium whitespace-nowrap">Dátum</th>
-                  <th className="p-3 md:p-4 font-medium whitespace-nowrap">Forrás</th>
-                  <th className="p-3 md:p-4 font-medium whitespace-nowrap">Fizetés módja</th>
-                  <th className="p-3 md:p-4 text-right font-medium whitespace-nowrap">Végösszeg</th>
-                  <th className="p-3 md:p-4 font-medium whitespace-nowrap">Számla sorszáma</th>
-                  <th className="p-3 md:p-4 text-center font-medium whitespace-nowrap">Státusz</th>
-                  <th className="p-3 md:p-4 pr-4 md:pr-6 text-right font-medium"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {filteredOrders.length > 0 ? filteredOrders.map(order => {
-                  const isPaid = !!order.paidDate;
-                  return (
-                    <tr key={order.id} className="hover:bg-white/[0.02] transition-colors group">
-                      <td className="p-3 md:p-4 pl-4 md:pl-6">
-                         <div className="flex items-center gap-1.5">
-                            <span className="text-[0.65rem] md:text-xs font-black bg-white/5 px-2 py-0.5 rounded text-slate-300 whitespace-nowrap">
-                               {order.shopifyOrderNumber || '—'}
-                            </span>
-                         </div>
-                      </td>
-                      <td className="p-3 md:p-4 text-xs md:text-sm font-black text-white whitespace-nowrap">{order.customerName}</td>
-                      <td className="p-3 md:p-4 text-[0.65rem] md:text-xs text-slate-400 font-medium whitespace-nowrap">{formatDate(order.date)}</td>
-                      <td className="p-3 md:p-4">
-                         <div className="flex items-center gap-1.5 whitespace-nowrap">
-                            {getChannelIcon(order.channel)}
-                            <span className="text-[0.65rem] md:text-xs font-bold text-slate-300">{order.channel}</span>
-                         </div>
-                      </td>
-                      <td className="p-3 md:p-4 text-[0.65rem] md:text-xs text-slate-400 font-medium whitespace-nowrap">{order.paymentMethod} • {order.provider}</td>
-                      <td className="p-3 md:p-4 text-right text-xs md:text-sm font-black text-white whitespace-nowrap">{formatHUF(order.amount)}</td>
-                      <td className="p-3 md:p-4 text-[0.65rem] md:text-xs whitespace-nowrap">
-                         <div className="flex items-center gap-1.5 text-slate-400">
-                            <FileText size={12} className="shrink-0" /> <span>{order.invoiceId || '—'}</span>
-                         </div>
-                      </td>
-                      <td className="p-3 md:p-4 text-center">
-                         <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[0.65rem] font-black border whitespace-nowrap
-                           ${order.state === 'RENDBEN' 
-                             ? 'bg-green-500/10 text-green-500 border-green-500/20' 
-                             : order.state === 'KINT_PARKOL' 
-                               ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' 
-                               : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}
-                         `}>
-                           {order.state === 'RENDBEN' ? <CheckCircle size={12} /> : <Clock size={12} />}
-                           {order.state === 'RENDBEN' ? `RENDBEN (${formatDate(order.paidDate!)})` : order.state === 'KINT_PARKOL' ? 'PARKOL' : 'KINT'}
-                         </div>
-                      </td>
-                      <td className="p-3 md:p-4 pr-4 md:pr-6 text-right">
-                        <div className="flex justify-end gap-1 md:gap-2 opacity-100 transition-opacity">
-                          <button 
-                            onClick={() => openForm(order)} 
-                            className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                          >
-                            <Edit3 size={14} className="md:w-4 md:h-4" />
-                          </button>
-                          <button 
-                            onClick={() => deleteOrder(order.id)} 
-                            className="p-1.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                          >
-                            <Trash2 size={14} className="md:w-4 md:h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                }) : (
-                  <tr><td colSpan={9} className="p-12 text-center text-slate-500 font-medium">Még nincsenek adatok ebben a hónapban.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <Section
+          title={`Rendelések · ${selectedYear}. ${String(selectedMonth).padStart(2, '0')}.`}
+          description="Hivatalos rendelési napló · Shopify-import támogatással"
+          action={
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleShopifySync} disabled={isSyncing}>
+                <RefreshCw size={13} className={cn(isSyncing && 'animate-spin')} />
+                {isSyncing ? 'Szinkron…' : 'Shopify import'}
+              </Button>
+              <Button size="sm" onClick={() => openForm()}>
+                <Plus size={13} /> Új rendelés
+              </Button>
+            </div>
+          }
+        >
+          {filteredOrders.length === 0 ? (
+            <EmptyState
+              icon={ShoppingBag}
+              title="Nincsenek rendelések"
+              description="Még nincs rögzített rendelés ebben a hónapban."
+              action={
+                <Button size="sm" onClick={() => openForm()}>
+                  <Plus size={13} /> Új rendelés
+                </Button>
+              }
+            />
+          ) : (
+            <DataTable columns={orderColumns} data={filteredOrders} rowKey={(o) => o.id} minWidth="900px" />
+          )}
+        </Section>
       )}
 
       {activeTab === 'summary' && (
-        <div className="flex flex-col gap-6">
-          {/* AI ADVISOR PANEL */}
-          <div className="bg-gradient-to-br from-indigo-500/20 to-purple-600/10 border border-indigo-500/30 rounded-3xl p-6 shadow-2xl relative overflow-hidden group">
-             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-             <div className="flex items-start gap-4 relative z-10">
-                <div className="p-3 bg-indigo-500/20 rounded-2xl text-indigo-400">
-                   {isAiLoading ? <RefreshCw size={24} className="animate-spin" /> : <Cpu size={24} />}
-                </div>
-                <div className="flex-1">
-                   <div className="flex justify-between items-start mb-2">
-                     <h4 className="text-sm font-black text-white uppercase tracking-widest mb-1">Little Loom AI Stratéga</h4>
-                     <button 
-                       onClick={handleRequestAiAdvice}
-                       disabled={isAiLoading}
-                       className="text-[0.65rem] font-bold bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/40 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
-                     >
-                       <RefreshCw size={12} className={isAiLoading ? "animate-spin" : ""} />
-                       {isAiLoading ? "Elemzés..." : "Új elemzés kérése"}
-                     </button>
-                   </div>
-                   <p className="text-slate-200 text-sm md:text-base font-medium italic whitespace-pre-wrap">
-                     {isAiLoading ? "Az adatok elemzése és a stratégia generálása folyamatban..." : `"${realAiAdvice || aiAdvice}"`}
-                   </p>
-                </div>
-             </div>
-          </div>
+        <div className="flex flex-col gap-7">
+          <AccentPanel
+            tone="ai"
+            icon={Cpu}
+            title="Little Loom AI stratéga"
+            titleInfo={HELP.business.aiStrategist}
+            description="Személyre szabott növekedési stratégia"
+            glow
+            action={
+              <Button variant="ghost" size="xs" onClick={handleRequestAiAdvice} disabled={isAiLoading}>
+                <RefreshCw size={11} className={cn(isAiLoading && 'animate-spin')} />
+                {isAiLoading ? 'Elemzés…' : 'Új elemzés'}
+              </Button>
+            }
+          >
+            {isAiLoading ? 'Az adatok elemzése és a stratégia generálása folyamatban…' : realAiAdvice || aiAdvice}
+          </AccentPanel>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-             <div className="bg-white/5 border border-white/5 rounded-3xl p-6">
-                <div className="text-[0.6rem] font-black text-slate-500 uppercase tracking-widest mb-1">Éves Forgalom (YTD)</div>
-                <div className="text-2xl font-black text-white">{formatHUF(totalYTD)}</div>
-             </div>
-             <div className="bg-white/5 border border-white/5 rounded-3xl p-6">
-                <div className="text-[0.6rem] font-black text-slate-500 uppercase tracking-widest mb-1">Átlagos Rendelés (AOV)</div>
-                <div className="text-2xl font-black text-brand-primary">{formatHUF(aov)}</div>
-             </div>
-             <div className="bg-white/5 border border-white/5 rounded-3xl p-6">
-                <div className="text-[0.6rem] font-black text-slate-500 uppercase tracking-widest mb-1">Húzó Csatorna</div>
-                <div className="text-2xl font-black text-amber-500">{topChannel}</div>
-             </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-8 shadow-2xl">
-               <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
-                  <TrendingUp size={18} className="text-brand-primary" /> Havi Cashflow ({selectedYear})
-               </h3>
-               <div className="h-[300px] w-full">
-                 <ResponsiveContainer width="100%" height={300}>
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <div className="lg:col-span-3">
+              <Section title={`Havi cashflow · ${selectedYear}`} description="Bevétel és kintlévőség havi bontásban">
+                <div className="rounded-lg border border-border bg-card p-4">
+                  <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                       <YAxis axisLine={false} tickLine={false} tickFormatter={v => `${v/1000}k`} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                       <Tooltip 
-                         cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                         content={({ active, payload, label }) => {
-                           if (active && payload && payload.length) {
-                             return (
-                               <div className="bg-slate-900/90 backdrop-blur-md border border-white/10 p-4 rounded-2xl shadow-2xl">
-                                 <div className="text-xs font-black text-slate-500 uppercase mb-2">{label} havi mérleg</div>
-                                 {(payload as unknown as Array<{ name: string; value: number }>).map((p) => (
-                                   <div key={p.name} className="flex items-center justify-between gap-6 mb-1">
-                                     <span className="text-[0.65rem] font-bold text-slate-300">{p.name === 'bevetel' ? 'Bevétel' : 'Kintlévőség'}</span>
-                                     <span className={`text-xs font-black ${p.name === 'bevetel' ? 'text-brand-primary' : 'text-red-500'}`}>{formatHUF(p.value)}</span>
-                                   </div>
-                                 ))}
-                               </div>
-                             );
-                           }
-                           return null;
-                         }}
-                       />
-                       <Legend verticalAlign="top" align="right" wrapperStyle={{ paddingBottom: 20, fontSize: '11px', fontWeight: 800, color: '#f8fafc', textTransform: 'uppercase' }} />
-                       <Bar dataKey="bevetel" fill="#7c6af7" name="Bevétel" radius={[4, 4, 0, 0]} />
-                       <Bar dataKey="kintlevoseg" fill="#ef4444" name="Kintlévőség" radius={[4, 4, 0, 0]} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="oklch(0.92 0.004 250)" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'oklch(0.50 0.012 260)', fontSize: 11 }} />
+                      <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000}k`} tick={{ fill: 'oklch(0.50 0.012 260)', fontSize: 11 }} />
+                      <Tooltip
+                        cursor={{ fill: 'oklch(0.965 0.005 250)' }}
+                        content={({ active, payload, label }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="rounded-md bg-popover border border-border px-3 py-2 shadow-md">
+                                <p className="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+                                  {label} havi mérleg
+                                </p>
+                                {(payload as unknown as Array<{ name: string; value: number }>).map((p) => (
+                                  <div key={p.name} className="flex items-center justify-between gap-4 text-xs">
+                                    <span className="text-foreground/70">{p.name === 'bevetel' ? 'Bevétel' : 'Kintlévőség'}</span>
+                                    <span className={cn('font-semibold tabular-nums', p.name === 'bevetel' ? 'text-primary' : 'text-rose-600')}>
+                                      {formatHUF(p.value)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Legend verticalAlign="top" align="right" wrapperStyle={{ paddingBottom: 12, fontSize: 11 }} />
+                      <Bar dataKey="bevetel" fill="oklch(0.55 0.22 275)" name="Bevétel" radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="kintlevoseg" fill="oklch(0.62 0.22 25)" name="Kintlévőség" radius={[3, 3, 0, 0]} />
                     </BarChart>
-                 </ResponsiveContainer>
-               </div>
+                  </ResponsiveContainer>
+                </div>
+              </Section>
             </div>
 
-            <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-8 shadow-2xl">
-               <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
-                  Csatorna Megoszlás
-               </h3>
-               <div className="flex flex-col gap-4">
-                  {channelData.map((c, i) => {
-                    const percentage = totalYTD > 0 ? Math.round((c.value / totalYTD) * 100) : 0;
-                    return (
-                      <div key={i} className="flex flex-col gap-1.5">
-                        <div className="flex justify-between items-center text-xs">
-                           <span className="font-bold text-slate-300">{c.name}</span>
-                           <span className="font-black text-white">{percentage}% ({formatHUF(c.value)})</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                           <div 
-                             className="h-full bg-brand-primary rounded-full transition-all duration-1000" 
-                             style={{ width: `${percentage}%`, backgroundColor: i === 0 ? '#7c6af7' : i === 1 ? '#ec4899' : '#f59e0b' }} 
-                           />
-                        </div>
-                      </div>
-                    );
-                  })}
-               </div>
-               <div className="mt-8 p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <div className="text-[0.65rem] font-bold text-slate-400 uppercase mb-2 tracking-widest text-center">Megjegyzés</div>
-                  <p className="text-[0.7rem] text-slate-500 leading-relaxed text-center">A statisztikák a {selectedYear}-es év összes eddigi rendelését veszik alapul, csatornánkénti súlyozással.</p>
-               </div>
+            <div className="lg:col-span-2">
+              <Section title="Csatorna megoszlás" description={`${selectedYear} év · súlyozva`}>
+                <div className="rounded-lg border border-border bg-card p-5 flex flex-col gap-3.5">
+                  {channelData.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-6">Még nincs rendelési adat.</p>
+                  ) : (
+                    channelData
+                      .sort((a, b) => b.value - a.value)
+                      .map((c, i) => {
+                        const percentage = totalYTD > 0 ? Math.round((c.value / totalYTD) * 100) : 0;
+                        const color = channelColors[i % channelColors.length];
+                        return (
+                          <div key={c.name} className="flex flex-col gap-1.5">
+                            <div className="flex justify-between items-center gap-3 text-xs">
+                              <span className="inline-flex items-center gap-1.5 font-medium text-foreground min-w-0 truncate">
+                                <span className="h-2 w-2 rounded-sm shrink-0" style={{ background: color }} />
+                                <span className="truncate">{c.name}</span>
+                              </span>
+                              <span className="font-semibold text-foreground tabular-nums shrink-0">
+                                {percentage}% · {formatHUF(c.value)}
+                              </span>
+                            </div>
+                            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${percentage}%`, backgroundColor: color }} />
+                            </div>
+                          </div>
+                        );
+                      })
+                  )}
+                </div>
+              </Section>
             </div>
           </div>
         </div>
       )}
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Rendelés rögzítése">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <div className="flex flex-col gap-1.5">
-               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dátum</label>
-               <DatePicker value={orderDate} onChange={setOrderDate} />
-             </div>
-             <div className="flex flex-col gap-1.5">
-               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Vevő Neve</label>
-               <div className="relative">
-                 <User size={16} className="absolute left-3.5 top-3.5 text-slate-500" />
-                 <input type="text" className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all text-white" value={customer} onChange={e=>setCustomer(e.target.value)} required placeholder="pl. Tóth Tímea" />
-               </div>
-             </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Összeg (Ft)</label>
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editId ? 'Rendelés szerkesztése' : 'Új rendelés'} size="lg">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <FieldLabel info={HELP.business.orderDate}>Dátum</FieldLabel>
+              <DatePicker value={orderDate} onChange={setOrderDate} />
+            </div>
+            <div className="space-y-1.5">
+              <FieldLabel info={HELP.business.customer}>Vevő neve</FieldLabel>
               <div className="relative">
-                <Banknote size={16} className="absolute left-3.5 top-3.5 text-slate-500" />
-                <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all text-white" value={amount} onChange={e=>setAmount(e.target.value)} required />
+                <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <Input className="pl-8" value={customer} onChange={(e) => setCustomer(e.target.value)} required placeholder="pl. Tóth Tímea" />
               </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Csatorna</label>
-              <select className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all text-white appearance-none" value={channel} onChange={e=>setChannel(e.target.value)}>
-                <option className="bg-slate-800">Webshop</option>
-                <option className="bg-slate-800">Meska</option>
-                <option className="bg-slate-800">Privát rendelés</option>
-                <option className="bg-slate-800">Hello Piac</option>
-              </select>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <FieldLabel info={HELP.business.orderAmount}>Összeg (Ft)</FieldLabel>
+              <div className="relative">
+                <Banknote size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <Input type="number" className="pl-8" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <FieldLabel info={HELP.business.channel}>Csatorna</FieldLabel>
+              <OptionsSelect value={channel} onChange={setChannel} options={bizOptions.channels} />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Fizetés Módja</label>
-              <select className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all text-white appearance-none" value={payment} onChange={e=>setPayment(e.target.value)}>
-                <option className="bg-slate-800">Kártya</option><option className="bg-slate-800">Utalás</option><option className="bg-slate-800">Utánvét</option><option className="bg-slate-800">Készpénz</option>
-              </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <FieldLabel info={HELP.business.paymentMethod}>Fizetés módja</FieldLabel>
+              <OptionsSelect value={payment} onChange={setPayment} options={bizOptions.payment_methods} />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Szolgáltató</label>
-              <select className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all text-white appearance-none" value={provider} onChange={e=>setProvider(e.target.value)}>
-                <option className="bg-slate-800">Shopify payments</option><option className="bg-slate-800">Barion</option><option className="bg-slate-800">SumUp</option><option className="bg-slate-800">DPD</option><option className="bg-slate-800">GLS</option><option className="bg-slate-800">Foxpost</option><option className="bg-slate-800">Nincs</option>
-              </select>
+            <div className="space-y-1.5">
+              <FieldLabel info={HELP.business.provider}>Szolgáltató</FieldLabel>
+              <OptionsSelect value={provider} onChange={setProvider} options={bizOptions.providers} />
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hova érkezik</label>
-            <select className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all text-white appearance-none" value={destination} onChange={e=>setDestination(e.target.value)}>
-               <option className="bg-slate-800">Szolgáltatónál parkol</option><option className="bg-slate-800">Privát számla</option><option className="bg-slate-800">Készpénz</option>
-            </select>
+          <div className="space-y-1.5">
+            <FieldLabel info={HELP.business.destination}>Hová érkezik</FieldLabel>
+            <OptionsSelect value={destination} onChange={setDestination} options={bizOptions.destinations} />
           </div>
 
-          <div className="bg-white/5 p-5 rounded-2xl border border-white/5 flex flex-col gap-4 mt-2">
-             <div className="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest">Kifizetési és számla adatok</div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div className="flex flex-col gap-1.5">
-                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Kifizetés Dátuma</label>
-                 <DatePicker value={paidDate} onChange={setPaidDate} />
-               </div>
-               <div className="flex flex-col gap-1.5">
-                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Számla Sorszáma</label>
-                 <input type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all text-white" value={invoiceId} onChange={e=>setInvoiceId(e.target.value)} placeholder="E-LL-2026-XX" />
-               </div>
-             </div>
+          <div className="rounded-md border border-border bg-muted/30 p-3 space-y-3">
+            <LabelWithInfo className="text-xs font-medium" info={HELP.business.paymentSection}>
+              Kifizetés és számla
+            </LabelWithInfo>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <FieldLabel className="text-[0.7rem] text-muted-foreground" info={HELP.business.paidDateBiz}>
+                  Kifizetés dátuma
+                </FieldLabel>
+                <DatePicker value={paidDate} onChange={setPaidDate} />
+              </div>
+              <div className="space-y-1.5">
+                <FieldLabel className="text-[0.7rem] text-muted-foreground" info={HELP.business.invoiceNumber}>
+                  Számla sorszáma
+                </FieldLabel>
+                <Input value={invoiceId} onChange={(e) => setInvoiceId(e.target.value)} placeholder="E-LL-2026-XX" />
+              </div>
+            </div>
           </div>
 
-          <button type="submit" className="mt-4 bg-brand-primary hover:bg-brand-light text-white font-bold py-4 rounded-xl transition-colors shadow-lg shadow-brand-primary/20">Adatok Rögzítése</button>
+          <Button type="submit" size="lg" className="mt-1">
+            <Sparkles size={14} /> Adatok rögzítése
+          </Button>
         </form>
       </Modal>
 
+      <ConfirmDeleteModal />
     </div>
   );
 }

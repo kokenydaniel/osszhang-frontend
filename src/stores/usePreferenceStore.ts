@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 interface PreferenceState {
   selectedMonth: number;
@@ -6,6 +7,9 @@ interface PreferenceState {
   userPreferences: {
     currency: string;
     notificationsEnabled: boolean;
+    appName: string;
+    themeColor: 'violet' | 'emerald' | 'blue' | 'rose' | 'amber';
+    appLogo: 'diamond' | 'ring' | 'helix' | 'sphere';
   };
   exchangeRates: Record<string, number>;
 
@@ -15,60 +19,73 @@ interface PreferenceState {
   refreshRates: () => Promise<void>;
 }
 
-export const usePreferenceStore = create<PreferenceState>((set, get) => ({
-  selectedMonth: new Date().getMonth() + 1,
-  selectedYear: new Date().getFullYear(),
-  userPreferences: {
-    currency: 'HUF',
-    notificationsEnabled: true,
-  },
-  exchangeRates: {},
+export const usePreferenceStore = create<PreferenceState>()(
+  persist(
+    (set, get) => ({
+      selectedMonth: new Date().getMonth() + 1,
+      selectedYear: new Date().getFullYear(),
+      userPreferences: {
+        currency: 'HUF',
+        notificationsEnabled: true,
+        appName: 'Aura',
+        themeColor: 'violet',
+        appLogo: 'diamond',
+      },
+      exchangeRates: {},
 
-  setSelectedMonth: (m) => set({ selectedMonth: m }),
-  setSelectedYear: (y) => set({ selectedYear: y }),
-  
-  updatePreferences: async (p) => {
-    set({ userPreferences: { ...get().userPreferences, ...p } });
-  },
-
-  refreshRates: async () => {
-    try {
-      const [fiatRes, btcRes, ethRes] = await Promise.all([
-        fetch('https://open.er-api.com/v6/latest/USD').then(r => r.json()),
-        fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT').then(r => r.json()),
-        fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT').then(r => r.json())
-      ]);
-
-      const usdToHuf = fiatRes.rates?.HUF || 365;
-      const eurToHuf = fiatRes.rates?.HUF && fiatRes.rates?.EUR ? (fiatRes.rates.HUF / fiatRes.rates.EUR) : 395;
+      setSelectedMonth: (m) => set({ selectedMonth: m }),
+      setSelectedYear: (y) => set({ selectedYear: y }),
       
-      const btcPriceUsd = Number(btcRes?.price) || 66000;
-      const ethPriceUsd = Number(ethRes?.price) || 3000;
+      updatePreferences: async (p) => {
+        set({ userPreferences: { ...get().userPreferences, ...p } });
+      },
 
-      const btcToHuf = btcPriceUsd * usdToHuf;
-      const ethToHuf = ethPriceUsd * usdToHuf;
+      refreshRates: async () => {
+        try {
+          const [fiatRes, btcRes, ethRes] = await Promise.all([
+            fetch('https://open.er-api.com/v6/latest/USD').then(r => r.json()),
+            fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT').then(r => r.json()),
+            fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT').then(r => r.json())
+          ]);
 
-      set({
-        exchangeRates: {
-          USD: usdToHuf,
-          EUR: eurToHuf,
-          BTC: btcToHuf,
-          ETH: ethToHuf,
-          HUF: 1
+          const usdToHuf = fiatRes.rates?.HUF || 365;
+          const eurToHuf = fiatRes.rates?.HUF && fiatRes.rates?.EUR ? (fiatRes.rates.HUF / fiatRes.rates.EUR) : 395;
+          
+          const btcPriceUsd = Number(btcRes?.price) || 66000;
+          const ethPriceUsd = Number(ethRes?.price) || 3000;
+
+          const btcToHuf = btcPriceUsd * usdToHuf;
+          const ethToHuf = ethPriceUsd * usdToHuf;
+
+          set({
+            exchangeRates: {
+              USD: usdToHuf,
+              EUR: eurToHuf,
+              BTC: btcToHuf,
+              ETH: ethToHuf,
+              HUF: 1
+            }
+          });
+        } catch (err) {
+          console.error('Error fetching exchange rates:', err);
+          set({
+            exchangeRates: {
+              USD: 365,
+              EUR: 395,
+              BTC: 24000000,
+              ETH: 1200000,
+              HUF: 1
+            }
+          });
         }
-      });
-    } catch (err) {
-      console.error('Error fetching exchange rates:', err);
-      // Robust fallback values if fetch fails
-      set({
-        exchangeRates: {
-          USD: 365,
-          EUR: 395,
-          BTC: 24000000,
-          ETH: 1200000,
-          HUF: 1
-        }
-      });
+      },
+    }),
+    {
+      name: 'penzpilot-preferences',
+      partialize: (state) => ({
+        userPreferences: state.userPreferences,
+      }),
     }
-  },
-}));
+  )
+);
+

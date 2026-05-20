@@ -26,14 +26,18 @@ export interface UserProfile {
     businessEnabled?: boolean;
     business_name?: string;
     businessName?: string;
+    business_settings?: import('@/lib/businessSettings').BusinessSettings;
+    businessSettings?: import('@/lib/businessSettings').BusinessSettings;
     shopify_shop_url?: string;
     shopifyShopUrl?: string;
-    shopify_access_token?: string;
-    shopifyAccessToken?: string;
+    has_shopify_token?: boolean;
+    hasShopifyToken?: boolean;
     utility_split_enabled?: boolean;
     utilitySplitEnabled?: boolean;
     utility_split_partner_id?: number | null;
     utilitySplitPartnerId?: number | null;
+    utility_templates?: import('@/lib/utilityTemplates').UtilityTemplate[];
+    utilityTemplates?: import('@/lib/utilityTemplates').UtilityTemplate[];
   };
 }
 
@@ -58,14 +62,18 @@ export interface RawApiUser {
     businessEnabled?: boolean;
     business_name?: string;
     businessName?: string;
+    business_settings?: import('@/lib/businessSettings').BusinessSettings;
+    businessSettings?: import('@/lib/businessSettings').BusinessSettings;
     shopify_shop_url?: string;
     shopifyShopUrl?: string;
-    shopify_access_token?: string;
-    shopifyAccessToken?: string;
+    has_shopify_token?: boolean;
+    hasShopifyToken?: boolean;
     utility_split_enabled?: boolean;
     utilitySplitEnabled?: boolean;
     utility_split_partner_id?: number | null;
     utilitySplitPartnerId?: number | null;
+    utility_templates?: import('@/lib/utilityTemplates').UtilityTemplate[];
+    utilityTemplates?: import('@/lib/utilityTemplates').UtilityTemplate[];
   };
 }
 
@@ -86,6 +94,7 @@ export interface CashTransaction {
   description: string;
   category: string;
   amount: number;
+  encryptedPayload?: string;
   dueDate: string;
   paidDate: string | null;
   isBudget?: boolean;
@@ -132,6 +141,25 @@ export interface UtilityBill {
   paidDate: string | null;
   paidBy: 'Mi' | 'Ildi' | null;
   splitRule: UtilitySplitRule;
+}
+
+export type UtilitySettlementDirection = 'partner_pays_household' | 'household_pays_partner';
+
+export interface UtilitySettlement {
+  id: number;
+  year: number;
+  month: number;
+  amount: number;
+  direction: UtilitySettlementDirection;
+  settledAt: string;
+  transactionId: number | null;
+  partnerName: string;
+  summary: string;
+}
+
+export interface UtilitiesIndexResponse {
+  bills: UtilityBill[];
+  settlements: UtilitySettlement[];
 }
 
 // ==============================
@@ -249,11 +277,16 @@ export interface AiWeeklyBriefing {
 
 export interface AiDebtPlan {
   strategy: 'avalanche' | 'snowball';
-  recommended_payments: Array<{
+  schedule: Array<{
+    rank: number;
     debt_id: number;
-    debt_name: string;
-    payment_amount: number;
+    name: string;
+    remaining: number;
+    recommended_extra_payment: number;
   }>;
+  payoff_date?: string | null;
+  total_interest?: number | null;
+  alternatives?: Array<'avalanche' | 'snowball'>;
 }
 
 // ==============================

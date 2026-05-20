@@ -50,7 +50,8 @@ export const useDebtsStore = create<DebtsState>((set, get) => ({
   fetchAiDebtPlan: async (strategy) => {
     try {
       const res = await aiFinanceClient.optimizeDebts({ strategy });
-      set({ aiDebtPlan: res.data });
+      const payload = (res.data && typeof res.data === 'object' && 'data' in res.data ? (res.data as { data: AiDebtPlan }).data : (res.data as AiDebtPlan)) as AiDebtPlan;
+      set({ aiDebtPlan: payload });
     } catch (e) {
       console.error('Failed to fetch AI Debt optimization strategy', e);
     }

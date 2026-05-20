@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { CashTransaction, AiOverspendAnalysis, AiCashflowForecast, AiWeeklyBriefing, LedgerEntry } from '@/types';
 import { budgetClient, householdClient, aiFinanceClient } from '@/api';
-import { useNotificationStore } from './useNotificationStore';
+import { useAuthStore } from './useAuthStore';
+import { useUtilitiesStore } from './useUtilitiesStore';
 
 interface BudgetState {
   transactions: CashTransaction[];
@@ -15,19 +16,19 @@ interface BudgetState {
   addTransaction: (tx: Omit<CashTransaction, 'id'>) => Promise<void>;
   updateTransaction: (id: number, tx: Partial<Omit<CashTransaction, 'id' | 'subItems'>>) => Promise<void>;
   deleteTransaction: (id: number) => Promise<void>;
-  
+
   addSubItem: (txId: number, item: Omit<LedgerEntry, 'id'>) => Promise<void>;
   deleteSubItem: (txId: number, itemId: number) => Promise<void>;
-  
+
   addCategory: (name: string) => Promise<void>;
   deleteCategory: (name: string) => Promise<void>;
-  
+
   clonePreviousMonth: (month: number, year: number) => Promise<void>;
-  
+
   fetchAiOverspend: (year: number, month: number) => Promise<void>;
   fetchAiCashflowForecast: (year: number, month: number) => Promise<void>;
   fetchAiWeeklyBriefing: (weekStart?: string) => Promise<void>;
-  
+
   setCategories: (categories: string[]) => void;
 }
 
@@ -57,13 +58,33 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
   },
 
   updateTransaction: async (id, tx) => {
-    const res = await budgetClient.update(id, tx);
-    set({ transactions: get().transactions.map((t) => (t.id === id ? res.data : t)) });
+    const previous = get().transactions;
+    const current = previous.find((t) => t.id === id);
+    if (!current) return;
+
+    const optimistic = { ...current, ...tx };
+    set({ transactions: previous.map((t) => (t.id === id ? optimistic : t)) });
+
+    try {
+      const res = await budgetClient.update(id, tx);
+      set({ transactions: get().transactions.map((t) => (t.id === id ? res.data : t)) });
+    } catch (e) {
+      set({ transactions: previous });
+      console.error('Failed to update transaction', e);
+      throw e;
+    }
   },
 
   deleteTransaction: async (id) => {
+    const tx = get().transactions.find((t) => t.id === id);
     await budgetClient.delete(id);
     set({ transactions: get().transactions.filter((t) => t.id !== id) });
+    if (tx?.category === 'Rezsi elszámolás') {
+      void Promise.all([
+        useUtilitiesStore.getState().fetchBills(),
+        useAuthStore.getState().fetchMe(),
+      ]);
+    }
   },
 
   addSubItem: async (txId, item) => {
@@ -89,7 +110,7 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
   },
 
   clonePreviousMonth: async (m, y) => {
-    await budgetClient.create({ type: 'clone', month: m, year: y });
+    await budgetClient.cloneMonth(m, y);
     const res = await budgetClient.getAll();
     set({ transactions: res.data });
   },

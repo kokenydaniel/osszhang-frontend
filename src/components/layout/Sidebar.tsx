@@ -1,21 +1,14 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { 
-  LayoutDashboard, 
-  Wallet, 
-  ShoppingBag, 
-  Home, 
-  Zap, 
-  Settings, 
-  ChevronLeft, 
-  ChevronRight,
-  X,
-  PiggyBank,
-  BarChart3
+import { usePreferenceStore } from '@/stores/usePreferenceStore';
+import { cn } from '@/lib/utils';
+import {
+  LayoutDashboard, Wallet, Home, Settings,
+  TrendingUp, Gauge, PanelLeftClose, PanelLeftOpen, X, Command,
+  PiggyBank, TrendingDown,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -28,140 +21,127 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const { user } = useAuthStore();
+  const { userPreferences } = usePreferenceStore();
 
+  const appName = userPreferences?.appName || 'PénzPilot';
   const businessEnabled = user?.household?.businessEnabled ?? user?.household?.business_enabled ?? true;
   const businessName = user?.household?.businessName ?? user?.household?.business_name ?? 'Vállalkozás';
 
-  const navItems = [
+  const navGroups = [
     {
       section: null,
+      items: [{ href: '/', icon: LayoutDashboard, label: 'Irányítópult', id: 'dashboard' }],
+    },
+    {
+      section: 'Pénzügyek',
       items: [
-        { href: '/', icon: <LayoutDashboard size={18} />, label: 'Dashboard', id: 'dashboard' },
+        { href: '/budget', icon: Wallet, label: 'Költségvetés', id: 'budget' },
+        { href: '/savings', icon: PiggyBank, label: 'Megtakarítások', id: 'savings' },
+        { href: '/debts', icon: TrendingDown, label: 'Tartozások', id: 'debts' },
       ],
     },
     {
-      section: 'Modulok',
+      section: 'Háztartás',
       items: [
-        { href: '/budget', icon: <Wallet size={18} />, label: 'Költségvetés', id: 'budget' },
-        ...(businessEnabled ? [{ href: '/business', icon: <ShoppingBag size={18} />, label: businessName, id: 'business' }] : []),
-        { href: '/utilities', icon: <Home size={18} />, label: 'Rezsi', id: 'utilities' },
-        { href: '/meters', icon: <Zap size={18} />, label: 'Közműórák', id: 'meters' },
+        { href: '/utilities', icon: Home, label: 'Rezsi', id: 'utilities' },
+        { href: '/meters', icon: Gauge, label: 'Közműórák', id: 'meters' },
       ],
     },
+    ...(businessEnabled
+      ? [
+          {
+            section: 'Vállalkozás',
+            items: [{ href: '/business', icon: TrendingUp, label: businessName, id: 'business' }],
+          },
+        ]
+      : []),
     {
-      section: 'Beállítások',
-      items: [
-        { href: '/settings', icon: <Settings size={18} />, label: 'Beállítások', id: 'settings' },
-      ],
+      section: 'Rendszer',
+      items: [{ href: '/settings', icon: Settings, label: 'Beállítások', id: 'settings' }],
     },
   ];
 
-  const isActive = (href: string) => {
-    if (href === '/') return pathname === '/';
-    return pathname.startsWith(href);
-  };
+  const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
 
-  const hasPermission = (itemId: string) => {
+  const hasPermission = (id: string) => {
     if (!user) return false;
     if (user.role === 'admin') return true;
-    if (['dashboard', 'settings'].includes(itemId)) return true;
-    return user.permissions?.includes(itemId) ?? false;
+    if (['dashboard', 'settings'].includes(id)) return true;
+    return user.permissions?.includes(id) ?? false;
   };
 
-  const handleNavClick = () => {
-    if (onMobileClose) onMobileClose();
-  };
-
-  const householdName = user?.household?.name || 'Otthon';
+  const showLabels = !collapsed || mobileOpen;
 
   return (
     <>
-      {/* Mobile backdrop */}
       {mobileOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm transition-opacity duration-200" 
+        <div
+          className="fixed inset-0 z-40 bg-foreground/20 md:hidden animate-in fade-in duration-150"
           onClick={onMobileClose}
         />
       )}
 
-      <aside 
-        className={`fixed md:sticky top-0 left-0 h-screen flex flex-col transition-all duration-300 z-50
-          ${collapsed ? 'md:w-[72px]' : 'md:w-64'} 
-          ${mobileOpen ? 'w-64 translate-x-0 shadow-2xl' : 'w-64 -translate-x-full md:translate-x-0'}
-        `}
-        style={{
-          background: 'rgba(11, 15, 26, 0.95)',
-          backdropFilter: 'blur(20px)',
-          borderRight: '1px solid rgba(255,255,255,0.06)',
-        }}
+      <aside
+        className={cn(
+          'fixed md:sticky top-0 left-0 z-50 flex h-screen flex-col',
+          'border-r border-border bg-sidebar transition-[width] duration-200 ease-out',
+          collapsed ? 'md:w-[68px]' : 'md:w-[220px]',
+          mobileOpen ? 'w-[220px] translate-x-0' : 'w-[220px] -translate-x-full md:translate-x-0',
+        )}
       >
-        {/* Logo area */}
-        <div className="h-16 md:h-20 flex items-center px-4 md:px-5 gap-3 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #818cf8, #6366f1)', boxShadow: '0 4px 14px rgba(129,140,248,0.3)' }}>
-            <Wallet size={18} className="text-white" />
-          </div>
-          {(!collapsed || mobileOpen) && (
-            <div className="flex-1 min-w-0 transition-opacity duration-200">
-              <div className="text-sm font-black text-white truncate tracking-tight">PénzPilot</div>
-              <div className="text-[0.6rem] font-bold truncate" style={{ color: '#818cf8' }}>
-                {householdName}
-              </div>
-            </div>
+        {/* Brand */}
+        <div
+          className={cn(
+            'flex h-14 shrink-0 items-center border-b border-border px-4',
+            !showLabels && 'justify-center px-0',
           )}
-          {/* Mobile close */}
+        >
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary">
+            <Command size={14} className="text-primary-foreground" strokeWidth={2.5} />
+          </div>
+          {showLabels && (
+            <span className="ml-2.5 truncate text-sm font-semibold tracking-tight text-foreground">
+              {appName}
+            </span>
+          )}
           {mobileOpen && (
-            <button 
+            <button
               onClick={onMobileClose}
-              className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors"
-              style={{ background: 'rgba(255,255,255,0.05)' }}
+              className="ml-auto rounded-md p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground md:hidden"
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           )}
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-5 px-3 flex flex-col gap-5 custom-scrollbar">
-          {navItems.map((group, gi) => {
-            const filteredItems = group.items.filter(item => hasPermission(item.id));
-            if (filteredItems.length === 0) return null;
-
+        <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
+          {navGroups.map((group, gi) => {
+            const items = group.items.filter((i) => hasPermission(i.id));
+            if (!items.length) return null;
             return (
-              <div key={gi} className="flex flex-col gap-1">
-                {group.section && (!collapsed || mobileOpen) && (
-                  <div className="px-3 mb-1.5 section-label">
+              <div key={gi} className="flex flex-col gap-0.5">
+                {group.section && showLabels && (
+                  <p className="px-2 pb-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
                     {group.section}
-                  </div>
+                  </p>
                 )}
-                {filteredItems.map((item) => {
+                {items.map((item) => {
                   const active = isActive(item.href);
+                  const Icon = item.icon;
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      title={collapsed && !mobileOpen ? item.label : undefined}
-                      onClick={handleNavClick}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 font-bold text-sm group relative"
-                      style={active ? {
-                        background: 'linear-gradient(135deg, rgba(129,140,248,0.2), rgba(99,102,241,0.15))',
-                        color: '#a5b4fc',
-                        boxShadow: 'inset 0 0 0 1px rgba(129,140,248,0.25)',
-                      } : {
-                        color: '#64748b',
-                      }}
+                      onClick={onMobileClose}
+                      title={!showLabels ? item.label : undefined}
+                      className={cn(
+                        'nav-item',
+                        active && 'active',
+                        !showLabels && 'justify-center px-2',
+                      )}
                     >
-                      {/* Active indicator */}
-                      {active && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full" style={{ background: '#818cf8' }} />
-                      )}
-                      <span className={`shrink-0 transition-colors ${active ? 'text-brand-primary' : 'text-slate-500 group-hover:text-slate-300'}`}>
-                        {item.icon}
-                      </span>
-                      {(!collapsed || mobileOpen) && (
-                        <span className={`truncate transition-colors ${active ? 'text-brand-light' : 'text-slate-400 group-hover:text-slate-200'}`}>
-                          {item.label}
-                        </span>
-                      )}
+                      <Icon size={16} strokeWidth={2} className="nav-icon shrink-0" />
+                      {showLabels && <span className="truncate">{item.label}</span>}
                     </Link>
                   );
                 })}
@@ -170,17 +150,22 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           })}
         </nav>
 
-        {/* Footer toggle */}
-        <div className="p-3 hidden md:block" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-          <button 
-            className="w-full flex items-center justify-center p-2.5 rounded-xl transition-all font-bold text-sm"
-            style={{ color: '#475569', background: 'rgba(255,255,255,0.03)' }}
-            onClick={onToggle} 
-            aria-label="Sidebar toggle"
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#94a3b8'; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#475569'; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.03)'; }}
+        <div className="shrink-0 border-t border-border p-2">
+          <button
+            onClick={onToggle}
+            className={cn(
+              'hidden md:flex w-full items-center justify-center gap-2 rounded-md py-2 px-2',
+              'text-xs font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground',
+            )}
           >
-            {collapsed ? <ChevronRight size={18} /> : <><ChevronLeft size={18} /><span className="ml-2">Összecsuk</span></>}
+            {collapsed ? (
+              <PanelLeftOpen size={15} />
+            ) : (
+              <>
+                <PanelLeftClose size={15} />
+                <span>Összecsukás</span>
+              </>
+            )}
           </button>
         </div>
       </aside>

@@ -8,39 +8,46 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { useInitStore } from '@/stores/useInit';
 import { getCurrentMonth, getCurrentYear } from '@/utils';
+import { Lock } from 'lucide-react';
+import Link from 'next/link';
 
-function Skeleton({ className }: { className?: string }) {
-  return <div className={`animate-pulse bg-white/5 rounded-2xl ${className || ''}`} />;
+function SkeletonCard({ className }: { className?: string }) {
+  return (
+    <div className={`rounded-lg bg-card border border-border shadow-sm animate-pulse ${className ?? ''}`}>
+      <div className="p-5 flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-md bg-muted" />
+          <div className="h-3 w-24 bg-muted rounded" />
+        </div>
+        <div className="h-7 w-32 bg-muted rounded" />
+        <div className="h-3 w-20 bg-muted rounded" />
+      </div>
+    </div>
+  );
 }
 
 function DashboardSkeleton() {
   return (
-    <div className="flex flex-col gap-6 w-full animate-pulse">
-      {/* Header */}
-      <div className="flex justify-between items-center gap-4">
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-64" />
+    <div className="flex flex-col gap-5 w-full">
+      <div className="rounded-lg bg-card border border-border shadow-sm animate-pulse p-6">
+        <div className="flex items-center gap-4">
+          <div className="h-10 w-10 rounded-lg bg-muted" />
+          <div className="flex flex-col gap-2">
+            <div className="h-6 w-40 bg-muted rounded" />
+            <div className="h-3 w-28 bg-muted rounded" />
+          </div>
         </div>
       </div>
-      {/* Top metric cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <Skeleton key={i} className="h-28 rounded-3xl" />
-        ))}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
       </div>
-      {/* Secondary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <Skeleton key={i} className="h-24 rounded-3xl" />
-        ))}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
       </div>
-      {/* Main content panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <Skeleton className="lg:col-span-3 h-80 rounded-3xl" />
-        <Skeleton className="lg:col-span-2 h-80 rounded-3xl" />
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="lg:col-span-3 rounded-lg bg-card border border-border shadow-sm animate-pulse h-72" />
+        <div className="lg:col-span-2 rounded-lg bg-card border border-border shadow-sm animate-pulse h-72" />
       </div>
-      <Skeleton className="h-72 rounded-3xl" />
     </div>
   );
 }
@@ -54,29 +61,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { selectedMonth, selectedYear, setSelectedMonth, setSelectedYear } = usePreferenceStore();
   const { initialize, isInitialized } = useInitStore();
 
-  useEffect(() => {
-    initialize();
-  }, [initialize]);
+  useEffect(() => { initialize(); }, [initialize]);
 
-
-  // Persist sidebar state
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-collapsed');
     if (saved !== null) setCollapsed(JSON.parse(saved));
   }, []);
 
-  // Close mobile sidebar on route change
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
 
-  // Prevent body scroll when mobile sidebar is open
   useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
+    document.body.style.overflow = mobileOpen ? 'hidden' : 'unset';
     return () => { document.body.style.overflow = 'unset'; };
   }, [mobileOpen]);
 
@@ -87,38 +82,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     });
   };
 
-  const currentUser = { 
-    name: user?.firstName ? `${user.firstName} ${user.lastName}` : 'Betöltés...' 
+  const currentUser = {
+    name: user?.firstName ? `${user.firstName} ${user.lastName}` : 'Betöltés...',
   };
 
-  // Permission protection logic
   const hasPermissionForRoute = () => {
-    if (!user) return true; // wait for user details
+    if (!user) return true;
     if (user.role === 'admin') return true;
-    
     const permissions = user.permissions || [];
-    
     if (pathname.startsWith('/budget') && !permissions.includes('budget')) return false;
     if (pathname.startsWith('/utilities') && !permissions.includes('utilities')) return false;
     if (pathname.startsWith('/meters') && !permissions.includes('meters')) return false;
     if (pathname.startsWith('/business') && !permissions.includes('business')) return false;
     if (pathname.startsWith('/savings') && !permissions.includes('savings')) return false;
     if (pathname.startsWith('/debts') && !permissions.includes('debts')) return false;
-    
     return true;
   };
 
   const isAllowed = hasPermissionForRoute();
 
   return (
-    <div className="flex min-h-screen" style={{ background: '#0b0f1a' }}>
-      <Sidebar 
-        collapsed={collapsed} 
-        onToggle={handleToggle} 
+    <div className="flex min-h-screen bg-background">
+      <Sidebar
+        collapsed={collapsed}
+        onToggle={handleToggle}
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
       />
-      <div className="flex-1 flex flex-col min-w-0 transition-all duration-300">
+      <div className="flex-1 flex flex-col min-w-0">
         <Header
           pathname={pathname}
           month={selectedMonth}
@@ -126,27 +117,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           onMonthChange={setSelectedMonth}
           onYearChange={setSelectedYear}
           user={currentUser}
-          onMobileMenuToggle={() => setMobileOpen(prev => !prev)}
+          onMobileMenuToggle={() => setMobileOpen((p) => !p)}
         />
-        <main className="flex-1 p-3 md:p-6 w-full overflow-x-hidden">
+        <main className="flex-1 p-4 md:p-8 w-full overflow-x-hidden">
           {!isAllowed ? (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6 md:p-12 max-w-md w-full bg-slate-900/40 backdrop-blur-xl border border-red-500/10 rounded-3xl shadow-2xl relative overflow-hidden my-auto mx-auto mt-20">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-              <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 border border-red-500/20 mb-6 shadow-[0_0_20px_rgba(239,68,68,0.2)] animate-pulse">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                </svg>
+            <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-8 max-w-sm mx-auto mt-12">
+              <div className="h-11 w-11 rounded-md bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive mb-5">
+                <Lock size={18} />
               </div>
-              <h2 className="text-xl md:text-2xl font-black text-white mb-3 uppercase tracking-wider">Hozzáférés megtagadva</h2>
-              <p className="text-slate-400 text-sm md:text-base mb-8">
-                Ehhez a modulhoz nincs jogosultságod. Kérd meg a háztartásod adminisztrátorát, hogy adjon hozzáférést a beállításokban!
+              <h2 className="text-base font-semibold text-foreground mb-2">Hozzáférés megtagadva</h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                Ehhez a modulhoz nincs jogosultságod. Kérd meg az adminisztrátort!
               </p>
-              <a 
+              <Link
                 href="/"
-                className="bg-brand-primary hover:bg-brand-light text-white font-black py-3 px-8 rounded-xl transition-all shadow-lg active:scale-95 text-sm"
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
               >
                 Vissza a Vezérlőpultra
-              </a>
+              </Link>
             </div>
           ) : !isInitialized ? (
             <DashboardSkeleton />

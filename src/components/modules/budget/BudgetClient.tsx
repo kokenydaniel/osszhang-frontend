@@ -1,90 +1,95 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useBudgetStore } from '@/stores/useBudgetStore';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useSavingsStore } from '@/stores/useSavingsStore';
 import { useUtilitiesStore } from '@/stores/useUtilitiesStore';
-import { useDebtsStore } from '@/stores/useDebtsStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { formatHUF, formatDate } from '@/utils';
 import { aiFinanceClient } from '@/api';
-import { CashTransaction, LedgerEntry, AiMeta } from '@/types';
+import { CashTransaction, LedgerEntry, UtilityBill } from '@/types';
+import { isLegacySettlementBill } from '@/lib/utilityBills';
 import { Modal } from '@/components/ui/Modal';
 import { DatePicker } from '@/components/ui/DatePicker';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
-import { 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  CheckCircle, 
-  Clock, 
-  Folder, 
-  Wallet, 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  PiggyBank, 
-  PlusCircle, 
-  Target,
-  History,
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { FieldLabel } from '@/components/ui/FieldLabel';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
+import { FieldHint } from '@/components/ui/FieldHint';
+import { FormChoiceCard } from '@/components/ui/FormChoiceCard';
+import { HELP } from '@/lib/helpTexts';
+import { cn } from '@/lib/utils';
+import { useConfirmDelete } from '@/hooks/useConfirmDelete';
+import { useAsyncAction, usePendingIds } from '@/hooks/useAsyncAction';
+import { motion } from 'motion/react';
+import {
+  PageHeader,
+  SegmentedControl,
+  MetricStrip,
+  DataTable,
+  Section,
+  AccentPanel,
+  StatusPill,
+  StatusToggleButton,
+  EmptyState,
+  type MetricItem,
+  type DataTableColumn,
+} from '@/components/design';
+import {
+  Plus,
+  Trash2,
+  Edit3,
+  CheckCircle,
+  Clock,
+  Folder,
+  Wallet,
+  PiggyBank,
   AlertCircle,
-  TrendingDown,
   TrendingUp,
   RefreshCw,
-  Zap,
   Bot,
-  Pencil
+  ReceiptText,
+  Building2,
+  History,
+  ArrowUpRight,
+  ArrowDownRight,
+  Copy,
+  Calendar,
+  Tag,
+  Pencil,
+  Check,
 } from 'lucide-react';
 
 export default function BudgetClient() {
-  const { 
-    transactions, addTransaction, deleteTransaction, updateTransaction, addSubItem, deleteSubItem,
-    aiOverspend, aiCashflowForecast,
-    fetchAiOverspend, fetchAiCashflowForecast,
-    clonePreviousMonth, categories
+  const {
+    transactions,
+    addTransaction,
+    deleteTransaction,
+    updateTransaction,
+    addSubItem,
+    aiOverspend,
+    fetchAiOverspend,
+    clonePreviousMonth,
+    categories,
   } = useBudgetStore();
 
-  const {
-    savings, addSavingsAccount, updateSavingsAccount, deleteSavingsAccount, addLedgerEntry, deleteLedgerEntry,
-    aiSavingsPlan, fetchAiSavingsPlan,
-    investments, addInvestment, updateInvestment, deleteInvestment
-  } = useSavingsStore();
-
   const { bills } = useUtilitiesStore();
-  const { debts } = useDebtsStore();
   const { user, updateManualBalance } = useAuthStore();
   const utilitySplitEnabled = user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? true;
-  const getBillPortion = (b: any) => {
+  const getBillPortion = (b: UtilityBill) => {
     if (!utilitySplitEnabled) return b.total;
-    return b.splitRule === 'shared' ? b.total / 2 : (b.splitRule === 'dani-private' ? b.total : 0);
+    return b.splitRule === 'shared' ? b.total / 2 : b.splitRule === 'dani-private' ? b.total : 0;
   };
-  const { selectedMonth, selectedYear, exchangeRates, refreshRates } = usePreferenceStore();
+  const { selectedMonth, selectedYear } = usePreferenceStore();
+  const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
+  const { pending: cloning, run: runClone } = useAsyncAction();
+  const { wrap: wrapTxPending, isPending: isTxPending } = usePendingIds();
 
-  const aiMeta = null as AiMeta | null; // Legacy placeholder for AI meta fallback
-
-  React.useEffect(() => {
-    refreshRates();
-  }, [refreshRates]);
-
-  React.useEffect(() => {
+  useEffect(() => {
     fetchAiOverspend(selectedYear, selectedMonth);
   }, [fetchAiOverspend, selectedMonth, selectedYear]);
 
-  const convertToHUF = (amount: number, currency: string) => {
-    const rate = exchangeRates[currency] || 1;
-    return amount * rate;
-  };
-
-  const formatCurrencyAmount = (amount: number, currency: string) => {
-    if (currency === 'HUF') return formatHUF(amount);
-
-    const maxFractionDigits = currency === 'BTC' || currency === 'ETH' ? 8 : 2;
-    return `${amount.toLocaleString('hu-HU', { maximumFractionDigits: maxFractionDigits })} ${currency}`;
-  };
-
-  const [activeTab, setActiveTab] = useState<'cashflow' | 'savings'>('cashflow');
-
-  // Modals
+  // Modals state
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [editTxId, setEditTxId] = useState<number | null>(null);
   const [txType, setTxType] = useState<'expense' | 'income'>('income');
@@ -97,236 +102,29 @@ export default function BudgetClient() {
   const [txPaidDate, setTxPaidDate] = useState<string | null>(null);
   const [isCategoryLoading, setIsCategoryLoading] = useState(false);
 
-  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
-  const [activeTxId, setActiveTxId] = useState<number | null>(null);
-  const [subReason, setSubReason] = useState('');
-  const [subAmount, setSubAmount] = useState('');
-  const [subDate, setSubDate] = useState(new Date().toISOString().split('T')[0]);
-
-  const [isNewSavingsModalOpen, setIsNewSavingsModalOpen] = useState(false);
-  const [savInst, setSavInst] = useState('');
-  const [savCurr, setSavCurr] = useState('HUF');
-  const [savOwner, setSavOwner] = useState('Közös');
-  const [goalName, setGoalName] = useState('Vésztartalék');
-  const [goalAmount, setGoalAmount] = useState('1500000');
-  const [goalDate, setGoalDate] = useState(new Date(new Date().setMonth(new Date().getMonth() + 12)).toISOString().split('T')[0]);
-  const [debtStrategy, setDebtStrategy] = useState<'avalanche' | 'snowball'>('avalanche');
-
   const [isLedgerModalOpen, setIsLedgerModalOpen] = useState(false);
-  const [selectedSavings, setSelectedSavings] = useState<number | null>(null);
-  const [ledgerType, setLedgerType] = useState<'deposit' | 'withdraw'>('deposit');
+  const [activeTxId, setActiveTxId] = useState<number | null>(null);
   const [ledgerAmount, setLedgerAmount] = useState('');
   const [ledgerReason, setLedgerReason] = useState('');
-  const [ledgerDate, setLedgerDate] = useState(new Date().toISOString().split('T')[0]);
-
-  const [isNewInvestmentModalOpen, setIsNewInvestmentModalOpen] = useState(false);
-  const [invName, setInvName] = useState('');
-  const [invType, setInvType] = useState('bond');
-  const [invPrincipal, setInvPrincipal] = useState('');
-  const [invRate, setInvRate] = useState('');
-  const [invPurchaseDate, setInvPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
-  const [invMaturityDate, setInvMaturityDate] = useState('');
-  const [invOwner, setInvOwner] = useState('Közös');
-  const [invMaturityValue, setInvMaturityValue] = useState('');
-  const [editingInvId, setEditingInvId] = useState<number | null>(null);
-  const [editingInvValue, setEditingInvValue] = useState('');
-  const [invNextPayoutAmount, setInvNextPayoutAmount] = useState('');
-  const [invNextPayoutDate, setInvNextPayoutDate] = useState('');
-  const [editingPayoutInvId, setEditingPayoutInvId] = useState<number | null>(null);
-  const [editingPayoutAmount, setEditingPayoutAmount] = useState('');
-  const [editingPayoutDate, setEditingPayoutDate] = useState('');
-
-  const getInvestmentValue = (inv: any) => {
-    const purchase = new Date(inv.purchaseDate);
-    const now = new Date();
-    
-    const diffTime = Math.max(0, now.getTime() - purchase.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (inv.currentValue !== undefined && inv.currentValue !== null && Number(inv.currentValue) > 0) {
-      const totalValue = Number(inv.currentValue);
-      const accruedInterest = totalValue - Number(inv.principalAmount);
-      return {
-        accruedInterest,
-        totalValue,
-        daysPassed: diffDays,
-        isManualOverride: true
-      };
-    }
-    
-    const dailyRate = (Number(inv.annualInterestRate) / 100) / 365.25;
-    const accruedInterest = Number(inv.principalAmount) * diffDays * dailyRate;
-    const totalValue = Number(inv.principalAmount) + accruedInterest;
-    
-    return {
-      accruedInterest,
-      totalValue,
-      daysPassed: diffDays,
-      isManualOverride: false
-    };
-  };
-
-  const getMaturityAmount = (inv: any) => {
-    if (inv.maturityAmount) return inv.maturityAmount;
-    
-    if (inv.name.toUpperCase().includes('DKJ') && inv.maturityDate) {
-      const purchase = new Date(inv.purchaseDate);
-      const maturity = new Date(inv.maturityDate);
-      const diffTime = Math.max(0, maturity.getTime() - purchase.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      if (diffDays > 0) {
-        const rate = Number(inv.annualInterestRate) / 100;
-        return Math.round(Number(inv.principalAmount) * (1 + rate * (diffDays / 365.25)));
-      }
-    }
-    return null;
-  };
-
-  const getEstimatedPayout = (inv: any) => {
-    if (inv.nextPayoutAmount && inv.nextPayoutDate) {
-      return {
-        amount: inv.nextPayoutAmount,
-        date: inv.nextPayoutDate,
-        isEstimated: false,
-        label: 'Következő kamat'
-      };
-    }
-
-    const nameUpper = inv.name.toUpperCase();
-    const now = new Date();
-    
-    if (nameUpper.includes('DKJ')) {
-      const date = inv.maturityDate ? new Date(inv.maturityDate) : null;
-      const amount = getMaturityAmount(inv) || inv.principalAmount;
-      return {
-        amount,
-        date: date ? date.toISOString().split('T')[0] : null,
-        isEstimated: true,
-        label: 'Lejárati kifizetés'
-      };
-    }
-
-    if (nameUpper.includes('FIXMÁP') || nameUpper.includes('FIX MÁP')) {
-      const principal = getMaturityAmount(inv) || inv.principalAmount;
-      const yearlyRate = Number(inv.annualInterestRate) || 7;
-      
-      const currentYear = now.getFullYear();
-      const payoutMonths = [0, 3, 6, 9];
-      let nextPayoutDateObj = new Date(currentYear, 6, 23);
-      
-      for (const m of payoutMonths) {
-        const candidate = new Date(currentYear, m, 23);
-        if (candidate > now) {
-          nextPayoutDateObj = candidate;
-          break;
-        }
-      }
-      if (nextPayoutDateObj <= now) {
-        nextPayoutDateObj = new Date(currentYear + 1, 0, 23);
-      }
-      
-      const amount = Math.round(Number(principal) * (yearlyRate / 100) / 4);
-      
-      return {
-        amount,
-        date: nextPayoutDateObj.toISOString().split('T')[0],
-        isEstimated: true,
-        label: 'Következő kamat'
-      };
-    }
-
-    if (nameUpper.includes('PMÁP') || nameUpper.includes('PMAP')) {
-      const maturity = inv.maturityDate ? new Date(inv.maturityDate) : null;
-      const principal = getMaturityAmount(inv) || inv.principalAmount;
-      const yearlyRate = Number(inv.annualInterestRate) || 0;
-      
-      let nextPayoutDateObj = new Date();
-      if (maturity) {
-        const payMonth = maturity.getMonth();
-        const payDay = maturity.getDate();
-        const currentYear = now.getFullYear();
-        nextPayoutDateObj = new Date(currentYear, payMonth, payDay);
-        if (nextPayoutDateObj <= now) {
-          nextPayoutDateObj = new Date(currentYear + 1, payMonth, payDay);
-        }
-      } else {
-        const purchase = new Date(inv.purchaseDate);
-        nextPayoutDateObj = new Date(now.getFullYear(), purchase.getMonth(), purchase.getDate());
-        if (nextPayoutDateObj <= now) {
-          nextPayoutDateObj = new Date(now.getFullYear() + 1, purchase.getMonth(), purchase.getDate());
-        }
-      }
-      
-      const amount = Math.round(Number(principal) * (yearlyRate / 100));
-      return {
-        amount,
-        date: nextPayoutDateObj.toISOString().split('T')[0],
-        isEstimated: true,
-        label: 'Következő kamat'
-      };
-    }
-
-    if (inv.maturityDate) {
-      return {
-        amount: getMaturityAmount(inv) || inv.principalAmount,
-        date: inv.maturityDate,
-        isEstimated: true,
-        label: 'Lejárati kifizetés'
-      };
-    }
-
-    return null;
-  };
-
-  const handleInvestmentSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    let finalRate = Number(invRate);
-    if (invMaturityValue && Number(invMaturityValue) > 0 && invMaturityDate && invPurchaseDate) {
-      const pDate = new Date(invPurchaseDate);
-      const mDate = new Date(invMaturityDate);
-      const diffTime = Math.max(0, mDate.getTime() - pDate.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDays > 0) {
-        const totalReturnRatio = (Number(invMaturityValue) - Number(invPrincipal)) / Number(invPrincipal);
-        const computedAnnualRate = totalReturnRatio * (365.25 / diffDays) * 100;
-        finalRate = Math.round(computedAnnualRate * 100) / 100;
-      }
-    }
-
-    addInvestment({
-      name: invName,
-      type: invType,
-      principalAmount: Number(invPrincipal),
-      annualInterestRate: finalRate,
-      purchaseDate: invPurchaseDate,
-      maturityDate: invMaturityDate || null,
-      owner: invOwner,
-      countInSavings: true,
-      maturityAmount: invMaturityValue ? Number(invMaturityValue) : null,
-      nextPayoutAmount: invNextPayoutAmount ? Number(invNextPayoutAmount) : null,
-      nextPayoutDate: invNextPayoutDate || null
-    });
-    setIsNewInvestmentModalOpen(false);
-    setInvName('');
-    setInvPrincipal('');
-    setInvRate('');
-    setInvMaturityValue('');
-    setInvNextPayoutAmount('');
-    setInvNextPayoutDate('');
-  };
 
   const [manualBalance, setManualBalance] = useState<string>('0');
-  
-  React.useEffect(() => {
+  const [balanceSaved, setBalanceSaved] = useState(false);
+  const [balanceSaving, setBalanceSaving] = useState(false);
+
+  useEffect(() => {
     const dbVal = user?.household?.manualBalance ?? user?.household?.manual_balance ?? 0;
     setManualBalance(dbVal.toString());
   }, [user?.household?.manualBalance, user?.household?.manual_balance]);
 
-  const handleManualBalanceBlur = () => {
-    const num = Number(manualBalance) || 0;
-    updateManualBalance(num);
+  const handleManualBalanceSave = async () => {
+    setBalanceSaving(true);
+    try {
+      await updateManualBalance(Number(manualBalance) || 0);
+      setBalanceSaved(true);
+      window.setTimeout(() => setBalanceSaved(false), 2000);
+    } finally {
+      setBalanceSaving(false);
+    }
   };
 
   const handleTxSubmit = (e: React.FormEvent) => {
@@ -340,7 +138,7 @@ export default function BudgetClient() {
       dueDate: txDue,
       isBudget: txIsBudget,
       isReserve: txIsReserve,
-      paidDate: txPaidDate
+      paidDate: txPaidDate,
     };
     if (editTxId) updateTransaction(editTxId, data);
     else addTransaction(data);
@@ -355,7 +153,7 @@ export default function BudgetClient() {
         description: txDesc,
         type: txType,
         amount: txAmount ? Number(txAmount) : undefined,
-        candidate_categories: categories
+        candidate_categories: categories,
       });
       const category = res.data?.data?.category;
       if (category) setTxCat(category);
@@ -366,90 +164,79 @@ export default function BudgetClient() {
 
   const openTxForm = (tx?: CashTransaction | null, defaultType: 'income' | 'expense' = 'expense') => {
     if (tx) {
-      setEditTxId(tx.id); setTxType(tx.type); setTxCat(tx.category);
-      setTxDesc(tx.description); setTxAmount(tx.amount.toString());
-      setTxDue(tx.dueDate); setTxIsBudget(tx.isBudget || false);
+      setEditTxId(tx.id);
+      setTxType(tx.type);
+      setTxCat(tx.category);
+      setTxDesc(tx.description);
+      setTxAmount(tx.amount.toString());
+      setTxDue(tx.dueDate);
+      setTxIsBudget(tx.isBudget || false);
       setTxIsReserve(tx.isReserve || false);
       setTxPaidDate(tx.paidDate || null);
     } else {
-      setEditTxId(null); setTxType(defaultType); setTxCat(categories[0]);
-      setTxDesc(''); setTxAmount(''); setTxDue(new Date().toISOString().split('T')[0]);
-      setTxIsBudget(false); setTxIsReserve(false); setTxPaidDate(null);
+      setEditTxId(null);
+      setTxType(defaultType);
+      setTxCat(categories[0]);
+      setTxDesc('');
+      setTxAmount('');
+      setTxDue(new Date().toISOString().split('T')[0]);
+      setTxIsBudget(false);
+      setTxIsReserve(false);
+      setTxPaidDate(null);
     }
     setIsTxModalOpen(true);
   };
 
-  const handleSavingsSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    addSavingsAccount({ 
-      institution: savInst, 
-      currency: savCurr, 
-      owner: savOwner,
-      count_in_savings: true
-    });
-    setIsNewSavingsModalOpen(false);
-    setSavInst('');
-  };
-
   const selectedYearMonth = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
-  const allMonthTransactions = transactions.filter(t => t.dueDate.startsWith(selectedYearMonth));
-  const reserves = allMonthTransactions.filter(t => t.isReserve);
-  const incomes = allMonthTransactions.filter(t => t.type === 'income' && !t.isReserve);
-  const expenses = allMonthTransactions.filter(t => t.type === 'expense' && !t.isReserve);
-  const monthlyBills = bills.filter(b => b.dueDate.startsWith(selectedYearMonth));
+  const allMonthTransactions = transactions.filter((t) => t.dueDate.startsWith(selectedYearMonth));
+  const reserves = allMonthTransactions.filter((t) => t.isReserve);
+  const incomes = allMonthTransactions.filter((t) => t.type === 'income' && !t.isReserve);
+  const expenses = allMonthTransactions.filter((t) => t.type === 'expense' && !t.isReserve);
+  const monthlyBills = bills.filter(
+    (b) => b.dueDate.startsWith(selectedYearMonth) && !isLegacySettlementBill(b),
+  );
 
-  const totalProjectedIncome = incomes.reduce((s,t) => s + t.amount, 0);
-  const totalIncomeReceived = incomes.filter(t => !!t.paidDate).reduce((s,t) => s + t.amount, 0);
-  
-  const totalActualSpent = expenses.reduce((s,t) => {
-     if (t.isBudget && t.subItems && t.subItems.length > 0) {
-       return s + t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0);
-     }
-     return s + (t.paidDate ? t.amount : 0);
-  }, 0) + monthlyBills.filter(b => !!b.paidDate).reduce((s,b) => {
-     return s + getBillPortion(b);
-  }, 0);
+  const totalIncomeReceived = incomes.filter((t) => !!t.paidDate).reduce((s, t) => s + t.amount, 0);
 
-  const totalProjectedExpense = expenses.reduce((s,t) => s + t.amount, 0) + monthlyBills.reduce((s,b) => {
-     return s + getBillPortion(b);
-  }, 0);
+  const totalActualSpent =
+    expenses.reduce((s, t) => {
+      if (t.isBudget && t.subItems && t.subItems.length > 0) {
+        return s + t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0);
+      }
+      return s + (t.paidDate ? t.amount : 0);
+    }, 0) + monthlyBills.filter((b) => !!b.paidDate).reduce((s, b) => s + getBillPortion(b), 0);
 
-  // --- LIQUIDITY CALCULATION ---
-  const currentTotalLiquidAssets = savings
-    .filter(s => s.count_in_savings !== false)
-    .reduce((sum, acc) => sum + convertToHUF(acc.ledger.reduce((s, l) => s + l.amount, 0), acc.currency), 0);
+  const totalProjectedExpense =
+    expenses.reduce((s, t) => s + t.amount, 0) + monthlyBills.reduce((s, b) => s + getBillPortion(b), 0);
 
-  const unpaidExpenses = expenses.filter(t => !t.paidDate).reduce((s, t) => {
-     if (t.isBudget) {
-       const spent = t.subItems ? t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0) : 0;
-       return s + Math.max(0, t.amount - spent);
-     }
-     return s + t.amount;
-  }, 0) + 
-                         monthlyBills.filter(b => !b.paidDate).reduce((s, b) => {
-                            return s + getBillPortion(b);
-                         }, 0);
+  const unpaidExpenses =
+    expenses
+      .filter((t) => !t.paidDate)
+      .reduce((s, t) => {
+        if (t.isBudget) {
+          const spent = t.subItems ? t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0) : 0;
+          return s + Math.max(0, t.amount - spent);
+        }
+        return s + t.amount;
+      }, 0) + monthlyBills.filter((b) => !b.paidDate).reduce((s, b) => s + getBillPortion(b), 0);
 
-  const unpaidIncome = incomes.filter(t => !t.paidDate).reduce((s, t) => s + t.amount, 0);
-
-  const unpaidReserves = reserves.filter(t => !t.paidDate).reduce((s, t) => s + Math.abs(t.amount), 0);
-
+  const unpaidReserves = reserves.filter((t) => !t.paidDate).reduce((s, t) => s + Math.abs(t.amount), 0);
   const projectedFinalLiquidAssets = Number(manualBalance) - unpaidExpenses - unpaidReserves;
 
   const today = new Date().toISOString().split('T')[0];
-  const overdueExpenses = expenses.filter(t => !t.paidDate && t.dueDate < today).reduce((s, t) => s + t.amount, 0) + 
-                          monthlyBills.filter(b => !b.paidDate && b.dueDate < today).reduce((s, b) => {
-                             return s + getBillPortion(b);
-                          }, 0);
+  const overdueExpenses =
+    expenses.filter((t) => !t.paidDate && t.dueDate < today).reduce((s, t) => s + t.amount, 0) +
+    monthlyBills.filter((b) => !b.paidDate && b.dueDate < today).reduce((s, b) => s + getBillPortion(b), 0);
 
-  const allExpenseCategories = Array.from(new Set([...categories, ...expenses.map(e => e.category || 'Egyéb')]));
-  const categoryData = allExpenseCategories.map(name => {
-     const amt = expenses.filter(e => (e.category || 'Egyéb') === name).reduce((s,e) => s+e.amount, 0);
-     const billAmt = name === 'Rezsi' ? monthlyBills.reduce((s,b) => s + getBillPortion(b), 0) : 0;
-     return { name, value: amt + billAmt };
-  }).filter(c => c.value > 0);
-
-  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#ef4444', '#8b5cf6'];
+  const allExpenseCategories = Array.from(new Set([...categories, ...expenses.map((e) => e.category || 'Egyéb')]));
+  const categoryData = allExpenseCategories
+    .map((name) => {
+      const amt = expenses.filter((e) => (e.category || 'Egyéb') === name).reduce((s, e) => s + e.amount, 0);
+      const billAmt = name === 'Rezsi' ? monthlyBills.reduce((s, b) => s + getBillPortion(b), 0) : 0;
+      return { name, value: amt + billAmt };
+    })
+    .filter((c) => c.value > 0)
+    .sort((a, b) => b.value - a.value);
 
   interface TableItem {
     id: number | string;
@@ -464,1039 +251,815 @@ export default function BudgetClient() {
     type?: 'income' | 'expense';
   }
 
-  const renderTable = (items: CashTransaction[], title: string, type: 'income' | 'expense', includeBills: boolean = false) => {
-    const allTableCategories = Array.from(new Set([...categories, ...items.map((i: CashTransaction) => i.category || 'Egyéb')]));
-    const grouped = allTableCategories.reduce((acc, cat) => {
-       let filtered: TableItem[] = items.filter(i => (i.category || 'Egyéb') === cat).map(i => ({
-         id: i.id,
-         description: i.description,
-         category: i.category,
-         amount: i.amount,
-         dueDate: i.dueDate,
-         paidDate: i.paidDate,
-         isBudget: i.isBudget,
-         subItems: i.subItems,
-         type: i.type
-       }));
-       
-       if (cat === 'Rezsi' && type === 'expense' && includeBills) {
-          const billItems: TableItem[] = monthlyBills.map(b => ({
-             id: `bill-${b.id}`,
-             description: b.type,
-             category: 'Rezsi',
-             amount: getBillPortion(b),
-             dueDate: b.dueDate,
-             paidDate: b.paidDate,
-             isBill: true
-          })).filter(b => b.amount > 0);
-          filtered = [...filtered, ...billItems];
-       }
-
-       if (filtered.length > 0) acc[cat] = filtered;
-       return acc;
+  const groupedFeed = (
+    items: CashTransaction[],
+    type: 'income' | 'expense',
+    includeBills = false,
+  ): Record<string, TableItem[]> => {
+    const allCats = Array.from(new Set([...categories, ...items.map((i) => i.category || 'Egyéb')]));
+    const grouped = allCats.reduce((acc, cat) => {
+      let filtered: TableItem[] = items
+        .filter((i) => (i.category || 'Egyéb') === cat)
+        .map((i) => ({
+          id: i.id,
+          description: i.description,
+          category: i.category,
+          amount: i.amount,
+          dueDate: i.dueDate,
+          paidDate: i.paidDate,
+          isBudget: i.isBudget,
+          subItems: i.subItems,
+          type: i.type,
+        }));
+      if (cat === 'Rezsi' && type === 'expense' && includeBills) {
+        const billItems: TableItem[] = monthlyBills
+          .map((b) => ({
+            id: `bill-${b.id}`,
+            description: b.type,
+            category: 'Rezsi',
+            amount: getBillPortion(b),
+            dueDate: b.dueDate,
+            paidDate: b.paidDate,
+            isBill: true,
+          }))
+          .filter((b) => b.amount > 0);
+        filtered = [...filtered, ...billItems];
+      }
+      if (filtered.length > 0) acc[cat] = filtered;
+      return acc;
     }, {} as Record<string, TableItem[]>);
+    return grouped;
+  };
+
+  const cashflowMetrics: MetricItem[] = [
+    {
+      label: 'Fizetendő',
+      value: formatHUF(unpaidExpenses),
+      info: HELP.budget.payable,
+      hint: 'Ebben a hónapban',
+      icon: ReceiptText,
+      tone: unpaidExpenses > 0 ? 'warning' : 'success',
+    },
+    {
+      label: 'Marad',
+      value: formatHUF(projectedFinalLiquidAssets),
+      info: HELP.budget.remaining,
+      hint: 'Egyenleg − fizetendő',
+      icon: TrendingUp,
+      tone: projectedFinalLiquidAssets >= 0 ? 'success' : 'danger',
+      emphasis: true,
+    },
+    {
+      label: 'Lejárt',
+      value: formatHUF(overdueExpenses),
+      info: HELP.budget.overdue,
+      hint: overdueExpenses > 0 ? 'Sürgős!' : 'Nincs lejárt',
+      icon: AlertCircle,
+      tone: overdueExpenses > 0 ? 'danger' : 'default',
+    },
+  ];
+
+  const renderFeed = (
+    items: CashTransaction[],
+    title: string,
+    type: 'income' | 'expense',
+    includeBills = false,
+  ) => {
+    const grouped = groupedFeed(items, type, includeBills);
+    const totalCount = Object.values(grouped).reduce((s, arr) => s + arr.length, 0);
+
+    if (Object.keys(grouped).length === 0) {
+      return (
+        <Section
+          title={title}
+          description={`Még nincs ${type === 'income' ? 'bevétel' : 'kiadás'} rögzítve ebben a hónapban.`}
+        >
+          <EmptyState
+            icon={type === 'income' ? ArrowUpRight : ArrowDownRight}
+            title={`Nincs ${type === 'income' ? 'bevétel' : 'kiadás'}`}
+            description="Használd a jobb felső sarokban az „Új tétel” gombot az első tétel rögzítéséhez."
+          />
+        </Section>
+      );
+    }
+
+    const flatItems = Object.entries(grouped).flatMap(([cat, list]) =>
+      list.map((item) => ({ ...item, _category: cat })),
+    );
+
+    const columns: DataTableColumn<TableItem & { _category: string }>[] = [
+      {
+        key: 'description',
+        header: 'Megnevezés',
+        width: '30%',
+        cell: (t) => {
+          const isOverdue = !t.paidDate && t.dueDate < today;
+          const Icon = t.isBill ? ReceiptText : type === 'income' ? ArrowUpRight : ArrowDownRight;
+          const toneCls = t.paidDate
+            ? 'bg-emerald-100 text-emerald-700'
+            : isOverdue
+              ? 'bg-rose-100 text-rose-700'
+              : type === 'income'
+                ? 'bg-emerald-100 text-emerald-700'
+                : 'bg-amber-100 text-amber-700';
+          return (
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-md', toneCls)}>
+                <Icon size={13} strokeWidth={2.2} />
+              </div>
+              <div className="min-w-0">
+                <div className="font-medium text-sm text-foreground truncate flex items-center gap-2">
+                  <span className="truncate">{t.description}</span>
+                  {t.isBill && (
+                    <StatusPill status="info" size="xs">
+                      <Building2 size={9} /> rezsi
+                    </StatusPill>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'date',
+        header: 'Határidő',
+        width: '14%',
+        cell: (t) => {
+          const isOverdue = !t.paidDate && t.dueDate < today;
+          return (
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 text-xs tabular-nums',
+                isOverdue ? 'text-rose-600 font-medium' : 'text-muted-foreground',
+              )}
+            >
+              <Calendar size={11} strokeWidth={2.2} />
+              {formatDate(t.dueDate)}
+              {isOverdue && <span className="text-[10px] uppercase tracking-wider">lejárt</span>}
+            </span>
+          );
+        },
+      },
+      {
+        key: 'budget',
+        header: 'Felhasználva',
+        width: '22%',
+        cell: (t) => {
+          if (!t.isBudget) return <span className="text-xs text-muted-foreground/60">—</span>;
+          const spent = t.subItems ? t.subItems.reduce((acc, si) => acc + Math.abs(si.amount), 0) : 0;
+          const progress = Math.min(100, (spent / t.amount) * 100);
+          return (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveTxId(t.id as number);
+                setIsLedgerModalOpen(true);
+              }}
+              className="flex flex-col gap-1 w-full text-left group/budget"
+            >
+              <span className="text-[0.65rem] text-primary inline-flex items-center gap-1 group-hover/budget:underline">
+                <History size={10} /> {t.subItems?.length || 0} ledger · {formatHUF(spent)}/{formatHUF(t.amount)}
+              </span>
+              <span className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                <span
+                  className={cn(
+                    'block h-full rounded-full transition-all',
+                    progress > 100 ? 'bg-rose-500' : progress > 90 ? 'bg-amber-500' : 'bg-primary',
+                  )}
+                  style={{ width: `${progress}%` }}
+                />
+              </span>
+            </button>
+          );
+        },
+      },
+      {
+        key: 'amount',
+        header: 'Összeg',
+        align: 'right',
+        width: '14%',
+        cell: (t) => {
+          const spent = t.isBudget && t.subItems ? t.subItems.reduce((acc, si) => acc + Math.abs(si.amount), 0) : 0;
+          const remaining = t.amount - spent;
+          return (
+            <div className="flex flex-col items-end">
+              <span
+                className={cn(
+                  'text-sm font-semibold tabular-nums',
+                  type === 'income' ? 'text-emerald-600' : 'text-foreground',
+                )}
+              >
+                {type === 'income' ? '+' : '−'} {formatHUF(t.amount)}
+              </span>
+              {t.isBudget && (
+                <span
+                  className={cn(
+                    'text-[0.65rem] tabular-nums',
+                    remaining < 0 ? 'text-rose-600 font-semibold' : 'text-muted-foreground',
+                  )}
+                >
+                  marad {formatHUF(remaining)}
+                </span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        key: 'status',
+        header: (
+          <span className="inline-flex items-center justify-center gap-1 w-full">
+            <span>Státusz</span>
+            <InfoTooltip content={HELP.budget.statusToggle} side="top" label="Státusz – kattintható" />
+          </span>
+        ),
+        align: 'center',
+        width: '12%',
+        cell: (t) => {
+          if (t.isBill) {
+            return (
+              <StatusPill status={t.paidDate ? 'success' : 'warning'} size="xs" dot>
+                {t.paidDate ? 'kész' : 'függőben'}
+              </StatusPill>
+            );
+          }
+          const isOverdue = !t.paidDate && t.dueDate < today;
+          const statusLabel = t.paidDate
+            ? `Kifizetve (${formatDate(t.paidDate)}) — kattints visszaállításhoz`
+            : isOverdue
+              ? 'Lejárt — kattints kifizetettként jelöléshez'
+              : 'Függőben — kattints kifizetettként jelöléshez';
+          return (
+            <StatusToggleButton
+              status={t.paidDate ? 'success' : isOverdue ? 'danger' : 'warning'}
+              title={statusLabel}
+              pending={isTxPending(t.id as number)}
+              onClick={() =>
+                void wrapTxPending(t.id as number, () =>
+                  updateTransaction(t.id as number, {
+                    paidDate: t.paidDate ? null : new Date().toISOString().split('T')[0],
+                  }),
+                )
+              }
+            >
+              {t.paidDate ? (
+                <>
+                  <CheckCircle size={9} /> {formatDate(t.paidDate)}
+                </>
+              ) : isOverdue ? (
+                <>
+                  <AlertCircle size={9} /> lejárt
+                </>
+              ) : (
+                <>
+                  <Clock size={9} /> függőben
+                </>
+              )}
+            </StatusToggleButton>
+          );
+        },
+      },
+      {
+        key: 'actions',
+        header: '',
+        align: 'right',
+        width: '8%',
+        cell: (t) =>
+          !t.isBill ? (
+            <div className="flex items-center justify-end gap-0.5">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => openTxForm(t as unknown as CashTransaction)}
+              >
+                <Edit3 size={13} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground hover:text-destructive"
+                onClick={() =>
+                  requestDelete({
+                    title: 'Tétel törlése',
+                    message: `Biztosan törlöd a „${t.description}" tételt? Ez a művelet nem vonható vissza.`,
+                    onConfirm: () => deleteTransaction(t.id as number),
+                  })
+                }
+              >
+                <Trash2 size={13} />
+              </Button>
+            </div>
+          ) : null,
+      },
+    ];
 
     return (
-      <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl shadow-2xl overflow-hidden mb-6">
-        <div className="p-4 md:p-5 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
-           <h3 className="text-sm font-black uppercase tracking-widest text-slate-200">{title}</h3>
-           <button 
-             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20 transition-colors" 
-             onClick={() => openTxForm(null, type)}
-           >
-             <Plus size={14} /> Új tétel
-           </button>
-        </div>
-        <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left border-collapse min-w-[600px]">
-            <thead>
-              <tr className="border-b border-white/5 bg-white/[0.01] text-[0.65rem] uppercase tracking-widest text-slate-500 font-black">
-                <th className="p-3 pl-5 w-2/5">Megnevezés</th>
-                <th className="p-3">Összeg</th>
-                <th className="p-3">Dátum</th>
-                <th className="p-3 text-center">Státusz</th>
-                <th className="p-3 pr-5 w-24 text-right">Műveletek</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {allTableCategories.map(cat => {
-                if (!grouped[cat]) return null;
-                return (
-                  <React.Fragment key={cat}>
-                    <tr className="bg-white/[0.03]">
-                      <td colSpan={5} className="py-2 px-5 text-[0.65rem] font-black text-brand-primary uppercase tracking-widest">
-                        <div className="flex items-center gap-2">
-                          <Folder size={12} /> {cat}
-                        </div>
-                      </td>
-                    </tr>
-                    {grouped[cat].map((t: TableItem) => {
-                       const spent = t.isBudget && t.subItems ? t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0) : 0;
-                       const remaining = t.amount - spent;
-                       const progress = t.isBudget ? Math.min(100, (spent / t.amount) * 100) : 0;
-                       const todayStr = new Date().toISOString().split('T')[0];
-                       const isOverdue = !t.paidDate && t.dueDate < todayStr;
-
-                       return (
-                         <tr key={t.id} className="hover:bg-white/[0.02] transition-colors group">
-                           <td className="p-3 pl-5">
-                             <div className="font-bold text-sm text-slate-200">{t.description}</div>
-                             {t.isBudget && (
-                               <div 
-                                 className="mt-1.5 cursor-pointer group/budget" 
-                                 onClick={()=>{setActiveTxId(t.id as number); setIsLedgerModalOpen(true);}}
-                               >
-                                 <div className="flex items-center gap-1.5 text-[0.65rem] font-black text-brand-primary group-hover/budget:text-brand-light transition-colors uppercase tracking-wider">
-                                    <History size={10} /> Rögzített tételek ({t.subItems?.length || 0})
-                                 </div>
-                                 <div className="w-full h-1 bg-white/10 rounded-full mt-1.5 overflow-hidden">
-                                   <div 
-                                     className={`h-full rounded-full transition-all ${progress > 90 ? 'bg-red-500' : 'bg-brand-primary'}`} 
-                                     style={{ width: `${progress}%` }} 
-                                   />
-                                 </div>
-                               </div>
-                             )}
-                           </td>
-                           <td className="p-3">
-                             <div className={`font-black text-sm ${type === 'income' ? 'text-green-500' : 'text-slate-200'}`}>
-                               {formatHUF(t.amount)}
-                             </div>
-                             {t.isBudget && (
-                               <div className="text-[0.65rem] font-medium text-slate-500 mt-1">
-                                 Elköltve: {formatHUF(spent)} | <span className={`${remaining < 0 ? 'text-red-500 font-bold' : ''}`}>Maradt: {formatHUF(remaining)}</span>
-                               </div>
-                             )}
-                           </td>
-                           <td className={`p-3 text-xs font-bold ${isOverdue ? 'text-red-400 font-black' : 'text-slate-400'}`}>
-                             {formatDate(t.dueDate)}
-                           </td>
-                           <td className="p-3 text-center">
-                             <button 
-                               onClick={() => updateTransaction(t.id as number, { paidDate: t.paidDate ? null : new Date().toISOString().split('T')[0] })}
-                               className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-lg text-[0.65rem] font-black border transition-colors whitespace-nowrap min-w-[90px]
-                                 ${t.paidDate 
-                                   ? 'bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20' 
-                                   : isOverdue
-                                     ? 'bg-red-500/15 text-red-500 border-red-500/35 hover:bg-red-500/25 animate-pulse'
-                                     : 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20'}
-                               `}
-                             >
-                               {t.paidDate ? (
-                                 <><CheckCircle size={10} /> {formatDate(t.paidDate)}</>
-                               ) : isOverdue ? (
-                                 <><AlertCircle size={10} /> LEJÁRT</>
-                               ) : (
-                                 <><Clock size={10} /> FÜGGŐBEN</>
-                               )}
-                             </button>
-                           </td>
-                          <td className="p-3 pr-5 text-right">
-                            <div className="flex justify-end gap-2 opacity-100 transition-opacity">
-                              <button onClick={() => openTxForm(t as unknown as CashTransaction)} className="p-1.5 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors"><Edit3 size={14} /></button>
-                              <button onClick={() => deleteTransaction(t.id as number)} className="p-1.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={14} /></button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Section title={`${title} · ${totalCount}`}>
+        <DataTable
+          columns={columns}
+          data={flatItems}
+          rowKey={(t) => `${t._category}-${t.id}`}
+          groupBy={(t) => t._category}
+          groupHeader={(group, rows) => {
+            const groupTotal = rows.reduce((s, r) => s + r.amount, 0);
+            return (
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-wider text-primary">
+                  <Folder size={11} strokeWidth={2.2} />
+                  {group}
+                </span>
+                <span className="text-xs font-semibold tabular-nums text-foreground">{formatHUF(groupTotal)}</span>
+              </div>
+            );
+          }}
+          minWidth="780px"
+        />
+      </Section>
     );
   };
 
   return (
-    <div className="flex flex-col gap-6 w-full">
-      
-      {/* HEADER SECTION */}
-      <div className="flex flex-wrap justify-between items-center gap-4 pb-4 border-b border-white/10">
-        <div className="flex gap-2">
-          <button 
-            onClick={() => setActiveTab('cashflow')} 
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border
-              ${activeTab === 'cashflow' ? 'bg-brand-primary border-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'bg-transparent border-white/10 text-slate-400 hover:bg-white/5 hover:text-white'}
-            `}
-          >
-            <Wallet size={16} /> Cashflow
-          </button>
-          <button 
-            onClick={() => setActiveTab('savings')} 
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border
-              ${activeTab === 'savings' ? 'bg-brand-primary border-brand-primary text-white shadow-lg shadow-brand-primary/20' : 'bg-transparent border-white/10 text-slate-400 hover:bg-white/5 hover:text-white'}
-            `}
-          >
-            <PiggyBank size={16} /> Széf
-          </button>
-        </div>
-        {activeTab === 'cashflow' && (
-          <div className="flex gap-2">
-             <button 
-               onClick={() => clonePreviousMonth(selectedMonth, selectedYear)} 
-               className="px-3 py-1.5 rounded-lg text-xs font-bold border border-white/10 text-slate-300 hover:bg-white/5 transition-colors"
-             >
-               Múlt havi klónozása
-             </button>
-             <button 
-               onClick={() => openTxForm(null, 'expense')} 
-               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-primary hover:bg-brand-light text-white transition-colors shadow-lg shadow-brand-primary/20"
-             >
-               <Plus size={14} /> Új Kiadás
-             </button>
+    <div className="flex flex-col gap-7 w-full max-w-[1500px] mx-auto">
+      <PageHeader
+        breadcrumbs={[{ label: 'Pénzügyek' }, { label: 'Költségvetés' }]}
+        title="Cashflow"
+        description="Bevételek, kiadások és tárgyhavi rezsi — egy nézetben."
+        actions={
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              loading={cloning}
+              onClick={() => void runClone(() => clonePreviousMonth(selectedMonth, selectedYear))}
+            >
+              {!cloning && <Copy size={13} />} {cloning ? 'Másolás…' : 'Múlt havi'}
+            </Button>
+            <Button size="sm" onClick={() => openTxForm(null)}>
+              <Plus size={13} /> Új tétel
+            </Button>
+          </>
+        }
+      />
+
+      {/* Top: editable balance + metrics side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="relative overflow-hidden rounded-xl border border-primary/25 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 shadow-glow"
+        >
+          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-primary via-violet-500 to-primary" />
+          <FieldLabel info={HELP.budget.manualBalance} className="text-primary">
+            <span className="inline-flex items-center gap-1.5 text-[0.7rem] font-semibold uppercase tracking-wider">
+              <Wallet size={11} /> Aktuális egyenleg
+            </span>
+          </FieldLabel>
+          <div className="relative mt-3">
+            <Input
+              type="number"
+              inputMode="numeric"
+              value={manualBalance}
+              onChange={(e) => {
+                setManualBalance(e.target.value);
+                setBalanceSaved(false);
+              }}
+              onBlur={handleManualBalanceSave}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleManualBalanceSave();
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              disabled={balanceSaving}
+              className="h-12 pr-14 text-2xl font-bold tabular-nums bg-card/80 border-primary/20 focus-visible:ring-primary/30"
+              placeholder="0"
+              aria-label="Aktuális egyenleg forintban"
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+              Ft
+            </span>
           </div>
-        )}
+          <div className="mt-2.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <Pencil size={11} strokeWidth={2.2} />
+              Bankszámla / készpénz
+            </span>
+            {balanceSaving ? (
+              <span>Mentés…</span>
+            ) : balanceSaved ? (
+              <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                <Check size={11} strokeWidth={2.5} /> Mentve
+              </span>
+            ) : null}
+          </div>
+        </motion.div>
+        <MetricStrip items={cashflowMetrics} columns={3} variant="separated" />
       </div>
 
-      {activeTab === 'cashflow' && (
-        <div className="flex flex-col gap-6">
-          {aiOverspend && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-2xl p-5 shadow-lg col-span-1">
-                <div className="text-[0.65rem] font-black text-brand-primary uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                  <Bot size={14} /> AI túlköltés elemző
-                </div>
-                <div className="text-sm text-slate-300 mb-1">
-                  Státusz: <b className={aiOverspend?.status === 'overspent' ? 'text-red-500' : 'text-green-500'}>{aiOverspend?.status === 'overspent' ? 'Túlköltés' : 'Rendben'}</b>
-                </div>
-                {typeof aiOverspend?.overspend_amount === 'number' && (
-                  <div className="text-2xl font-black text-white">{formatHUF(aiOverspend.overspend_amount)}</div>
-                )}
-                 {!!aiMeta?.fallback_used && (
-                  <div className="mt-2 text-[0.65rem] text-amber-500 font-bold">Fallback elemzés</div>
-                )}
-              </div>
-              {!!aiOverspend?.top_drivers?.length && (
-                <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-2xl p-5 shadow-lg col-span-1 md:col-span-2">
-                  <div className="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest mb-2">Főbb kiadási driverek</div>
-                  <div className="flex flex-wrap gap-2">
-                    {aiOverspend.top_drivers.map((d: { category: string; amount: number }) => (
-                      <div key={d.category} className="bg-white/5 px-3 py-1.5 rounded-xl border border-white/5 text-xs">
-                        <span className="text-slate-400">{d.category}:</span> <span className="text-white font-bold">{formatHUF(d.amount)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+      {aiOverspend && (
+        <AccentPanel
+          tone={aiOverspend?.status === 'overspent' ? 'warning' : 'success'}
+          icon={Bot}
+          title={
+            aiOverspend?.status === 'overspent' ? (
+              <span>
+                AI túlköltés érzékelve:{' '}
+                {typeof aiOverspend?.overspend_amount === 'number' ? formatHUF(aiOverspend.overspend_amount) : ''}
+              </span>
+            ) : (
+              'AI túlköltés ellenőrzés: rendben'
+            )
+          }
+          description="Modell alapú elemzés a tárgyhavi költésekről"
+          titleInfo={HELP.budget.aiOverspend}
+        >
+          {!!aiOverspend?.top_drivers?.length && (
+            <div className="flex flex-wrap gap-1.5">
+              {aiOverspend.top_drivers.map((d: { category: string; amount: number }) => (
+                <span
+                  key={d.category}
+                  className="inline-flex items-center gap-1 rounded-md bg-card border border-border px-2 py-1 text-[0.7rem] shadow-sm"
+                >
+                  <Tag size={9} strokeWidth={2.2} className="text-muted-foreground" />
+                  <span className="text-muted-foreground">{d.category}:</span>
+                  <span className="font-semibold tabular-nums text-foreground">{formatHUF(d.amount)}</span>
+                </span>
+              ))}
             </div>
           )}
+        </AccentPanel>
+      )}
 
-          {/* MAIN DASHBOARD SUMMARY */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-             {/* Még fizetendő */}
-             <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
-                <div className="text-[0.65rem] font-black text-red-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                   Még fizetendő:
-                </div>
-                <div className="text-3xl font-black text-red-500 tracking-tight">{formatHUF(unpaidExpenses)}</div>
-             </div>
+      {/* Summary strip */}
+      <div className="rounded-lg border border-border bg-card grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-border overflow-hidden shadow-soft">
+        {[
+          {
+            label: 'Tervezett keret',
+            value: formatHUF(totalProjectedExpense),
+            tone: '',
+            bar: 'bg-muted-foreground/20',
+          },
+          {
+            label: 'Már kifizetve',
+            value: formatHUF(totalActualSpent),
+            tone: '',
+            bar: 'bg-amber-500',
+          },
+          {
+            label: 'Befolyt bevétel',
+            value: formatHUF(totalIncomeReceived),
+            tone: 'text-emerald-600',
+            bar: 'bg-emerald-500',
+          },
+          {
+            label: 'Havi egyenleg',
+            value: formatHUF(totalIncomeReceived - totalActualSpent),
+            tone: totalIncomeReceived - totalActualSpent < 0 ? 'text-rose-600' : 'text-primary',
+            bar:
+              totalIncomeReceived - totalActualSpent < 0
+                ? 'bg-rose-500'
+                : 'bg-gradient-to-r from-primary to-violet-500',
+          },
+        ].map((m) => (
+          <div key={m.label} className="relative px-4 py-3.5 group hover:bg-muted/30 transition-colors">
+            <span
+              className={cn(
+                'absolute inset-y-0 left-0 w-[2px] opacity-0 group-hover:opacity-100 transition-opacity',
+                m.bar,
+              )}
+            />
+            <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">{m.label}</p>
+            <p
+              className={cn(
+                'text-base lg:text-lg font-semibold tabular-nums mt-1 tracking-tight',
+                m.tone || 'text-foreground',
+              )}
+            >
+              {m.value}
+            </p>
+          </div>
+        ))}
+      </div>
 
-             {/* Van még */}
-             <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
-                <div className="text-[0.65rem] font-black text-emerald-500 uppercase tracking-widest mb-2 flex items-center justify-between gap-1.5">
-                   Van még:
-                   <span className="text-[0.6rem] font-medium opacity-50 lowercase tracking-normal">Kattints a módosításhoz</span>
+      {/* Main grid: category breakdown rail + feed */}
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+        <Section title="Kategória összegzés" info={HELP.budget.categorySummary} description="Tárgyhavi kiadások">
+          <div className="rounded-lg border border-border bg-card overflow-hidden shadow-soft">
+            {categoryData.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6 px-4">Még nincs adat.</p>
+            ) : (
+              <>
+                {categoryData.map((c, i) => {
+                  const maxValue = Math.max(...categoryData.map((d) => d.value));
+                  const progress = maxValue > 0 ? (c.value / maxValue) * 100 : 0;
+                  return (
+                    <div
+                      key={c.name}
+                      className={cn('px-4 py-3 group hover:bg-muted/30 transition-colors', i > 0 && 'border-t border-border')}
+                    >
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-xs font-medium text-foreground inline-flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                          {c.name}
+                        </span>
+                        <span className="text-xs font-semibold tabular-nums text-foreground">{formatHUF(c.value)}</span>
+                      </div>
+                      <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-primary to-violet-500 transition-all duration-500"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="flex justify-between items-center px-4 py-3 border-t-2 border-border bg-muted/40">
+                  <span className="text-[0.7rem] font-semibold uppercase tracking-wider">Összesen</span>
+                  <span className="text-sm font-semibold text-gradient tabular-nums">{formatHUF(totalProjectedExpense)}</span>
                 </div>
-                <input 
-                  type="number"
-                  value={manualBalance}
-                  onChange={(e) => setManualBalance(e.target.value)}
-                  onBlur={handleManualBalanceBlur}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleManualBalanceBlur();
-                      (e.target as HTMLElement).blur();
-                    }
-                  }}
-                  className="w-full bg-transparent text-3xl font-black text-white tracking-tight outline-none border-b border-transparent focus:border-emerald-500/30 transition-all p-0"
-                  placeholder="0"
+              </>
+            )}
+          </div>
+        </Section>
+
+        <div className="flex flex-col gap-7">
+          {renderFeed(incomes, 'Bevételek', 'income')}
+          {reserves.length > 0 && renderFeed(reserves, 'Tartalékok', 'expense')}
+          {renderFeed(expenses, 'Kiadások', 'expense', true)}
+        </div>
+      </div>
+
+      {/* TRANSACTION MODAL */}
+      <Modal
+        isOpen={isTxModalOpen}
+        onClose={() => setIsTxModalOpen(false)}
+        title={editTxId ? 'Tétel szerkesztése' : 'Új tétel'}
+        description={HELP.budget.txTypeIntro}
+        contentKey={`${txType}-${txIsBudget}-${txIsReserve}`}
+      >
+        <form onSubmit={handleTxSubmit} className="flex flex-col gap-4">
+          <SegmentedControl
+            variant="choice"
+            value={txType}
+            onChange={(v) => {
+              const next = v as 'income' | 'expense';
+              setTxType(next);
+              if (next === 'income') setTxIsBudget(false);
+              else setTxIsReserve(false);
+            }}
+            options={[
+              {
+                value: 'income',
+                label: 'Bevétel',
+                icon: ArrowUpRight,
+                tone: 'positive',
+                description: 'Fizetés, visszatérítés, bevétel',
+              },
+              {
+                value: 'expense',
+                label: 'Kiadás',
+                icon: ArrowDownRight,
+                tone: 'negative',
+                description: 'Költség, rezsi, vásárlás',
+              },
+            ]}
+            animated={false}
+          />
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-foreground">
+              {txType === 'expense' ? 'Kiadás típusa' : 'Bevétel típusa'}
+            </p>
+            <FieldHint className="-mt-1 mb-1">
+              {txType === 'expense'
+                ? 'Normál kiadás = azonnal cashflow. Saját keret = előbb keret, költést később ledgerrel.'
+                : 'Normál bevétel = növeli a költhető egyenleget. Tartalék = félretett összeg, nem cashflow.'}
+            </FieldHint>
+            {txType === 'expense' ? (
+              <div className="grid gap-2" role="radiogroup" aria-label="Kiadás típusa">
+                <FormChoiceCard
+                  selected={!txIsBudget}
+                  onSelect={() => setTxIsBudget(false)}
+                  title="Normál kiadás (cashflow)"
+                  description={HELP.budget.expenseNormal}
+                  example="Lidl, benzín, előfizetés"
+                  icon={ReceiptText}
                 />
-             </div>
-
-             {/* Maradt */}
-             <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
-                <div className="text-[0.65rem] font-black text-emerald-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                   Maradt:
-                </div>
-                <div className="text-3xl font-black text-emerald-400 tracking-tight">{formatHUF(projectedFinalLiquidAssets)}</div>
-             </div>
-
-             {/* Lejárt */}
-             <div className={`rounded-2xl p-6 shadow-lg relative overflow-hidden border group
-               ${overdueExpenses > 0 ? 'bg-red-600 border-red-500' : 'bg-red-500/5 border-white/5'}
-             `}>
-                <div className={`text-[0.65rem] font-black uppercase tracking-widest mb-2
-                  ${overdueExpenses > 0 ? 'text-white' : 'text-red-500'}
-                `}>
-                  Lejárt:
-                </div>
-                <div className={`text-3xl font-black tracking-tight ${overdueExpenses > 0 ? 'text-white' : 'text-red-500'}`}>
-                  {formatHUF(overdueExpenses)}
-                </div>
-             </div>
+                <FormChoiceCard
+                  selected={txIsBudget}
+                  onSelect={() => setTxIsBudget(true)}
+                  title="Saját keret (ledger)"
+                  description={HELP.budget.expenseLedger}
+                  example="Heti bevásárlás 80 000 Ft keret"
+                  icon={Wallet}
+                />
+              </div>
+            ) : (
+              <div className="grid gap-2" role="radiogroup" aria-label="Bevétel típusa">
+                <FormChoiceCard
+                  selected={!txIsReserve}
+                  onSelect={() => setTxIsReserve(false)}
+                  title="Bevétel (cashflow)"
+                  description={HELP.budget.incomeNormal}
+                  example="Fizetés, visszatérítés"
+                  icon={ArrowUpRight}
+                />
+                <FormChoiceCard
+                  selected={txIsReserve}
+                  onSelect={() => setTxIsReserve(true)}
+                  title="Tartalék"
+                  badge="Nem cashflow"
+                  description={HELP.budget.incomeReserve}
+                  example="Állampapírra félretett összeg ebben a hónapban"
+                  icon={PiggyBank}
+                  warning={HELP.budget.reserveWarning}
+                />
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div className="lg:col-span-1">
-              <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-5 shadow-2xl overflow-hidden">
-                <div className="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest mb-4">Költségvetés összefoglaló</div>
-                <div className="flex flex-col">
-                  {categoryData.map((c, i) => (
-                    <div key={i} className="flex justify-between items-center py-2.5 border-b border-white/5 last:border-0">
-                      <span className="text-xs font-bold text-slate-400">{c.name}</span>
-                      <span className="text-sm font-black text-white">{formatHUF(c.value)}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between items-center pt-4 mt-2 border-t-2 border-white/10">
-                    <span className="text-xs font-black text-white uppercase tracking-wider">Összesen</span>
-                    <span className="text-lg font-black text-brand-primary">{formatHUF(totalProjectedExpense)}</span>
-                  </div>
-                </div>
-              </div>
+          <div className="space-y-1.5">
+            <FieldLabel info={HELP.budget.description} hint="Rövid név — később is felismerhető legyen a listában.">
+              Leírás
+            </FieldLabel>
+            <Input
+              placeholder="pl. Heti bevásárlás"
+              value={txDesc}
+              onChange={(e) => setTxDesc(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <FieldLabel info={HELP.budget.category} hint="A kategória összesítőben és az AI elemzésben is megjelenik.">
+              Kategória
+            </FieldLabel>
+            <div className="flex gap-2">
+              <select
+                className="h-9 flex-1 rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
+                value={txCat}
+                onChange={(e) => setTxCat(e.target.value)}
+              >
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAutoCategory}
+                disabled={isCategoryLoading || !txDesc.trim()}
+              >
+                {isCategoryLoading ? <RefreshCw size={13} className="animate-spin" /> : <Bot size={13} />}
+                Auto
+              </Button>
             </div>
+          </div>
 
-            <div className="lg:col-span-3 flex flex-col gap-6">
-               <div className="bg-white/5 border border-white/5 rounded-2xl p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="flex flex-col">
-                    <div className="text-[0.6rem] font-bold text-slate-500 uppercase mb-1">Tervezett havi keret</div>
-                    <div className="text-lg font-black text-slate-200">{formatHUF(totalProjectedExpense)}</div>
-                  </div>
-                  <div className="flex flex-col border-l border-white/5 pl-4">
-                    <div className="text-[0.6rem] font-bold text-slate-500 uppercase mb-1">Már kifizetve</div>
-                    <div className="text-lg font-black text-slate-200">{formatHUF(totalActualSpent)}</div>
-                  </div>
-                  <div className="flex flex-col border-l border-white/5 pl-4">
-                    <div className="text-[0.6rem] font-bold text-slate-500 uppercase mb-1">Befolyt bevétel</div>
-                    <div className="text-lg font-black text-green-500">{formatHUF(totalIncomeReceived)}</div>
-                  </div>
-                  <div className="flex flex-col border-l border-white/5 pl-4">
-                    <div className="text-[0.6rem] font-bold text-slate-500 uppercase mb-1">Havi egyenleg</div>
-                    <div className={`text-lg font-black ${(totalIncomeReceived - totalActualSpent) < 0 ? 'text-red-500' : 'text-brand-primary'}`}>
-                      {formatHUF(totalIncomeReceived - totalActualSpent)}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <FieldLabel
+                info={HELP.budget.amount}
+                hint={
+                  txType === 'expense' && txIsBudget
+                    ? 'Ez a keret plafon — nem egyetlen azonnali kiadás.'
+                    : txType === 'income' && txIsReserve
+                      ? 'Félretett összeg — nem növeli automatikusan a „Marad” mutatót.'
+                      : undefined
+                }
+              >
+                Összeg (Ft)
+              </FieldLabel>
+              <Input
+                type="number"
+                placeholder="0"
+                value={txAmount}
+                onChange={(e) => setTxAmount(e.target.value)}
+                required
+                step="any"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <FieldLabel info={HELP.budget.date} hint="Esedékesség vagy a tranzakció napja.">
+                Dátum
+              </FieldLabel>
+              <DatePicker value={txDue} onChange={setTxDue} />
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <Button type="button" variant="outline" className="flex-1" onClick={() => setIsTxModalOpen(false)}>
+              Mégse
+            </Button>
+            <Button type="submit" className="flex-1">
+              Mentés
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* BUDGET LEDGER MODAL */}
+      <Modal
+        isOpen={isLedgerModalOpen}
+        onClose={() => {
+          setIsLedgerModalOpen(false);
+          setActiveTxId(null);
+        }}
+        title="Költés rögzítése (ledger)"
+        description={HELP.budget.ledgerModalIntro}
+      >
+        <div className="flex flex-col gap-4">
+          <div className="space-y-1.5">
+            <FieldLabel
+              info={HELP.budget.ledgerAmount}
+              hint="Egy konkrét vásárlás / költés összege — összeadódik a „felhasználva” sávban."
+            >
+              Összeg (felhasznált)
+            </FieldLabel>
+            <Input
+              type="number"
+              placeholder="0"
+              value={ledgerAmount}
+              onChange={(e) => setLedgerAmount(e.target.value)}
+              step="any"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <FieldLabel info={HELP.budget.ledgerNote} hint="pl. „Aldi 12.450 Ft” — később visszakereshető.">
+              Megjegyzés
+            </FieldLabel>
+            <Input
+              placeholder="pl. Heti bevásárlás"
+              value={ledgerReason}
+              onChange={(e) => setLedgerReason(e.target.value)}
+            />
+          </div>
+
+          <Button
+            onClick={() => {
+              if (!activeTxId) return;
+              const cleanAmount = ledgerAmount.replace(',', '.');
+              const amt = -Math.abs(Number(cleanAmount));
+              addSubItem(activeTxId, {
+                date: new Date().toISOString().split('T')[0],
+                amount: amt,
+                reason: ledgerReason,
+              });
+              setLedgerAmount('');
+              setLedgerReason('');
+            }}
+          >
+            <Plus size={13} /> Rögzítés
+          </Button>
+
+          <div className="border-t border-border pt-4">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+              Korábbi tételek
+            </p>
+            <div className="flex flex-col gap-1.5 max-h-[280px] overflow-y-auto">
+              {(() => {
+                const items = transactions.find((t) => t.id === activeTxId)?.subItems;
+                if (!items || items.length === 0) {
+                  return <p className="text-xs text-muted-foreground text-center py-4">Még nincsenek tételek.</p>;
+                }
+                return items
+                  .slice()
+                  .reverse()
+                  .map((item: LedgerEntry) => (
+                    <div
+                      key={item.id}
+                      className="flex justify-between items-center bg-muted/40 border border-border rounded-md px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{item.reason}</p>
+                        <p className="text-[0.7rem] text-muted-foreground tabular-nums">{formatDate(item.date)}</p>
+                      </div>
+                      <p
+                        className={cn(
+                          'text-sm font-semibold tabular-nums',
+                          item.amount >= 0 ? 'text-emerald-600' : 'text-rose-600',
+                        )}
+                      >
+                        {item.amount >= 0 ? '+' : ''}
+                        {formatHUF(item.amount)}
+                      </p>
                     </div>
-                  </div>
-               </div>
-
-               <div className="flex flex-col">
-                  {renderTable(incomes, 'Bevételek', 'income')}
-                  {reserves.length > 0 && renderTable(reserves, 'Tartalékok', 'expense')}
-                  {renderTable(expenses, 'Kiadások', 'expense', true)}
-               </div>
+                  ));
+              })()}
             </div>
           </div>
         </div>
-      )}
-
-      {activeTab === 'savings' && (() => {
-        const personalSavings = savings.filter(s => s.owner !== 'Little Loom');
-        const wifeSavings = savings.filter(s => s.owner === 'Little Loom');
-        
-        const personalInvestments = investments.filter(i => i.owner !== 'Little Loom');
-        const wifeInvestments = investments.filter(i => i.owner === 'Little Loom');
-
-        const sumPersonalInvestments = personalInvestments
-          .filter(i => i.countInSavings !== false)
-          .reduce((sum, inv) => sum + getInvestmentValue(inv).totalValue, 0);
-
-        const sumWifeInvestments = wifeInvestments
-          .filter(i => i.countInSavings !== false)
-          .reduce((sum, inv) => sum + getInvestmentValue(inv).totalValue, 0);
-
-        const sumPersonal = personalSavings.filter(s => s.count_in_savings !== false).reduce((sum, acc) => sum + convertToHUF(acc.ledger.reduce((s,l)=>s+l.amount, 0), acc.currency), 0) + sumPersonalInvestments;
-        const sumWife = wifeSavings.filter(s => s.count_in_savings !== false).reduce((sum, acc) => sum + convertToHUF(acc.ledger.reduce((s,l)=>s+l.amount, 0), acc.currency), 0) + sumWifeInvestments;
-        
-        return (
-          <div className="flex flex-col gap-6">
-             {/* SAVINGS SUMMARY */}
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-blue-500/5 border border-blue-500/20 rounded-2xl p-5 shadow-lg relative overflow-hidden">
-                   <div className="text-[0.65rem] font-black text-blue-500 uppercase tracking-widest mb-2">Saját Megtakarítás</div>
-                   <div className="text-3xl font-black text-blue-500 tracking-tight">{formatHUF(sumPersonal)}</div>
-                </div>
-                <div className="bg-pink-500/5 border border-pink-500/20 rounded-2xl p-5 shadow-lg relative overflow-hidden">
-                   <div className="text-[0.65rem] font-black text-pink-500 uppercase tracking-widest mb-2">Little Loom (Szandi)</div>
-                   <div className="text-3xl font-black text-pink-500 tracking-tight">{formatHUF(sumWife)}</div>
-                </div>
-                <div className="bg-slate-800/40 border border-slate-700 rounded-2xl p-5 shadow-lg relative overflow-hidden">
-                   <div className="text-[0.65rem] font-black text-slate-400 uppercase tracking-widest mb-2">Közös Tartalék</div>
-                   <div className="text-3xl font-black text-white tracking-tight">{formatHUF(sumPersonal + sumWife)}</div>
-                </div>
-             </div>
-
-             <div className="flex flex-wrap justify-between items-center gap-4 mt-2">
-                <h2 className="text-xl font-black flex items-center gap-2">
-                  <PiggyBank size={24} className="text-brand-primary" /> Számlák és Alszerkezetek
-                </h2>
-                <button 
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-brand-primary hover:bg-brand-light text-white transition-colors shadow-lg shadow-brand-primary/20" 
-                  onClick={() => setIsNewSavingsModalOpen(true)}
-                >
-                  <PlusCircle size={16} /> Új Számla
-                </button>
-             </div>
-
-             <div className="flex flex-col gap-8">
-                {/* SAJÁT ÉS KÖZÖS TARTALÉKOK */}
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center gap-2 border-b border-white/5 pb-2">
-                    <div className="w-1.5 h-4 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50" />
-                    <h3 className="text-sm font-black text-slate-200 uppercase tracking-wider">Saját és Közös Számlák</h3>
-                    <span className="text-[0.65rem] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/10">{personalSavings.length} db</span>
-                  </div>
-                  {personalSavings.length === 0 ? (
-                    <div className="text-sm font-medium text-slate-500 py-6 bg-slate-900/20 rounded-3xl border border-dashed border-white/5 text-center">
-                      Nincs még saját vagy közös számla hozzáadva.
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                      {personalSavings.map(acc => {
-                        const balance = acc.ledger.reduce((s, l) => s + l.amount, 0);
-                        return (
-                          <div 
-                            key={acc.id} 
-                            className={`bg-slate-900/50 backdrop-blur-xl border border-blue-500/10 rounded-3xl p-5 md:p-6 shadow-2xl flex flex-col transition-all duration-300 hover:border-blue-500/30 hover:shadow-blue-500/5
-                              ${acc.count_in_savings === false ? 'opacity-50 hover:opacity-75 grayscale-[0.3]' : ''}
-                            `}
-                          >
-                            <div className="flex justify-between items-start mb-4">
-                               <div>
-                                  <div className="text-lg font-black text-white mb-0.5">{acc.institution}</div>
-                                  <div className="text-xs font-bold text-slate-500">{acc.owner} • {acc.currency}</div>
-                               </div>
-                               <button 
-                                 onClick={() => deleteSavingsAccount(acc.id)} 
-                                 className="p-1.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                               >
-                                 <Trash2 size={16} />
-                               </button>
-                            </div>
-                            <div className="text-2xl font-black text-blue-500 mb-1 tracking-tight">
-                               {formatCurrencyAmount(balance, acc.currency)}
-                            </div>
-                            {acc.currency !== 'HUF' ? (
-                              <div className="text-xs font-medium text-slate-400 mb-4">
-                                ~ {formatHUF(convertToHUF(balance, acc.currency))} <span className="opacity-50">(azonnali arfolyam)</span>
-                              </div>
-                            ) : (
-                              <div className="mb-4"></div>
-                            )}
-                            
-                            <div className="mt-auto flex flex-col gap-4">
-                              <label className="flex items-center gap-3 text-xs font-bold text-slate-300 cursor-pointer select-none group">
-                                <div
-                                  onClick={(e) => { e.preventDefault(); updateSavingsAccount(acc.id, { count_in_savings: !acc.count_in_savings }); }}
-                                  className={`w-10 h-5 rounded-full relative transition-colors duration-300 shrink-0
-                                    ${acc.count_in_savings !== false ? 'bg-blue-500' : 'bg-white/10'}
-                                  `}
-                                >
-                                  <div 
-                                    className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all duration-300 shadow-md
-                                      ${acc.count_in_savings !== false ? 'left-[22px]' : 'left-0.5'}
-                                    `}
-                                  />
-                                </div>
-                                <span className="group-hover:text-white transition-colors">Beleszámít a megtakarításba</span>
-                              </label>
-                              <button 
-                                className="w-full px-4 py-2 rounded-xl text-sm font-bold border border-white/10 text-slate-300 hover:bg-white/5 hover:text-white transition-colors" 
-                                onClick={() => { setSelectedSavings(acc.id); setIsLedgerModalOpen(true); }}
-                              >
-                                Történet / Módosítás
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* LITTLE LOOM TARTALÉKOK */}
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center gap-2 border-b border-white/5 pb-2">
-                    <div className="w-1.5 h-4 bg-pink-500 rounded-full shadow-lg shadow-pink-500/50" />
-                    <h3 className="text-sm font-black text-slate-200 uppercase tracking-wider">Little Loom Számlák</h3>
-                    <span className="text-[0.65rem] font-bold text-pink-400 bg-pink-500/10 px-2 py-0.5 rounded-full border border-pink-500/10">{wifeSavings.length} db</span>
-                  </div>
-                  {wifeSavings.length === 0 ? (
-                    <div className="text-sm font-medium text-slate-500 py-6 bg-slate-900/20 rounded-3xl border border-dashed border-white/5 text-center">
-                      Nincs még Little Loom számla hozzáadva.
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                      {wifeSavings.map(acc => {
-                        const balance = acc.ledger.reduce((s, l) => s + l.amount, 0);
-                        return (
-                          <div 
-                            key={acc.id} 
-                            className={`bg-slate-900/50 backdrop-blur-xl border border-pink-500/10 rounded-3xl p-5 md:p-6 shadow-2xl flex flex-col transition-all duration-300 hover:border-pink-500/30 hover:shadow-pink-500/5
-                              ${acc.count_in_savings === false ? 'opacity-50 hover:opacity-75 grayscale-[0.3]' : ''}
-                            `}
-                          >
-                            <div className="flex justify-between items-start mb-4">
-                               <div>
-                                  <div className="text-lg font-black text-white mb-0.5">{acc.institution}</div>
-                                  <div className="text-xs font-bold text-slate-500">{acc.owner} • {acc.currency}</div>
-                               </div>
-                               <button 
-                                 onClick={() => deleteSavingsAccount(acc.id)} 
-                                 className="p-1.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                               >
-                                 <Trash2 size={16} />
-                               </button>
-                            </div>
-                            <div className="text-2xl font-black text-pink-500 mb-1 tracking-tight">
-                               {formatCurrencyAmount(balance, acc.currency)}
-                            </div>
-                            {acc.currency !== 'HUF' ? (
-                              <div className="text-xs font-medium text-slate-400 mb-4">
-                                ~ {formatHUF(convertToHUF(balance, acc.currency))} <span className="opacity-50">(azonnali arfolyam)</span>
-                              </div>
-                            ) : (
-                              <div className="mb-4"></div>
-                            )}
-                            
-                            <div className="mt-auto flex flex-col gap-4">
-                              <label className="flex items-center gap-3 text-xs font-bold text-slate-300 cursor-pointer select-none group">
-                                <div
-                                  onClick={(e) => { e.preventDefault(); updateSavingsAccount(acc.id, { count_in_savings: !acc.count_in_savings }); }}
-                                  className={`w-10 h-5 rounded-full relative transition-colors duration-300 shrink-0
-                                    ${acc.count_in_savings !== false ? 'bg-pink-500' : 'bg-white/10'}
-                                  `}
-                                >
-                                  <div 
-                                    className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all duration-300 shadow-md
-                                      ${acc.count_in_savings !== false ? 'left-[22px]' : 'left-0.5'}
-                                    `}
-                                  />
-                                </div>
-                                <span className="group-hover:text-white transition-colors">Beleszámít a megtakarításba</span>
-                              </label>
-                              <button 
-                                className="w-full px-4 py-2 rounded-xl text-sm font-bold border border-white/10 text-slate-300 hover:bg-white/5 hover:text-white transition-colors" 
-                                onClick={() => { setSelectedSavings(acc.id); setIsLedgerModalOpen(true); }}
-                              >
-                                Történet / Módosítás
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* ÁLLAMPAPÍROK & BEFEKTETÉSEK */}
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-4 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/50" />
-                    <h3 className="text-sm font-black text-slate-200 uppercase tracking-wider">Állampapírok & Kincstári számlák</h3>
-                    <span className="text-[0.65rem] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/10">{investments.length} db</span>
-                  </div>
-                  <button 
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"
-                    onClick={() => setIsNewInvestmentModalOpen(true)}
-                  >
-                    <Plus size={14} /> Új állampapír
-                  </button>
-                </div>
-                {investments.length === 0 ? (
-                  <div className="text-sm font-medium text-slate-500 py-6 bg-slate-900/20 rounded-3xl border border-dashed border-white/5 text-center">
-                    Nincs még állampapír vagy befektetés hozzáadva.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {investments.map(inv => {
-                      const { accruedInterest, totalValue, daysPassed } = getInvestmentValue(inv);
-                      return (
-                        <div 
-                          key={inv.id} 
-                          className={`bg-slate-900/50 backdrop-blur-xl border border-emerald-500/10 rounded-3xl p-5 md:p-6 shadow-2xl flex flex-col transition-all duration-300 hover:border-emerald-500/30 hover:shadow-emerald-500/5
-                            ${inv.countInSavings === false ? 'opacity-50 hover:opacity-75 grayscale-[0.3]' : ''}
-                          `}
-                        >
-                          <div className="flex justify-between items-start mb-4">
-                             <div>
-                                <div className="text-lg font-black text-white mb-0.5">{inv.name}</div>
-                                <div className="text-xs font-bold text-slate-500">{inv.owner} • {inv.type === 'bond' ? 'Állampapír' : inv.type}</div>
-                             </div>
-                             <button 
-                               onClick={() => deleteInvestment(inv.id)} 
-                               className="p-1.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                             >
-                               <Trash2 size={16} />
-                             </button>
-                          </div>
-                          
-                          <div className="flex flex-col gap-2 mb-4">
-                             <div>
-                               <div className="text-[0.65rem] font-bold text-slate-500 uppercase flex items-center justify-between">
-                                  <span>{editingInvId === inv.id ? 'Valós érték beírása (Ft)' : 'AKTUÁLIS ÉRTÉK (MOBILKINCSTÁR)'}</span>
-                                  {editingInvId !== inv.id && (
-                                     <button 
-                                       onClick={() => {
-                                          setEditingInvId(inv.id);
-                                          setEditingInvValue(inv.currentValue ? String(inv.currentValue) : Math.round(totalValue).toString());
-                                       }}
-                                       className="text-[0.65rem] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-bold transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/10"
-                                     >
-                                        <Pencil size={10} /> Módosít
-                                     </button>
-                                  )}
-                               </div>
-                               {editingInvId === inv.id ? (
-                                 <div className="flex items-center gap-2 mt-1">
-                                   <input 
-                                     type="number"
-                                     className="bg-slate-950/80 border border-emerald-500/30 rounded-xl px-3 py-1.5 text-sm text-white font-black w-full focus:border-emerald-500 outline-none"
-                                     value={editingInvValue}
-                                     onChange={(e) => setEditingInvValue(e.target.value)}
-                                     autoFocus
-                                     onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                           updateInvestment(inv.id, { currentValue: Number(editingInvValue) });
-                                           setEditingInvId(null);
-                                        } else if (e.key === 'Escape') {
-                                           setEditingInvId(null);
-                                        }
-                                     }}
-                                   />
-                                   <button 
-                                      onClick={() => {
-                                         updateInvestment(inv.id, { currentValue: Number(editingInvValue) });
-                                         setEditingInvId(null);
-                                      }}
-                                      className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-colors h-[32px] flex items-center justify-center shrink-0"
-                                   >
-                                      Mentés
-                                   </button>
-                                   <button 
-                                      onClick={() => setEditingInvId(null)}
-                                      className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-300 rounded-xl text-xs font-bold transition-colors h-[32px] flex items-center justify-center shrink-0"
-                                   >
-                                      Mégse
-                                   </button>
-                                 </div>
-                               ) : (
-                                 <div className="text-2xl font-black text-emerald-400 tracking-tight flex items-center gap-2 mt-0.5">
-                                    {formatHUF(totalValue)}
-                                    {inv.currentValue ? (
-                                       <span className="text-[0.55rem] font-black bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider">MÁK Valós</span>
-                                    ) : (
-                                       <span className="text-[0.55rem] font-bold bg-white/5 border border-white/10 text-slate-500 px-1.5 py-0.5 rounded uppercase tracking-wider">Becsült</span>
-                                    )}
-                                 </div>
-                               )}
-                             </div>
-                            <div className="grid grid-cols-2 gap-2 border-t border-white/5 pt-2">
-                              <div>
-                                <div className="text-[0.55rem] font-bold text-slate-500 uppercase">Tőke</div>
-                                <div className="text-xs font-bold text-slate-300">{formatHUF(inv.principalAmount)}</div>
-                              </div>
-                              <div>
-                                <div className="text-[0.55rem] font-bold text-slate-500 uppercase">Kamatláb (éves)</div>
-                                <div className="text-xs font-bold text-slate-300">{inv.annualInterestRate}%</div>
-                              </div>
-                              {(() => {
-                                const mAmount = getMaturityAmount(inv);
-                                if (!mAmount) return null;
-                                return (
-                                  <div>
-                                    <div className="text-[0.55rem] font-bold text-slate-500 uppercase">Névérték / Lejáratkor</div>
-                                    <div className="text-xs font-black text-amber-400">{formatHUF(mAmount)}</div>
-                                  </div>
-                                );
-                              })()}
-                              {(() => {
-                                const payout = getEstimatedPayout(inv);
-                                if (!payout) return null;
-                                return (
-                                  <div>
-                                    <div className="text-[0.55rem] font-bold text-slate-500 uppercase flex items-center justify-between gap-1.5">
-                                      <span className="flex items-center gap-1.5">
-                                        <span>{payout.label || 'Következő kamat'}</span>
-                                        {payout.isEstimated && (
-                                          <span className="text-[0.5rem] font-bold text-emerald-400/80 bg-emerald-500/10 border border-emerald-500/10 px-1 py-0.5 rounded leading-none shrink-0 scale-90">Auto</span>
-                                        )}
-                                      </span>
-                                      {editingPayoutInvId !== inv.id && (
-                                        <button 
-                                          onClick={() => {
-                                            setEditingPayoutInvId(inv.id);
-                                            setEditingPayoutAmount(payout.amount ? String(payout.amount) : '');
-                                            setEditingPayoutDate(payout.date || '');
-                                          }}
-                                          className="text-[0.65rem] text-emerald-400 hover:text-emerald-300 font-bold transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 px-1.5 py-0.2 rounded border border-emerald-500/10"
-                                        >
-                                          Módosít
-                                        </button>
-                                      )}
-                                    </div>
-                                    {editingPayoutInvId === inv.id ? (
-                                      <div className="flex flex-col gap-2 mt-1.5 p-2 bg-slate-950/90 rounded-xl border border-emerald-500/20 col-span-2">
-                                        <div>
-                                          <label className="text-[0.55rem] font-bold text-slate-500 uppercase block mb-0.5">Kamat összege (Ft)</label>
-                                          <input 
-                                            type="number"
-                                            className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-xs text-white font-bold w-full focus:border-emerald-500 outline-none"
-                                            value={editingPayoutAmount}
-                                            onChange={(e) => setEditingPayoutAmount(e.target.value)}
-                                          />
-                                        </div>
-                                        <div>
-                                          <label className="text-[0.55rem] font-bold text-slate-500 uppercase block mb-0.5">Dátum</label>
-                                          <input 
-                                            type="date"
-                                            className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-xs text-white font-bold w-full focus:border-emerald-500 outline-none [color-scheme:dark]"
-                                            value={editingPayoutDate}
-                                            onChange={(e) => setEditingPayoutDate(e.target.value)}
-                                          />
-                                        </div>
-                                        <div className="flex gap-1.5 mt-1">
-                                          <button 
-                                            onClick={() => {
-                                              updateInvestment(inv.id, { 
-                                                nextPayoutAmount: Number(editingPayoutAmount),
-                                                nextPayoutDate: editingPayoutDate || null
-                                              });
-                                              setEditingPayoutInvId(null);
-                                            }}
-                                            className="flex-1 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-[0.65rem] font-bold transition-colors"
-                                          >
-                                            Mentés
-                                          </button>
-                                          <button 
-                                            onClick={() => setEditingPayoutInvId(null)}
-                                            className="flex-1 py-1 bg-white/5 hover:bg-white/10 text-slate-400 rounded text-[0.65rem] font-bold transition-colors"
-                                          >
-                                            Mégse
-                                          </button>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div className="text-xs font-black text-emerald-400 mt-0.5">
-                                        +{formatHUF(payout.amount)}
-                                        {payout.date && <span className="text-[0.55rem] font-bold text-slate-400 block mt-0.5">{formatDate(payout.date)}</span>}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })()}
-                              <div>
-                                <div className="text-[0.55rem] font-bold text-slate-500 uppercase">Eddigi Hozam ({daysPassed} nap)</div>
-                                <div className={`text-xs font-bold ${accruedInterest >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                  {accruedInterest >= 0 ? '+' : ''}{formatHUF(accruedInterest)}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-[0.55rem] font-bold text-slate-500 uppercase">Vásárlás / Lejárat</div>
-                                <div className="text-[0.65rem] font-medium text-slate-400">
-                                  {formatDate(inv.purchaseDate)}
-                                  {inv.maturityDate && ` / ${formatDate(inv.maturityDate)}`}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="mt-auto pt-2">
-                            <label className="flex items-center gap-3 text-xs font-bold text-slate-300 cursor-pointer select-none group">
-                              <div
-                                onClick={(e) => { e.preventDefault(); updateInvestment(inv.id, { countInSavings: !inv.countInSavings }); }}
-                                  className={`w-10 h-5 rounded-full relative transition-colors duration-300 shrink-0
-                                    ${inv.countInSavings !== false ? 'bg-emerald-500' : 'bg-white/10'}
-                                  `}
-                              >
-                                <div 
-                                  className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all duration-300 shadow-md
-                                    ${inv.countInSavings !== false ? 'left-[22px]' : 'left-0.5'}
-                                  `}
-                                />
-                              </div>
-                              <span className="group-hover:text-white transition-colors">Beleszámít a megtakarításba</span>
-                            </label>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-           </div>
-        );
-      })()}
-
-      {/* TRANSACTION MODAL */}
-      <Modal isOpen={isTxModalOpen} onClose={() => setIsTxModalOpen(false)} title={editTxId ? 'Tétel szerkesztése' : 'Új tétel hozzáadása'}>
-         <form onSubmit={handleTxSubmit} className="flex flex-col gap-5">
-            <div className="flex gap-3">
-               <button type="button" onClick={() => setTxType('income')} className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all border ${txType === 'income' ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-transparent border-white/10 text-slate-400 hover:bg-white/5'}`}>Bevétel</button>
-               <button type="button" onClick={() => setTxType('expense')} className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all border ${txType === 'expense' ? 'bg-red-500 border-red-500 text-white shadow-lg shadow-red-500/20' : 'bg-transparent border-white/10 text-slate-400 hover:bg-white/5'}`}>Kiadás</button>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Leírás</label>
-              <input type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="pl. Heti bevásárlás" value={txDesc} onChange={e=>setTxDesc(e.target.value)} required />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Kategória</label>
-              <div className="flex gap-2">
-                <select className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white appearance-none" value={txCat} onChange={e=>setTxCat(e.target.value)}>
-                  {categories.map(c => <option key={c} value={c} className="bg-slate-800">{c}</option>)}
-                </select>
-                <button type="button" className="px-3 rounded-xl border border-brand-primary/30 bg-brand-primary/10 text-brand-primary text-xs font-bold hover:bg-brand-primary/20 transition-colors flex items-center gap-1.5 whitespace-nowrap" onClick={handleAutoCategory} disabled={isCategoryLoading || !txDesc.trim()}>
-                  {isCategoryLoading ? <RefreshCw size={14} className="animate-spin" /> : <Bot size={14} />}
-                  {isCategoryLoading ? 'AI...' : 'Auto'}
-                </button>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Összeg (Ft)</label>
-                <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="0" value={txAmount} onChange={e=>setTxAmount(e.target.value)} required step="any" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Dátum</label>
-                <DatePicker value={txDue} onChange={setTxDue} />
-              </div>
-            </div>
-
-            <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-              {txType === 'expense' && (
-                <label className="flex items-center gap-3 text-sm font-bold text-slate-300 cursor-pointer group">
-                   <input type="checkbox" className="w-4 h-4 accent-brand-primary border-white/20" checked={txIsBudget} onChange={e=>setTxIsBudget(e.target.checked)} />
-                   <span className="group-hover:text-white transition-colors">Saját keret alapú (Ledger)</span>
-                </label>
-              )}
-              {txType === 'income' && (
-                <label className="flex items-center gap-3 text-sm font-bold text-slate-300 cursor-pointer group">
-                   <input type="checkbox" className="w-4 h-4 accent-brand-primary border-white/20" checked={txIsReserve} onChange={e=>setTxIsReserve(e.target.checked)} />
-                   <span className="group-hover:text-white transition-colors flex items-center gap-1.5"><PiggyBank size={16} className="text-amber-500" /> Tartalék (nem cashflow)</span>
-                </label>
-              )}
-              {txType !== 'expense' && txType !== 'income' && <span className="text-xs text-slate-500 italic">Válassz típust a további opciókhoz.</span>}
-            </div>
-
-            <div className="flex gap-3 mt-2">
-               <button type="button" className="flex-1 py-3 rounded-xl text-sm font-bold bg-transparent hover:bg-white/5 text-slate-300 transition-colors" onClick={() => setIsTxModalOpen(false)}>Mégse</button>
-               <button type="submit" className="flex-1 py-3 rounded-xl text-sm font-bold bg-brand-primary hover:bg-brand-light text-white transition-colors shadow-lg shadow-brand-primary/20">Mentés</button>
-            </div>
-         </form>
       </Modal>
 
-      {/* LEDGER MODAL */}
-      <Modal 
-        isOpen={isLedgerModalOpen} 
-        onClose={() => { setIsLedgerModalOpen(false); setActiveTxId(null); setSelectedSavings(null); }} 
-        title={activeTxId ? 'Tételek rögzítése' : 'Módosítás / Történet'}
-      >
-         <div className="flex flex-col gap-5">
-            {!activeTxId && (
-               <div className="flex gap-3">
-                  <button onClick={() => setLedgerType('deposit')} className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all border ${ledgerType === 'deposit' ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-transparent border-white/10 text-slate-400 hover:bg-white/5'}`}>Befizetés</button>
-                  <button onClick={() => setLedgerType('withdraw')} className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all border ${ledgerType === 'withdraw' ? 'bg-red-500 border-red-500 text-white shadow-lg shadow-red-500/20' : 'bg-transparent border-white/10 text-slate-400 hover:bg-white/5'}`}>Kivétel</button>
-               </div>
-            )}
-            
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Összeg</label>
-              <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="0" value={ledgerAmount} onChange={e=>setLedgerAmount(e.target.value)} step="any" />
-            </div>
-            
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Megjegyzés</label>
-              <input type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="pl. Utalás a közösbe" value={ledgerReason} onChange={e=>setLedgerReason(e.target.value)} />
-            </div>
-
-            <button className="py-3 rounded-xl text-sm font-bold bg-brand-primary hover:bg-brand-light text-white transition-colors shadow-lg shadow-brand-primary/20 mt-2" onClick={() => {
-               if(!selectedSavings && !activeTxId) return;
-               const cleanAmount = ledgerAmount.replace(',', '.');
-               const amt = activeTxId ? -Math.abs(Number(cleanAmount)) : (ledgerType === 'deposit' ? Number(cleanAmount) : -Number(cleanAmount));
-               if(selectedSavings) addLedgerEntry(selectedSavings, { date: new Date().toISOString().split('T')[0], amount: amt, reason: ledgerReason });
-               if(activeTxId) addSubItem(activeTxId, { date: new Date().toISOString().split('T')[0], amount: amt, reason: ledgerReason });
-               setLedgerAmount(''); setLedgerReason('');
-            }}>Tétel rögzítése</button>
-
-            <div className="mt-4 border-t border-white/10 pt-5 flex flex-col max-h-[300px] overflow-hidden">
-               <h4 className="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest mb-3 shrink-0">Korábbi tételek</h4>
-               <div className="flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-2 pb-2">
-                  {(() => {
-                     const ledgerCurrency = selectedSavings ? (savings.find(s=>s.id===selectedSavings)?.currency || 'HUF') : 'HUF';
-                     const items = (selectedSavings ? savings.find(s=>s.id===selectedSavings)?.ledger : transactions.find(t=>t.id===activeTxId)?.subItems);
-                     return items?.slice().reverse().map((item: LedgerEntry) => (
-                       <div key={item.id} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5">
-                          <div>
-                             <div className="text-sm font-bold text-white mb-0.5">{item.reason}</div>
-                             <div className="text-[0.65rem] font-medium text-slate-500">{formatDate(item.date)}</div>
-                          </div>
-                          <div className={`text-base font-black ${item.amount >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                             {item.amount >= 0 ? '+' : ''}{formatCurrencyAmount(item.amount, ledgerCurrency)}
-                          </div>
-                       </div>
-                     ));
-                  })()}
-               </div>
-            </div>
-         </div>
-      </Modal>
-
-      {/* NEW SAVINGS MODAL */}
-      <Modal isOpen={isNewSavingsModalOpen} onClose={() => setIsNewSavingsModalOpen(false)} title="Új számla hozzáadása">
-         <form onSubmit={handleSavingsSubmit} className="flex flex-col gap-5">
-            <div className="flex flex-col gap-1.5">
-               <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Intézmény / Megnevezés</label>
-               <input type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="pl. Revolut, Széf, OTP" value={savInst} onChange={e=>setSavInst(e.target.value)} required />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-               <div className="flex flex-col gap-1.5">
-                  <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Pénznem</label>
-                  <select className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white appearance-none" value={savCurr} onChange={e=>setSavCurr(e.target.value)}>
-                     <option value="HUF" className="bg-slate-800">HUF</option>
-                     <option value="EUR" className="bg-slate-800">EUR</option>
-                     <option value="USD" className="bg-slate-800">USD</option>
-                     <option value="BTC" className="bg-slate-800">BTC</option>
-                     <option value="ETH" className="bg-slate-800">ETH</option>
-                  </select>
-               </div>
-               <div className="flex flex-col gap-1.5">
-                   <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Tulajdonos</label>
-                   <select 
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white appearance-none" 
-                      value={savOwner === 'Közös' || savOwner === 'Little Loom' ? savOwner : 'custom'} 
-                      onChange={e => {
-                         if (e.target.value === 'custom') setSavOwner('');
-                         else setSavOwner(e.target.value);
-                      }}
-                   >
-                      <option value="Közös" className="bg-slate-800 text-white">Közös</option>
-                      <option value="Little Loom" className="bg-slate-800 text-white">Little Loom</option>
-                      <option value="custom" className="bg-slate-800 text-white">Egyedi tulajdonos...</option>
-                   </select>
-                   {savOwner !== 'Közös' && savOwner !== 'Little Loom' && (
-                      <input 
-                         type="text" 
-                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white mt-2" 
-                         placeholder="Pl. Szandi, Dani" 
-                         value={savOwner} 
-                         onChange={e => setSavOwner(e.target.value)} 
-                         required 
-                      />
-                   )}
-                </div>
-            </div>
-
-            <div className="flex gap-3 mt-2">
-               <button type="button" className="flex-1 py-3 rounded-xl text-sm font-bold bg-transparent hover:bg-white/5 text-slate-300 transition-colors" onClick={() => setIsNewSavingsModalOpen(false)}>Mégse</button>
-               <button type="submit" className="flex-1 py-3 rounded-xl text-sm font-bold bg-brand-primary hover:bg-brand-light text-white transition-colors shadow-lg shadow-brand-primary/20">Létrehozás</button>
-            </div>
-         </form>
-      </Modal>
-
-      {/* NEW INVESTMENT MODAL */}
-      <Modal isOpen={isNewInvestmentModalOpen} onClose={() => setIsNewInvestmentModalOpen(false)} title="Új állampapír / befektetés hozzáadása" overflowVisible={true}>
-         <form onSubmit={handleInvestmentSubmit} className="flex flex-col gap-5">
-            <div className="flex flex-col gap-1.5">
-               <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Állampapír / Megnevezés</label>
-               <input type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="pl. PMÁP 2032/J, DKJ D260722" value={invName} onChange={e=>setInvName(e.target.value)} required />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-               <div className="flex flex-col gap-1.5">
-                  <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Típus</label>
-                  <select className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white appearance-none" value={invType} onChange={e=>setInvType(e.target.value)}>
-                     <option value="bond" className="bg-slate-800 text-white">Állampapír (Bond)</option>
-                     <option value="stock" className="bg-slate-800 text-white">Részvény (Stock)</option>
-                     <option value="other" className="bg-slate-800 text-white">Egyéb</option>
-                  </select>
-               </div>
-               <div className="flex flex-col gap-1.5">
-                    <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Tulajdonos</label>
-                    <select 
-                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white appearance-none" 
-                       value={invOwner === 'Közös' || invOwner === 'Little Loom' ? invOwner : 'custom'} 
-                       onChange={e => {
-                          if (e.target.value === 'custom') setInvOwner('');
-                          else setInvOwner(e.target.value);
-                       }}
-                    >
-                       <option value="Közös" className="bg-slate-800 text-white">Közös</option>
-                       <option value="Little Loom" className="bg-slate-800 text-white">Little Loom</option>
-                       <option value="custom" className="bg-slate-800 text-white">Egyedi...</option>
-                    </select>
-                    {invOwner !== 'Közös' && invOwner !== 'Little Loom' && (
-                       <input 
-                          type="text" 
-                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white mt-2" 
-                          placeholder="Pl. Szandi, Dani" 
-                          value={invOwner} 
-                          onChange={e => setInvOwner(e.target.value)} 
-                          required 
-                       />
-                    )}
-                 </div>
-            </div>
-
-            <div className="text-[0.65rem] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 mb-2 leading-relaxed">
-               💡 <strong>DKJ (Diszkont Kincstárjegy) esetén:</strong> Hagyhatod a Kamat mezőt üresen! Csak add meg a vásárlási Tőkét, a lejárati Névértéket és a Lejárat dátumát, és a rendszerünk automatikusan kiszámolja neked az éves hozamot!
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                 <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Tőke / Kifizetett összeg (Ft)</label>
-                 <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="0" value={invPrincipal} onChange={e=>setInvPrincipal(e.target.value)} required />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                 <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Névérték / Lejárati összeg (Ft)</label>
-                 <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="pl. 7000000" value={invMaturityValue} onChange={e=>setInvMaturityValue(e.target.value)} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              <div className="flex flex-col gap-1.5">
-                 <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Éves Kamat / Hozam (%)</label>
-                 <input type="number" step="0.01" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="pl. 5.15 (DKJ esetén üresen hagyható)" value={invRate} onChange={e=>setInvRate(e.target.value)} required={!invMaturityValue} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                 <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Vásárlás dátuma</label>
-                 <DatePicker value={invPurchaseDate} onChange={setInvPurchaseDate} />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                 <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Lejárat dátuma (opcionális)</label>
-                 <DatePicker value={invMaturityDate} onChange={setInvMaturityDate} />
-              </div>
-            </div>
-
-            <div className="border-t border-white/5 pt-4 flex flex-col gap-4">
-               <h4 className="text-[0.65rem] font-black text-slate-400 uppercase tracking-widest">Kamatkifizetés (Opcionális - pl. FixMÁP)</h4>
-               <div className="grid grid-cols-2 gap-4">
-                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Következő kamatkifizetés (Ft)</label>
-                    <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-primary outline-none text-white" placeholder="pl. 72630" value={invNextPayoutAmount} onChange={e=>setInvNextPayoutAmount(e.target.value)} />
-                 </div>
-                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Kamatkifizetés dátuma</label>
-                    <DatePicker value={invNextPayoutDate} onChange={setInvNextPayoutDate} />
-                 </div>
-               </div>
-            </div>
-
-            <div className="flex gap-3 mt-2">
-               <button type="button" className="flex-1 py-3 rounded-xl text-sm font-bold bg-transparent hover:bg-white/5 text-slate-300 transition-colors" onClick={() => setIsNewInvestmentModalOpen(false)}>Mégse</button>
-               <button type="submit" className="flex-1 py-3 rounded-xl text-sm font-bold bg-brand-primary hover:bg-brand-light text-white transition-colors shadow-lg shadow-brand-primary/20">Létrehozás</button>
-            </div>
-         </form>
-      </Modal>
-
+      <ConfirmDeleteModal />
     </div>
   );
 }
