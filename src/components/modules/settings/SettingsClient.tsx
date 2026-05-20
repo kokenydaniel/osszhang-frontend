@@ -73,7 +73,6 @@ export default function SettingsClient() {
   const [localProfile, setLocalProfile] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
-    email: user?.email || '',
   });
 
   const [newPassword, setNewPassword] = useState('');
@@ -101,7 +100,7 @@ export default function SettingsClient() {
   const [newMemberData, setNewMemberData] = useState({
     firstName: '',
     lastName: '',
-    email: '',
+    username: '',
     password: '',
     role: 'editor' as 'admin' | 'editor' | 'reader',
     permissions: ['budget', 'utilities'],
@@ -127,7 +126,7 @@ export default function SettingsClient() {
   ];
 
   useEffect(() => {
-    setLocalProfile({ firstName: user?.firstName || '', lastName: user?.lastName || '', email: user?.email || '' });
+    setLocalProfile({ firstName: user?.firstName || '', lastName: user?.lastName || '' });
     if (user?.household) {
       setHouseholdName(user.household.name || '');
       setBusinessEnabled(user.household.businessEnabled ?? user.household.business_enabled ?? true);
@@ -239,19 +238,19 @@ export default function SettingsClient() {
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMemberData.email || !newMemberData.password || !newMemberData.firstName) {
+    if (!newMemberData.username || !newMemberData.password || !newMemberData.firstName) {
       addNotification('Kérlek tölts ki minden kötelező mezőt!', 'error');
       return;
     }
     await addMember({
       first_name: newMemberData.firstName,
       last_name: newMemberData.lastName,
-      email: newMemberData.email,
+      username: newMemberData.username.trim().toLowerCase(),
       password: newMemberData.password,
       role: newMemberData.role,
       permissions: newMemberData.permissions,
     });
-    setNewMemberData({ firstName: '', lastName: '', email: '', password: '', role: 'editor', permissions: ['budget', 'utilities'] });
+    setNewMemberData({ firstName: '', lastName: '', username: '', password: '', role: 'editor', permissions: ['budget', 'utilities'] });
     addNotification('Új tag létrehozva!', 'success');
   };
 
@@ -338,12 +337,8 @@ export default function SettingsClient() {
                       />
                     </FormField>
                   </div>
-                  <FormField label="E-mail cím" info={HELP.settings.email}>
-                    <Input
-                      type="email"
-                      value={localProfile.email}
-                      onChange={(e) => setLocalProfile({ ...localProfile, email: e.target.value })}
-                    />
+                  <FormField label="Felhasználónév" info={HELP.settings.username}>
+                    <Input value={user?.username || ''} readOnly className="bg-muted/40" />
                   </FormField>
                 </form>
               </SettingsBlock>
@@ -593,7 +588,7 @@ export default function SettingsClient() {
                         key={member.id}
                         initials={initials}
                         name={`${member.firstName} ${member.lastName}`}
-                        email={member.email}
+                        username={member.username}
                         badges={
                           <>
                             {isMemberAdmin && (
@@ -663,7 +658,7 @@ export default function SettingsClient() {
               {isAdmin && (
                 <SettingsBlock
                   title="Új családtag"
-                  description="Hozz létre egy fiókot — e-maillel és ideiglenes jelszóval tud majd belépni."
+                  description="Felhasználónév + ideiglenes jelszó — első belépéskor kötelező új jelszót választania."
                   icon={UserPlus}
                   toneClassName="bg-emerald-500/10 text-emerald-600"
                   footer={
@@ -690,13 +685,17 @@ export default function SettingsClient() {
                           required
                         />
                       </FormField>
-                      <FormField label="E-mail" info={HELP.settings.inviteEmail}>
+                      <FormField label="Felhasználónév" info={HELP.settings.inviteUsername}>
                         <Input
-                          type="email"
-                          placeholder="ildi@example.com"
-                          value={newMemberData.email}
-                          onChange={(e) => setNewMemberData({ ...newMemberData, email: e.target.value })}
+                          type="text"
+                          placeholder="ildi"
+                          value={newMemberData.username}
+                          onChange={(e) =>
+                            setNewMemberData({ ...newMemberData, username: e.target.value.toLowerCase() })
+                          }
                           required
+                          pattern="[a-z0-9_]{3,32}"
+                          autoComplete="off"
                         />
                       </FormField>
                       <FormField label="Ideiglenes jelszó" info={HELP.settings.invitePassword}>

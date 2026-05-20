@@ -3,6 +3,7 @@ import { UserProfile, RawApiUser } from '@/types';
 import { authClient, householdClient } from '@/api';
 import { useNotificationStore } from './useNotificationStore';
 import { mapHouseholdFromApi } from '@/lib/mapHousehold';
+import { mapUserFromApi } from '@/lib/mapUser';
 
 interface AuthState {
   user: UserProfile | null;
@@ -14,7 +15,16 @@ interface AuthState {
   fetchMe: () => Promise<UserProfile | null>;
   updateUser: (u: Partial<UserProfile>) => Promise<void>;
   updateHouseholdCode: (code: string) => Promise<void>;
-  addMember: (data: Omit<UserProfile, 'id' | 'role' | 'permissions' | 'firstName' | 'lastName'> & { role?: string; permissions?: string[]; password?: string; first_name?: string; last_name?: string; firstName?: string; lastName?: string }) => Promise<void>;
+  addMember: (data: {
+    username: string;
+    password: string;
+    role?: string;
+    permissions?: string[];
+    first_name?: string;
+    last_name?: string;
+    firstName?: string;
+    lastName?: string;
+  }) => Promise<void>;
   patchMemberLocally: (userId: number, data: { role?: string; permissions?: string[] }) => void;
   updateMember: (
     userId: number,
@@ -57,17 +67,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await authClient.me();
       const dbUser = res.data;
       
-      const mapUser = (u: RawApiUser): UserProfile => ({
-        id: u.id,
-        firstName: u.first_name || u.firstName || '',
-        lastName: u.last_name || u.lastName || '',
-        email: u.email || '',
-        role: (u.role === 'admin' || u.role === 'editor' || u.role === 'reader') ? u.role : 'editor',
-        permissions: u.permissions || ['budget', 'utilities', 'business', 'meters', 'debts', 'savings'],
-        household: u.household ? mapHouseholdFromApi(u.household) : undefined,
-      });
-
-      const mappedUser = mapUser(dbUser);
+      const mappedUser = mapUserFromApi(dbUser);
 
       set({ user: mappedUser });
       return mappedUser;
@@ -83,10 +83,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const payload: any = {};
       if (u.firstName !== undefined) payload.firstName = u.firstName;
       if (u.lastName !== undefined) payload.lastName = u.lastName;
-      if (u.email !== undefined) payload.email = u.email;
-      if ((u as any).password !== undefined) {
-        payload.password = (u as any).password;
-        payload.password_confirmation = (u as any).password_confirmation;
+      const pw = u as { password?: string; password_confirmation?: string };
+      if (pw.password !== undefined) {
+        payload.password = pw.password;
+        payload.password_confirmation = pw.password_confirmation;
       }
 
       const res = await authClient.updateProfile(payload);
@@ -95,8 +95,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           ...currentUser,
           firstName: res.data.firstName || res.data.first_name || currentUser.firstName,
           lastName: res.data.lastName || res.data.last_name || currentUser.lastName,
-          email: res.data.email || currentUser.email,
-        }
+          mustChangePassword:
+            res.data.must_change_password !== undefined
+              ? Boolean(res.data.must_change_password)
+              : pw.password !== undefined
+                ? false
+                : currentUser.mustChangePassword,
+        },
       });
     }
   },
@@ -127,14 +132,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const rawUser = res.data as unknown as RawApiUser;
       const currentUser = get().user;
       if (currentUser && currentUser.household?.users) {
-        const newMember: UserProfile = {
-          id: rawUser.id,
-          firstName: rawUser.first_name || rawUser.firstName || '',
-          lastName: rawUser.last_name || rawUser.lastName || '',
-          email: rawUser.email || '',
-          role: (rawUser.role === 'admin' || rawUser.role === 'editor' || rawUser.role === 'reader') ? rawUser.role : 'editor',
-          permissions: rawUser.permissions || ['budget', 'utilities', 'business', 'meters', 'debts', 'savings'],
-        };
+        const newMember = mapUserFromApi(rawUser);
         const updatedUsers = [...currentUser.household.users, newMember];
         set({
           user: {
@@ -178,17 +176,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await householdClient.updateMember(userId, data);
       const currentUser = get().user;
       if (currentUser && currentUser.household?.users) {
-        const mapUser = (u: RawApiUser): UserProfile => ({
-          id: u.id,
-          firstName: u.first_name || u.firstName || '',
-          lastName: u.last_name || u.lastName || '',
-          email: u.email || '',
-          role: (u.role === 'admin' || u.role === 'editor' || u.role === 'reader') ? u.role : 'editor',
-          permissions: u.permissions || ['budget', 'utilities', 'business', 'meters', 'debts', 'savings'],
-        });
-
         const updatedUsers = currentUser.household.users.map((u) =>
-          u.id === userId ? mapUser(res.data as unknown as RawApiUser) : u,
+          u.id === userId ? mapUserFromApi(res.data as unknown as RawApiUser) : u,
         );
 
         set({

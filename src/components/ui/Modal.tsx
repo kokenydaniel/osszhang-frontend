@@ -19,6 +19,8 @@ interface ModalProps {
   contentKey?: string | number;
   /** Alapból true: belső tartalom magassága animáltan változik. */
   animateContent?: boolean;
+  /** Ha false, nem zárható X-szel, Esc-cel vagy háttérkattintással. */
+  dismissible?: boolean;
 }
 
 export function Modal({
@@ -31,6 +33,7 @@ export function Modal({
   size = 'md',
   contentKey,
   animateContent = true,
+  dismissible = true,
 }: ModalProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -45,12 +48,13 @@ export function Modal({
 
   useEffect(() => {
     if (!isOpen) return;
+    if (!dismissible) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, dismissible]);
 
   if (!mounted || !isOpen) return null;
 
@@ -64,7 +68,7 @@ export function Modal({
     <div
       className="fixed inset-0 z-[400] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
       style={{ background: 'oklch(0.22 0.015 260 / 40%)' }}
-      onClick={onClose}
+      onClick={dismissible ? onClose : undefined}
       role="presentation"
     >
       <div
@@ -100,15 +104,17 @@ export function Modal({
               )}
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="absolute top-3 right-3 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-lg"
-            onClick={onClose}
-            aria-label="Bezárás"
-          >
-            <X size={18} />
-          </Button>
+          {dismissible && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-lg"
+              onClick={onClose}
+              aria-label="Bezárás"
+            >
+              <X size={18} />
+            </Button>
+          )}
         </div>
         <div className="px-5 py-5 overflow-y-auto overflow-x-hidden overscroll-contain min-h-0 flex-1">
           {animateContent ? (

@@ -218,14 +218,14 @@ export function PermissionChip({
 export function MemberCard({
   initials,
   name,
-  email,
+  username,
   badges,
   actions,
   permissions,
 }: {
   initials: string;
   name: string;
-  email: string;
+  username: string;
   badges?: React.ReactNode;
   actions?: React.ReactNode;
   permissions: React.ReactNode;
@@ -239,7 +239,7 @@ export function MemberCard({
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-foreground flex flex-wrap items-center gap-2">{name}</p>
-            <p className="text-sm text-muted-foreground truncate mt-0.5">{email}</p>
+            <p className="text-sm text-muted-foreground truncate mt-0.5">@{username}</p>
             {badges && <div className="flex flex-wrap gap-1.5 mt-2">{badges}</div>}
           </div>
         </div>

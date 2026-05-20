@@ -17,8 +17,16 @@ export const householdClient = {
   }) => apiClient.put('/household', data),
   updateCategories: (categories: string[]) => apiClient.put<{ categories: string[] }>('/household/categories', { categories }),
   updateCode: (code: string) => apiClient.put<{ invite_code: string }>('/household/code', { invite_code: code }),
-  createMember: (data: Omit<UserProfile, 'id' | 'role' | 'permissions' | 'firstName' | 'lastName'> & { role?: string; permissions?: string[]; password?: string; first_name?: string; last_name?: string; firstName?: string; lastName?: string }) => 
-    apiClient.post<UserProfile>('/household/members', data),
+  createMember: (data: {
+    username: string;
+    password: string;
+    role?: string;
+    permissions?: string[];
+    first_name?: string;
+    last_name?: string;
+    firstName?: string;
+    lastName?: string;
+  }) => apiClient.post<UserProfile>('/household/members', data),
   updateMember: (userId: number, data: { role?: string, permissions?: string[] }) => 
     apiClient.put<UserProfile>(`/household/members/${userId}`, data),
   deleteMember: (userId: number) => apiClient.delete(`/household/members/${userId}`),

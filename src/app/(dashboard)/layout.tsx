@@ -10,6 +10,7 @@ import { useInitStore } from '@/stores/useInit';
 import { getCurrentMonth, getCurrentYear } from '@/utils';
 import { Lock } from 'lucide-react';
 import Link from 'next/link';
+import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
 
 function SkeletonCard({ className }: { className?: string }) {
   return (
@@ -103,6 +104,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen bg-background">
+      <ChangePasswordModal />
       <Sidebar
         collapsed={collapsed}
         onToggle={handleToggle}

@@ -4,7 +4,7 @@
  */
 export const HELP = {
   auth: {
-    email: 'A regisztrációkor megadott e-mail cím — ezzel lépsz be.',
+    username: 'Egyedi belépési név (kisbetű, szám, aláhúzás). Ezzel lépsz be — nincs e-mail.',
     password: 'A fiókod jelszava. Minimum 8 karakter a regisztrációnál.',
     passwordConfirm: 'Ismételd meg a jelszót — egyeznie kell az előző mezővel.',
     firstName: 'Megjelenik az üdvözlésben és a háztartás taglistájában.',
@@ -204,7 +204,7 @@ export const HELP = {
   settings: {
     firstName: 'Megjelenik a háztartás tagjai előtt és az üdvözlésben.',
     lastName: 'Családnév — profil és meghívások.',
-    email: 'Bejelentkezéshez használt cím. Megváltoztatásához egyeztess az adminnal.',
+    username: 'Belépési név — csak az admin módosíthatja új fiók létrehozásával.',
     password: 'Legalább 8 karakter. A mentés után azonnal érvényes.',
     passwordConfirm: 'Ismételd meg az új jelszót — egyeznie kell.',
     householdName: 'A háztartás neve a felületen és meghívásoknál.',
@@ -214,7 +214,7 @@ export const HELP = {
     shopifyToken:
       'Shopify Admin API hozzáférési token (shpat_… előtaggal). A Shopify Adminban: Beállítások → Alkalmazások és értékesítési csatornák → Alkalmazások fejlesztése → Alkalmazás létrehozása → Admin API jogosultságok (orders olvasás) → Token telepítése / megtekintése. Csak a szerveren tároljuk titkosítva, soha ne oszd meg nyilvánosan.',
     splitPartner: 'Rezsi megosztásnál a másik fél háztartási tagja.',
-    inviteEmail: 'Az új tag ezzel az e-mail címmel tud majd belépni.',
+    inviteUsername: 'Az új tag ezzel a felhasználónévvel lép be (kisbetű, pl. ildi).',
     invitePassword: 'Ideiglenes jelszó — első belépés után érdemes cserélni.',
     inviteRole: 'Admin: minden modul. Olvasó: csak megtekintés. Egyéni: modulonkénti jog.',
     invitePermissions: 'Mely modulokat láthatja az új tag (ha nem admin).',

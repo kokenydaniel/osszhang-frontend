@@ -26,7 +26,7 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    email: '',
+    username: '',
     password: '',
     password_confirmation: '',
     householdName: '',
@@ -49,7 +49,7 @@ export default function RegisterPage() {
       const res = await authClient.register({
         first_name: formData.firstName,
         last_name: formData.lastName,
-        email: formData.email,
+        username: formData.username.trim().toLowerCase(),
         password: formData.password,
         password_confirmation: formData.password_confirmation,
         household_name: formData.householdName,
@@ -158,8 +158,8 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <FieldLabel className="text-xs font-medium text-foreground" info={HELP.auth.email}>
-                    E-mail
+                  <FieldLabel className="text-xs font-medium text-foreground" info={HELP.auth.username}>
+                    Felhasználónév
                   </FieldLabel>
                   <div className="relative">
                     <Mail
@@ -167,12 +167,14 @@ export default function RegisterPage() {
                       className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
                     />
                     <Input
-                      type="email"
+                      type="text"
                       className="pl-9"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      value={formData.username}
+                      onChange={(e) => setFormData({ ...formData, username: e.target.value.toLowerCase() })}
                       required
-                      placeholder="nev@example.com"
+                      placeholder="pl. dani"
+                      pattern="[a-z0-9_]{3,32}"
+                      autoComplete="username"
                     />
                   </div>
                 </div>

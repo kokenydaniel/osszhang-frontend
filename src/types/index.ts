@@ -11,7 +11,8 @@ export interface UserProfile {
   id: number;
   firstName: string;
   lastName: string;
-  email: string;
+  username: string;
+  mustChangePassword?: boolean;
   role: 'admin' | 'editor' | 'reader';
   permissions?: string[];
   household?: {
@@ -47,7 +48,8 @@ export interface RawApiUser {
   firstName?: string;
   last_name?: string;
   lastName?: string;
-  email?: string;
+  username?: string;
+  must_change_password?: boolean;
   role?: string;
   permissions?: string[];
   household?: {
