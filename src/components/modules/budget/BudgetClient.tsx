@@ -779,7 +779,7 @@ export default function BudgetClient() {
                 })}
                 <div className="flex justify-between items-center px-4 py-3 border-t-2 border-border bg-muted/40">
                   <span className="text-[0.7rem] font-semibold uppercase tracking-wider">Összesen</span>
-                  <span className="text-sm font-semibold text-gradient tabular-nums">{formatHUF(totalProjectedExpense)}</span>
+                  <span className="text-sm font-semibold text-primary tabular-nums">{formatHUF(totalProjectedExpense)}</span>
                 </div>
               </>
             )}

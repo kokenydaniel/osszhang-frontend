@@ -217,19 +217,19 @@
     opacity: 0.55;
 }
 
-/* Text gradient — solid fallback when background-clip:text is unsupported */
+/* Text gradient — inline-block kötelező, különben élesben látható gradient csík */
 .text-gradient {
-    color: var(--primary);
-}
-
-@supports ((-webkit-background-clip: text) or (background-clip: text)) {
-    .text-gradient {
-        background: linear-gradient(135deg, var(--primary) 0%, oklch(0.62 0.16 200) 100%);
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-        color: transparent;
-    }
+    display: inline-block;
+    width: fit-content;
+    max-width: 100%;
+    background-image: linear-gradient(135deg, var(--primary) 0%, #2cb5b0 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    /* Ha a clip nem működik, legalább ne legyen széles blokk: */
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
 }
 
 /* ============================== */
@@ -246,17 +246,13 @@
 .gradient-brand { background: linear-gradient(135deg, var(--primary), oklch(0.62 0.16 200)); }
 .gradient-accent { background: linear-gradient(135deg, oklch(0.62 0.16 200), oklch(0.65 0.18 150)); }
 .text-gradient-brand {
-    color: var(--primary);
-}
-
-@supports ((-webkit-background-clip: text) or (background-clip: text)) {
-    .text-gradient-brand {
-        background: linear-gradient(135deg, var(--primary), oklch(0.62 0.16 200));
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-        color: transparent;
-    }
+    display: inline-block;
+    width: fit-content;
+    background-image: linear-gradient(135deg, var(--primary), #2cb5b0);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
 }
 .glass { background-color: oklch(1 0 0 / 0.7); backdrop-filter: blur(10px) saturate(160%); }
 .gradient-mesh-hero {
