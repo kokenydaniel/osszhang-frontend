@@ -1,10 +1,10 @@
 import { Metadata } from 'next';
-import DebtsClient from '@/components/modules/debts/DebtsClient';
+import DebtsPage from '@/components/modules/debts/debts-page';
 
 export const metadata: Metadata = {
   title: 'Tartozások | Háztartás Menedzser',
 };
 
-export default function DebtsPage() {
-  return <DebtsClient />;
+export default function Page() {
+  return <DebtsPage />;
 }

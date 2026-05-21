@@ -1,10 +1,10 @@
 import { Metadata } from 'next';
-import UtilitiesClient from '@/components/modules/utilities/UtilitiesClient';
+import UtilitiesPage from '@/components/modules/utilities/utilities-page';
 
 export const metadata: Metadata = {
   title: 'Rezsi | Háztartás Menedzser',
 };
 
-export default function UtilitiesPage() {
-  return <UtilitiesClient />;
+export default function Page() {
+  return <UtilitiesPage />;
 }

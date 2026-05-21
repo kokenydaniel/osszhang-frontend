@@ -1,10 +1,10 @@
 import { Metadata } from 'next';
-import SavingsClient from '@/components/modules/savings/SavingsClient';
+import SavingsPage from '@/components/modules/savings/savings-page';
 
 export const metadata: Metadata = {
   title: 'Megtakarítások | Háztartás Menedzser',
 };
 
-export default function SavingsPage() {
-  return <SavingsClient />;
+export default function Page() {
+  return <SavingsPage />;
 }

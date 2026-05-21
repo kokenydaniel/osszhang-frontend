@@ -1,10 +1,10 @@
 import { Metadata } from 'next';
-import DashboardClient from '@/components/modules/dashboard/DashboardClient';
+import DashboardPage from '@/components/modules/dashboard/dashboard-page';
 
 export const metadata: Metadata = {
   title: 'Irányítópult | Háztartás Menedzser',
 };
 
-export default function DashboardPage() {
-  return <DashboardClient />;
+export default function Page() {
+  return <DashboardPage />;
 }

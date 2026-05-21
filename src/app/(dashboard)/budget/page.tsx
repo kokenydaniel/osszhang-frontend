@@ -1,10 +1,10 @@
 import { Metadata } from 'next';
-import BudgetClient from '@/components/modules/budget/BudgetClient';
+import BudgetPage from '@/components/modules/budget/budget-page';
 
 export const metadata: Metadata = {
   title: 'Költségvetés | Háztartás Menedzser',
 };
 
-export default function BudgetPage() {
-  return <BudgetClient />;
+export default function Page() {
+  return <BudgetPage />;
 }

@@ -1,10 +1,10 @@
 import { Metadata } from 'next';
-import SettingsClient from '@/components/modules/settings/SettingsClient';
+import SettingsPage from '@/components/modules/settings/settings-page';
 
 export const metadata: Metadata = {
   title: 'Beállítások | Háztartás Menedzser',
 };
 
-export default function SettingsPage() {
-  return <SettingsClient />;
+export default function Page() {
+  return <SettingsPage />;
 }
