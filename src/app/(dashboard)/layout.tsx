@@ -11,6 +11,12 @@ import { getCurrentMonth, getCurrentYear } from '@/utils';
 import { Lock } from 'lucide-react';
 import Link from 'next/link';
 import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
+import { HouseholdOnboardingWizard } from '@/components/onboarding/HouseholdOnboardingWizard';
+import { canAccessModule, type ModuleId } from '@/lib/moduleAccess';
+import { needsHouseholdOnboarding } from '@/lib/householdOnboarding';
+import { loadRouteData } from '@/lib/loadRouteData';
+import { formatDisplayName } from '@/lib/personName';
+import { cn } from '@/lib/utils';
 
 function SkeletonCard({ className }: { className?: string }) {
   return (
@@ -65,6 +71,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => { initialize(); }, [initialize]);
 
   useEffect(() => {
+    if (!isInitialized || !user) return;
+    void loadRouteData(pathname, user);
+  }, [pathname, isInitialized, user]);
+
+  useEffect(() => {
     const saved = localStorage.getItem('sidebar-collapsed');
     if (saved !== null) setCollapsed(JSON.parse(saved));
   }, []);
@@ -84,27 +95,52 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const currentUser = {
-    name: user?.firstName ? `${user.firstName} ${user.lastName}` : 'Betöltés...',
+    name: user ? formatDisplayName(user.firstName, user.lastName) || 'Betöltés...' : 'Betöltés...',
   };
 
   const hasPermissionForRoute = () => {
     if (!user) return true;
-    if (user.role === 'admin') return true;
-    const permissions = user.permissions || [];
-    if (pathname.startsWith('/budget') && !permissions.includes('budget')) return false;
-    if (pathname.startsWith('/utilities') && !permissions.includes('utilities')) return false;
-    if (pathname.startsWith('/meters') && !permissions.includes('meters')) return false;
-    if (pathname.startsWith('/business') && !permissions.includes('business')) return false;
-    if (pathname.startsWith('/savings') && !permissions.includes('savings')) return false;
-    if (pathname.startsWith('/debts') && !permissions.includes('debts')) return false;
+    const routes: [string, ModuleId][] = [
+      ['/budget', 'budget'],
+      ['/savings', 'savings'],
+      ['/debts', 'debts'],
+      ['/utilities', 'utilities'],
+      ['/meters', 'meters'],
+      ['/business', 'business'],
+    ];
+    for (const [prefix, moduleId] of routes) {
+      if (pathname.startsWith(prefix)) {
+        return canAccessModule(user, moduleId);
+      }
+    }
     return true;
   };
 
+  const blockedModule = (() => {
+    if (!user) return null;
+    const routes: [string, ModuleId][] = [
+      ['/budget', 'budget'],
+      ['/savings', 'savings'],
+      ['/debts', 'debts'],
+      ['/utilities', 'utilities'],
+      ['/meters', 'meters'],
+      ['/business', 'business'],
+    ];
+    for (const [prefix, moduleId] of routes) {
+      if (pathname.startsWith(prefix) && !canAccessModule(user, moduleId)) {
+        return moduleId;
+      }
+    }
+    return null;
+  })();
+
   const isAllowed = hasPermissionForRoute();
+  const showOnboarding = needsHouseholdOnboarding(user);
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className={cn('flex min-h-screen bg-background', showOnboarding && 'overflow-hidden')}>
       <ChangePasswordModal />
+      <div className={cn('flex min-h-screen w-full', showOnboarding && 'pointer-events-none select-none blur-[6px] opacity-60')}>
       <Sidebar
         collapsed={collapsed}
         onToggle={handleToggle}
@@ -129,7 +165,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
               <h2 className="text-base font-semibold text-foreground mb-2">Hozzáférés megtagadva</h2>
               <p className="text-sm text-muted-foreground mb-6">
-                Ehhez a modulhoz nincs jogosultságod. Kérd meg az adminisztrátort!
+                {blockedModule && user?.role !== 'admin' && !user?.permissions?.includes(blockedModule)
+                  ? 'Ehhez a modulhoz nincs jogosultságod. Kérd meg az adminisztrátort!'
+                  : 'Ez a modul nincs bekapcsolva a háztartásban, vagy nincs hozzáférésed hozzá.'}
               </p>
               <Link
                 href="/"
@@ -143,6 +181,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           ) : children}
         </main>
       </div>
+      </div>
+      {showOnboarding && <HouseholdOnboardingWizard />}
     </div>
   );
 }

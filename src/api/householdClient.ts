@@ -6,8 +6,18 @@ export const householdClient = {
   update: (data: {
     name?: string;
     manual_balance?: number;
+    budget_enabled?: boolean;
+    savings_enabled?: boolean;
+    debts_enabled?: boolean;
+    utilities_enabled?: boolean;
+    meters_enabled?: boolean;
+    savings_settings?: import('@/lib/savingsSettings').SavingsSettings;
+    debts_settings?: import('@/lib/debtsSettings').DebtsSettings;
+    meters_settings?: import('@/lib/metersSettings').MetersSettings;
+    onboarding_completed?: boolean;
     business_enabled?: boolean;
     business_name?: string;
+    shopify_import_enabled?: boolean;
     shopify_shop_url?: string;
     shopify_access_token?: string;
     utility_split_enabled?: boolean;
