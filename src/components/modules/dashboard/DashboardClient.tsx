@@ -72,10 +72,10 @@ export default function DashboardClient() {
   const hasPermission = (mod: string) => isAdmin || userPermissions.includes(mod);
 
   const businessEnabled =
-    (user?.household?.businessEnabled ?? user?.household?.business_enabled ?? true) && hasPermission('business');
+    (user?.household?.businessEnabled ?? user?.household?.business_enabled ?? false) && hasPermission('business');
   const businessName = user?.household?.businessName ?? user?.household?.business_name ?? 'Vállalkozás';
   const utilitySplitEnabled =
-    (user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? true) &&
+    (user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? false) &&
     hasPermission('utilities');
 
   const partnerId = user?.household?.utilitySplitPartnerId ?? user?.household?.utility_split_partner_id;

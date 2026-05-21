@@ -80,12 +80,12 @@ export default function SettingsClient() {
   const [isPasswordSaving, setIsPasswordSaving] = useState(false);
 
   const [householdName, setHouseholdName] = useState(user?.household?.name || '');
-  const [businessEnabled, setBusinessEnabled] = useState(user?.household?.businessEnabled ?? user?.household?.business_enabled ?? true);
-  const [businessName, setBusinessName] = useState(user?.household?.businessName ?? user?.household?.business_name ?? 'Little Loom');
+  const [businessEnabled, setBusinessEnabled] = useState(user?.household?.businessEnabled ?? user?.household?.business_enabled ?? false);
+  const [businessName, setBusinessName] = useState(user?.household?.businessName ?? user?.household?.business_name ?? '');
   const [shopifyShopUrl, setShopifyShopUrl] = useState(user?.household?.shopifyShopUrl ?? user?.household?.shopify_shop_url ?? '');
   const [shopifyAccessToken, setShopifyAccessToken] = useState('');
   const hasShopifyToken = user?.household?.hasShopifyToken ?? user?.household?.has_shopify_token ?? false;
-  const [utilitySplitEnabled, setUtilitySplitEnabled] = useState(user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? true);
+  const [utilitySplitEnabled, setUtilitySplitEnabled] = useState(user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? false);
   const [utilitySplitPartnerId, setUtilitySplitPartnerId] = useState<number | null>(
     user?.household?.utilitySplitPartnerId ?? user?.household?.utility_split_partner_id ?? null,
   );
@@ -129,11 +129,11 @@ export default function SettingsClient() {
     setLocalProfile({ firstName: user?.firstName || '', lastName: user?.lastName || '' });
     if (user?.household) {
       setHouseholdName(user.household.name || '');
-      setBusinessEnabled(user.household.businessEnabled ?? user.household.business_enabled ?? true);
-      setBusinessName(user.household.businessName ?? user.household.business_name ?? 'Little Loom');
+      setBusinessEnabled(user.household.businessEnabled ?? user.household.business_enabled ?? false);
+      setBusinessName(user.household.businessName ?? user.household.business_name ?? '');
       setShopifyShopUrl(user.household.shopifyShopUrl ?? user.household.shopify_shop_url ?? '');
       setShopifyAccessToken('');
-      setUtilitySplitEnabled(user.household.utilitySplitEnabled ?? user.household.utility_split_enabled ?? true);
+      setUtilitySplitEnabled(user.household.utilitySplitEnabled ?? user.household.utility_split_enabled ?? false);
       setUtilitySplitPartnerId(user.household.utilitySplitPartnerId ?? user.household.utility_split_partner_id ?? null);
       setBusinessSettings(resolveBusinessSettings(user.household));
       setUtilityTemplates(resolveUtilityTemplates(user.household));

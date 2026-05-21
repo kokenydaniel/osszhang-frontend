@@ -24,7 +24,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   const { userPreferences } = usePreferenceStore();
 
   const appName = userPreferences?.appName || 'PénzPilot';
-  const businessEnabled = user?.household?.businessEnabled ?? user?.household?.business_enabled ?? true;
+  const businessEnabled = user?.household?.businessEnabled ?? user?.household?.business_enabled ?? false;
   const businessName = user?.household?.businessName ?? user?.household?.business_name ?? 'Vállalkozás';
 
   const navGroups = [

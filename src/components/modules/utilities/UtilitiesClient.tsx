@@ -78,7 +78,7 @@ export default function UtilitiesClient() {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'admin';
   const isReader = user?.role === 'reader';
-  const utilitySplitEnabled = user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? true;
+  const utilitySplitEnabled = user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? false;
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
   const { pending: settling, run: runSettle } = useAsyncAction();
   const { pending: unsettling, run: runUnsettle } = useAsyncAction();

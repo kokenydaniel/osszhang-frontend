@@ -75,7 +75,7 @@ export default function BudgetClient() {
 
   const { bills } = useUtilitiesStore();
   const { user, updateManualBalance } = useAuthStore();
-  const utilitySplitEnabled = user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? true;
+  const utilitySplitEnabled = user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? false;
   const getBillPortion = (b: UtilityBill) => {
     if (!utilitySplitEnabled) return b.total;
     return b.splitRule === 'shared' ? b.total / 2 : b.splitRule === 'dani-private' ? b.total : 0;
