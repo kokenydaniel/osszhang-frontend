@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { formatHUF, formatDate } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { HELP } from '@/lib/helpTexts';
@@ -19,13 +20,35 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { useUtilitiesPageState } from '@/components/modules/utilities/hooks/use-utilities-page-state';
-import { UnsettleDebtButton } from '@/components/modules/utilities/utilities-settlement-buttons';
+import {
+  SettleDebtButton,
+  UnsettleDebtButton,
+} from '@/components/modules/utilities/utilities-settlement-buttons';
 import { UtilitiesBillsTable } from '@/components/modules/utilities/utilities-bills-table';
 import { UtilitiesBillModal } from '@/components/modules/utilities/utilities-bill-modal';
 
 export default function UtilitiesPage() {
   const state = useUtilitiesPageState();
   const { ConfirmDeleteModal } = state;
+
+  const metrics = useMemo(() => {
+    if (state.balanceMetricAction === null) return state.metrics;
+    const [first, ...rest] = state.metrics;
+    const action =
+      state.balanceMetricAction === 'unsettle' ? (
+        <UnsettleDebtButton loading={state.unsettling} onClick={state.handleUnsettle} />
+      ) : (
+        <SettleDebtButton loading={state.settling} onClick={state.handleSettlement} />
+      );
+    return [{ ...first, action }, ...rest];
+  }, [
+    state.balanceMetricAction,
+    state.handleSettlement,
+    state.handleUnsettle,
+    state.metrics,
+    state.settling,
+    state.unsettling,
+  ]);
 
   return (
     <div className="flex flex-col gap-7 max-w-[1500px] mx-auto w-full">
@@ -100,7 +123,7 @@ export default function UtilitiesPage() {
         </InsightBanner>
       )}
 
-      <MetricStrip items={state.metrics} columns={4} variant="separated" />
+      <MetricStrip items={metrics} columns={4} variant="separated" />
 
       {state.aiUtilityAnomalies?.anomalies && state.aiUtilityAnomalies.anomalies.length > 0 && (
         <AccentPanel

@@ -1,5 +1,6 @@
 'use client';
 
+import { dayjs } from '@/lib/dates';
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -312,7 +313,7 @@ export function AuthMarketingPanel() {
       <div className="relative z-10 flex items-center justify-between gap-4 border-t border-border/50 pt-5 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-2">
           <ShieldCheck size={13} className="text-primary" />
-          Privát családi rendszer · {new Date().getFullYear()}
+          Privát családi rendszer · {dayjs().year()}
         </span>
         <span className="hidden xl:inline text-muted-foreground/80">6 modul · 1 háztartás · korlátlan áttekintés</span>
       </div>

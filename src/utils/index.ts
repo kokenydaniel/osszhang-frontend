@@ -1,5 +1,30 @@
 import { MONTH_NAMES } from '@/types';
 
+export {
+  DATE_FORMAT,
+  DISPLAY_FORMAT,
+  DISPLAY_FORMAT_LONG,
+  compareDates,
+  datePart,
+  d,
+  dayjs,
+  formatDate,
+  formatDateLong,
+  formatTodayLong,
+  getCurrentMonth,
+  getCurrentYear,
+  hasSettlementDate,
+  isDueOverdue,
+  isOverdue,
+  isPastDueDate,
+  localDateIso,
+  matchesMonthYear,
+  today,
+  toDateString,
+  yearMonthPrefix,
+} from '@/lib/dates';
+export type { DateInput } from '@/lib/dates';
+
 export function formatHUF(amount: number, compact = false): string {
   if (compact && Math.abs(amount) >= 1_000_000) {
     return `${(amount / 1_000_000).toFixed(1).replace('.', ',')} M Ft`;
@@ -29,16 +54,6 @@ export function formatNumber(n: number): string {
   return new Intl.NumberFormat('hu-HU').format(n);
 }
 
-export function formatDate(dateStr: string): string {
-  if (!dateStr) return '—';
-  const date = new Date(dateStr);
-  return new Intl.DateTimeFormat('hu-HU', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date).replace(/\s/g, '');
-}
-
 export function formatMonthYear(month: number, year: number): string {
   return `${year}. ${MONTH_NAMES[month]}`;
 }
@@ -54,23 +69,6 @@ export function shortMonthName(month: number): string {
     9: 'Szep', 10: 'Okt', 11: 'Nov', 12: 'Dec',
   };
   return names[month] ?? '';
-}
-
-export function getCurrentMonth(): number {
-  return new Date().getMonth() + 1;
-}
-
-export function getCurrentYear(): number {
-  return new Date().getFullYear();
-}
-
-export function isOverdue(dateStr: string): boolean {
-  return new Date(dateStr) < new Date();
-}
-
-export function daysUntil(dateStr: string): number {
-  const diff = new Date(dateStr).getTime() - new Date().getTime();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
 export function calcPercent(part: number, total: number): number {

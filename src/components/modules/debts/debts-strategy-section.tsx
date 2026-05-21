@@ -6,13 +6,12 @@ import { formatPayoffDate, formatTerm } from '@/utils/debt';
 import { Button } from '@/components/ui/button';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { HELP } from '@/lib/helpTexts';
-import { Section, StatusPill } from '@/components/design';
+import { Section, ChoiceCardGroup, type ChoiceCardOption } from '@/components/design';
 import { motion } from 'motion/react';
 import {
   RefreshCw,
   Mountain,
   Snowflake,
-  Info,
   Cpu,
   CalendarDays,
   Coins,
@@ -51,6 +50,29 @@ export function DebtsStrategySection({
   setExtraMonthly,
   acceleration,
 }: DebtsStrategySectionProps) {
+  const strategyOptions: ChoiceCardOption[] = [
+    {
+      id: 'avalanche',
+      label: 'Avalanche (lavina)',
+      subtitle: 'Legmagasabb kamatú elsőként',
+      description:
+        'A legnagyobb éves kamatú tartozást támadod először. Matematikailag a legkevesebb teljes kamatot fizeted.',
+      icon: Mountain,
+      gradient: 'from-rose-500 to-orange-500',
+      bestFor: 'Ha a teljes költséget akarod minimalizálni.',
+    },
+    {
+      id: 'snowball',
+      label: 'Snowball (hólabda)',
+      subtitle: 'Legkisebb összeg elsőként',
+      description:
+        'A legkisebb hátralékot zárod le először. Gyors sikerélmény, motiváló lendület.',
+      icon: Snowflake,
+      gradient: 'from-sky-500 to-cyan-500',
+      bestFor: 'Ha pszichológiai lendület kell.',
+    },
+  ];
+
   return (
     <Section
       title="Visszafizetési stratégia"
@@ -68,74 +90,12 @@ export function DebtsStrategySection({
         </Button>
       }
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-        {(
-          [
-            {
-              id: 'avalanche' as const,
-              label: 'Avalanche (lavina)',
-              subtitle: 'Legmagasabb kamatú elsőként',
-              description:
-                'A legnagyobb éves kamatú tartozást támadod először. Matematikailag a legkevesebb teljes kamatot fizeted.',
-              icon: Mountain,
-              gradient: 'from-rose-500 to-orange-500',
-              bestFor: 'Ha a teljes költséget akarod minimalizálni.',
-            },
-            {
-              id: 'snowball' as const,
-              label: 'Snowball (hólabda)',
-              subtitle: 'Legkisebb összeg elsőként',
-              description:
-                'A legkisebb hátralékot zárod le először. Gyors sikerélmény, motiváló lendület.',
-              icon: Snowflake,
-              gradient: 'from-sky-500 to-cyan-500',
-              bestFor: 'Ha pszichológiai lendület kell.',
-            },
-          ] as const
-        ).map((opt) => {
-          const Icon = opt.icon;
-          const active = strategy === opt.id;
-          return (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => setStrategy(opt.id)}
-              className={classNames(
-                'group relative overflow-hidden rounded-lg border p-4 text-left transition-all',
-                active
-                  ? 'border-primary/40 bg-gradient-to-br from-primary/[0.08] via-card to-card shadow-glow'
-                  : 'border-border bg-card hover:border-foreground/20 hover:shadow-soft',
-              )}
-            >
-              {active && <span className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-primary via-violet-500 to-primary" />}
-              <div className="flex items-start gap-3">
-                <div
-                  className={classNames(
-                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-gradient-to-br text-white shadow-sm',
-                    opt.gradient,
-                  )}
-                >
-                  <Icon size={16} strokeWidth={2.2} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground">{opt.label}</p>
-                    {active && (
-                      <StatusPill status="primary" size="xs">aktív</StatusPill>
-                    )}
-                  </div>
-                  <p className="text-[0.7rem] text-muted-foreground font-medium mt-0.5">{opt.subtitle}</p>
-                  <p className="mt-2 text-xs text-muted-foreground/90 leading-relaxed">{opt.description}</p>
-                  <p className="mt-2 text-[0.7rem] text-foreground/70 italic inline-flex items-start gap-1">
-                    <Info size={10} className="mt-0.5 shrink-0" />
-                    {opt.bestFor}
-                  </p>
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
+      <ChoiceCardGroup
+        value={strategy}
+        onChange={(v) => setStrategy(v as 'avalanche' | 'snowball')}
+        options={strategyOptions}
+        className="mb-4"
+      />
 
       {!aiDebtPlan || orderedDebts.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-muted/20 px-5 py-8 text-center">

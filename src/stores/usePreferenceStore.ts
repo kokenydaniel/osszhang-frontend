@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { APP_NAME, LEGACY_APP_NAMES } from '@/lib/branding';
+import { getCurrentMonth, getCurrentYear } from '@/lib/dates';
 
 interface PreferenceState {
   selectedMonth: number;
@@ -23,8 +24,8 @@ interface PreferenceState {
 export const usePreferenceStore = create<PreferenceState>()(
   persist(
     (set, get) => ({
-      selectedMonth: new Date().getMonth() + 1,
-      selectedYear: new Date().getFullYear(),
+      selectedMonth: getCurrentMonth(),
+      selectedYear: getCurrentYear(),
       userPreferences: {
         currency: 'HUF',
         notificationsEnabled: true,

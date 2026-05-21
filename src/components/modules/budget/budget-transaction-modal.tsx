@@ -2,6 +2,7 @@
 
 import { Modal } from '@/components/ui/Modal';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { ModalFormFooter } from '@/components/design';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/FieldLabel';
@@ -231,14 +232,7 @@ export function BudgetTransactionModal(props: BudgetTransactionModalProps) {
           </div>
         </div>
 
-        <div className="flex gap-2 pt-1">
-          <Button type="button" variant="outline" className="flex-1" onClick={() => setIsTxModalOpen(false)}>
-            Mégse
-          </Button>
-          <Button type="submit" className="flex-1">
-            Mentés
-          </Button>
-        </div>
+        <ModalFormFooter onCancel={() => setIsTxModalOpen(false)} />
       </form>
     </Modal>
   );

@@ -4,9 +4,9 @@ import classNames from 'classnames';
 import { formatHUF } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { HELP } from '@/lib/helpTexts';
-import { AccentPanel, Section } from '@/components/design';
+import { AccentPanel, SectionPanel, ProgressBar } from '@/components/design';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Legend } from 'recharts';
-import { RefreshCw, Cpu } from 'lucide-react';
+import { RefreshCw, Cpu, BarChart3, PieChart } from 'lucide-react';
 import type { BusinessPageState } from '@/components/modules/business/hooks/use-business-page-state';
 
 type BusinessSummaryTabProps = Pick<
@@ -54,8 +54,15 @@ export function BusinessSummaryTab({
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3">
-          <Section title={`Havi cashflow · ${selectedYear}`} description="Bevétel és kintlévőség havi bontásban">
-            <div className="rounded-lg border border-border bg-card p-4">
+          <SectionPanel
+            title={`Havi cashflow · ${selectedYear}`}
+            description="Bevétel és kintlévőség havi bontásban"
+            icon={BarChart3}
+            tone="primary"
+            noPadding
+            className="shadow-soft"
+          >
+            <div className="p-4">
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="oklch(0.92 0.004 250)" />
@@ -90,16 +97,22 @@ export function BusinessSummaryTab({
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </Section>
+          </SectionPanel>
         </div>
 
         <div className="lg:col-span-2">
-          <Section title="Csatorna megoszlás" description={`${selectedYear} év · súlyozva`}>
-            <div className="rounded-lg border border-border bg-card p-5 flex flex-col gap-3.5">
-              {channelData.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-6">Még nincs rendelési adat.</p>
-              ) : (
-                channelData
+          <SectionPanel
+            title="Csatorna megoszlás"
+            description={`${selectedYear} év · súlyozva`}
+            icon={PieChart}
+            tone="info"
+            className="shadow-soft h-full"
+          >
+            {channelData.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">Még nincs rendelési adat.</p>
+            ) : (
+              <div className="flex flex-col gap-3.5">
+                {channelData
                   .sort((a, b) => b.value - a.value)
                   .map((c, i) => {
                     const percentage = totalYTD > 0 ? Math.round((c.value / totalYTD) * 100) : 0;
@@ -115,15 +128,13 @@ export function BusinessSummaryTab({
                             {percentage}% · {formatHUF(c.value)}
                           </span>
                         </div>
-                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${percentage}%`, backgroundColor: color }} />
-                        </div>
+                        <ProgressBar value={c.value} max={totalYTD} size="md" barStyle={{ backgroundColor: color }} />
                       </div>
                     );
-                  })
-              )}
-            </div>
-          </Section>
+                  })}
+              </div>
+            )}
+          </SectionPanel>
         </div>
       </div>
     </div>

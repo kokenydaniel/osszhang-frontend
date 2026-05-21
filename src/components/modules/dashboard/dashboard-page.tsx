@@ -85,7 +85,11 @@ export default function DashboardPage() {
         )}
 
         {!state.canUse('budget') && state.canUse('utilities') && (
-          <DashboardUtilitiesSnapshot monthBills={state.monthBills} todayStr={state.todayStr} />
+          <DashboardUtilitiesSnapshot
+            monthBills={state.monthBills}
+            todayStr={state.todayStr}
+            utilitySplitEnabled={state.utilitySplitEnabled}
+          />
         )}
 
         <DashboardSideColumn

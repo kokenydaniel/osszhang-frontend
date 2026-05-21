@@ -1,20 +1,11 @@
-'use client';
-
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useBusinessStore } from '@/stores/useBusinessStore';
+import { useBusinessUiStore } from '@/stores/useBusinessUiStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
-import {
-  resolveBusinessSettings,
-  pickDefaultChannel,
-  pickDefaultPayment,
-  pickDefaultProvider,
-  pickDefaultDestination,
-} from '@/lib/businessSettings';
-import { formatHUF } from '@/utils';
-import { BusinessOrder } from '@/types';
+import { resolveBusinessSettings } from '@/lib/businessSettings';
+import { formatHUF, compareDates } from '@/utils';
 import { HELP } from '@/lib/helpTexts';
-import { aiFinanceClient } from '@/lib/api-client';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import {
   ShoppingBag,
@@ -27,98 +18,23 @@ import {
 import type { MetricItem } from '@/components/design';
 
 export function useBusinessPageState() {
-  const { orders, addOrder, deleteOrder, updateOrder, shopifyImport } = useBusinessStore();
+  const { orders, deleteOrder } = useBusinessStore();
+  const ui = useBusinessUiStore();
   const { user } = useAuthStore();
   const shopifyImportEnabled =
     user?.household?.shopifyImportEnabled ?? user?.household?.shopify_import_enabled ?? false;
   const { selectedMonth, selectedYear } = usePreferenceStore();
   const bizOptions = useMemo(() => resolveBusinessSettings(user?.household), [user?.household]);
-  const [activeTab, setActiveTab] = useState<'monthly' | 'summary'>('monthly');
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  const [realAiAdvice, setRealAiAdvice] = useState<string | null>(null);
-  const [isAiLoading, setIsAiLoading] = useState(false);
-
-  const [customer, setCustomer] = useState('');
-  const [amount, setAmount] = useState('');
-  const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
-  const [channel, setChannel] = useState(() => pickDefaultChannel(bizOptions));
-  const [payment, setPayment] = useState(() => pickDefaultPayment(bizOptions));
-  const [provider, setProvider] = useState(() => pickDefaultProvider(bizOptions));
-  const [destination, setDestination] = useState(() => pickDefaultDestination(bizOptions));
-  const [paidDate, setPaidDate] = useState<string>('');
-  const [invoiceId, setInvoiceId] = useState('');
 
   const selectedYearMonthPrefix = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
   const filteredOrders = useMemo(
     () =>
       orders
         .filter((o) => o.date.startsWith(selectedYearMonthPrefix))
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+        .sort((a, b) => compareDates(b.date, a.date)),
     [orders, selectedYearMonthPrefix],
   );
-
-  const openForm = (order?: BusinessOrder) => {
-    if (order) {
-      setEditId(order.id);
-      setCustomer(order.customerName || '');
-      setAmount(String(order.amount || ''));
-      setOrderDate(order.date || new Date().toISOString().split('T')[0]);
-      setChannel(order.channel || pickDefaultChannel(bizOptions));
-      setPayment(order.paymentMethod || pickDefaultPayment(bizOptions));
-      setProvider(order.provider || pickDefaultProvider(bizOptions));
-      setDestination(order.destination || pickDefaultDestination(bizOptions));
-      setPaidDate(order.paidDate || '');
-      setInvoiceId(order.invoiceId || '');
-    } else {
-      setEditId(null);
-      setCustomer('');
-      setAmount('');
-      setOrderDate(new Date().toISOString().split('T')[0]);
-      setChannel(pickDefaultChannel(bizOptions));
-      setPayment(pickDefaultPayment(bizOptions));
-      setProvider(pickDefaultProvider(bizOptions));
-      setDestination(pickDefaultDestination(bizOptions));
-      setPaidDate('');
-      setInvoiceId('');
-    }
-    setIsModalOpen(true);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!amount || !customer) return;
-    const payload = {
-      date: orderDate,
-      customerName: customer,
-      channel,
-      paymentMethod: payment,
-      provider,
-      destination,
-      amount: Number(amount),
-      paidDate: paidDate || null,
-      invoiceId,
-      state: (paidDate ? 'RENDBEN' : 'KINT') as 'RENDBEN' | 'KINT',
-    };
-    if (editId) updateOrder(editId, payload);
-    else addOrder(payload);
-    setIsModalOpen(false);
-  };
-
-  const handleShopifySync = async () => {
-    setIsSyncing(true);
-    try {
-      await shopifyImport();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   const businessStats = useMemo(() => {
     const yearOrders = orders.filter((o) => o.date.startsWith(String(selectedYear)));
@@ -146,24 +62,16 @@ export function useBusinessPageState() {
     return { totalYTD, aov, topChannel, channelData, chartData, aiAdvice };
   }, [orders, selectedYear]);
 
-  const handleRequestAiAdvice = async () => {
-    setIsAiLoading(true);
-    try {
-      const prompt = `Kérlek, elemezd az alábbi Little Loom (kisvállalkozás, kézműves webshop) rendelési és bevételi adataimat a(z) ${selectedYear}. évre vonatkozóan, és adj egy 3-4 mondatos barátságos, motiváló stratégiát és tanácsot, hogy hogyan tudnám növelni a bevételem.
+  const handleRequestAiAdvice = () => {
+    const { totalYTD, aov, topChannel, channelData } = businessStats;
+    const prompt = `Kérlek, elemezd az alábbi Little Loom (kisvállalkozás, kézműves webshop) rendelési és bevételi adataimat a(z) ${selectedYear}. évre vonatkozóan, és adj egy 3-4 mondatos barátságos, motiváló stratégiát és tanácsot, hogy hogyan tudnám növelni a bevételem.
 
 Adataim:
-- Éves forgalom eddig (YTD): ${businessStats.totalYTD} Ft
-- Átlagos rendelési érték (AOV): ${Math.round(businessStats.aov)} Ft
-- Legjobban teljesítő csatorna: ${businessStats.topChannel}
-- Csatornák szerinti bevételek: ${businessStats.channelData.map((c) => c.name + ': ' + c.value + ' Ft').join(', ')}`;
-      const response = await aiFinanceClient.query(prompt, false);
-      setRealAiAdvice(response.data.answer);
-    } catch (error) {
-      console.error('Failed to get AI advice', error);
-      setRealAiAdvice('Sajnos nem sikerült elérni az AI szolgáltatást. Kérlek próbáld újra később.');
-    } finally {
-      setIsAiLoading(false);
-    }
+- Éves forgalom eddig (YTD): ${totalYTD} Ft
+- Átlagos rendelési érték (AOV): ${Math.round(aov)} Ft
+- Legjobban teljesítő csatorna: ${topChannel}
+- Csatornák szerinti bevételek: ${channelData.map((c) => c.name + ': ' + c.value + ' Ft').join(', ')}`;
+    return ui.handleRequestAiAdvice(prompt);
   };
 
   const { totalYTD, aov, topChannel, channelData, chartData, aiAdvice } = businessStats;
@@ -257,42 +165,42 @@ Adataim:
   return {
     selectedMonth,
     selectedYear,
-    activeTab,
-    setActiveTab,
+    activeTab: ui.activeTab,
+    setActiveTab: ui.setActiveTab,
     filteredOrders,
     monthlyMetrics,
     summaryMetrics,
     shopifyImportEnabled,
-    isSyncing,
-    handleShopifySync,
-    openForm,
+    isSyncing: ui.isSyncing,
+    handleShopifySync: ui.handleShopifySync,
+    openForm: (order?: Parameters<typeof ui.openForm>[0]) => ui.openForm(order, bizOptions),
     deleteOrder,
     requestDelete,
-    isModalOpen,
-    setIsModalOpen,
-    editId,
-    customer,
-    setCustomer,
-    amount,
-    setAmount,
-    orderDate,
-    setOrderDate,
-    channel,
-    setChannel,
-    payment,
-    setPayment,
-    provider,
-    setProvider,
-    destination,
-    setDestination,
-    paidDate,
-    setPaidDate,
-    invoiceId,
-    setInvoiceId,
+    isModalOpen: ui.isModalOpen,
+    setIsModalOpen: ui.setIsModalOpen,
+    editId: ui.editId,
+    customer: ui.customer,
+    setCustomer: ui.setCustomer,
+    amount: ui.amount,
+    setAmount: ui.setAmount,
+    orderDate: ui.orderDate,
+    setOrderDate: ui.setOrderDate,
+    channel: ui.channel,
+    setChannel: ui.setChannel,
+    payment: ui.payment,
+    setPayment: ui.setPayment,
+    provider: ui.provider,
+    setProvider: ui.setProvider,
+    destination: ui.destination,
+    setDestination: ui.setDestination,
+    paidDate: ui.paidDate,
+    setPaidDate: ui.setPaidDate,
+    invoiceId: ui.invoiceId,
+    setInvoiceId: ui.setInvoiceId,
     bizOptions,
-    handleSubmit,
-    realAiAdvice,
-    isAiLoading,
+    handleSubmit: ui.handleSubmit,
+    realAiAdvice: ui.realAiAdvice,
+    isAiLoading: ui.isAiLoading,
     handleRequestAiAdvice,
     aiAdvice,
     chartData,

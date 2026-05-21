@@ -1,8 +1,8 @@
 'use client';
 
-import classNames from 'classnames';
-import { formatHUF, formatDate } from '@/utils';
+import { formatHUF, today, compareDates, hasSettlementDate } from '@/utils';
 import { UtilitySplitRule, UtilityBill } from '@/types';
+import { isUtilityBillOverdue } from '@/lib/utilityBills';
 import { Button } from '@/components/ui/button';
 import { ClickableSelect } from '@/components/ui/clickable-select';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
@@ -14,19 +14,19 @@ import {
   StatusPill,
   StatusToggleButton,
   EmptyState,
+  EntityCell,
+  DueDateCell,
+  RowActions,
   type DataTableColumn,
 } from '@/components/design';
 import {
-  Calendar,
   CheckCircle,
   Clock,
   Copy,
-  Edit3,
   LayoutTemplate,
   Receipt,
-  Trash2,
-  User,
   Users,
+  User,
   XCircle,
 } from 'lucide-react';
 import type { UtilitiesPageState } from '@/components/modules/utilities/hooks/use-utilities-page-state';
@@ -94,26 +94,24 @@ export function UtilitiesBillsTable({
 }: UtilitiesBillsTableProps) {
   const { householdPayerLabel, partnerPayerLabel } = utilityLabels;
 
+  const billOverdue = (row: UtilityBill) =>
+    isUtilityBillOverdue(row, { splitEnabled: utilitySplitEnabled, today: todayStr });
+
   const columns: DataTableColumn<UtilityBill>[] = [
     {
       key: 'type',
       header: 'Tétel',
       width: '40%',
       cell: (row) => {
-        const isOverdue = !row.paidDate && row.dueDate < todayStr;
-        const iconTone = row.paidDate ? 'bg-emerald-100 text-emerald-700' : isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700';
+        const isOverdue = billOverdue(row);
+        const tone = hasSettlementDate(row.paidDate) || (utilitySplitEnabled && row.paidBy) ? 'success' : isOverdue ? 'danger' : 'warning';
         return (
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={classNames('flex h-8 w-8 shrink-0 items-center justify-center rounded-md', iconTone)}>
-              <Receipt size={13} strokeWidth={2.2} />
-            </div>
-            <div className="min-w-0">
-              <div className="font-medium text-sm text-foreground truncate flex items-center gap-2">
-                <span className="truncate">{row.type}</span>
-              </div>
-              {utilitySplitEnabled && <div className="mt-0.5">{getRuleBadge(row.splitRule, utilityLabels)}</div>}
-            </div>
-          </div>
+          <EntityCell
+            icon={Receipt}
+            tone={tone}
+            title={row.type}
+            subtitle={utilitySplitEnabled ? getRuleBadge(row.splitRule, utilityLabels) : undefined}
+          />
         );
       },
     },
@@ -121,21 +119,7 @@ export function UtilitiesBillsTable({
       key: 'dueDate',
       header: 'Határidő',
       width: '14%',
-      cell: (row) => {
-        const isOverdue = !row.paidDate && row.dueDate < todayStr;
-        return (
-          <span
-            className={classNames(
-              'inline-flex items-center gap-1.5 text-xs tabular-nums',
-              isOverdue ? 'text-rose-600 font-medium' : 'text-muted-foreground',
-            )}
-          >
-            <Calendar size={11} strokeWidth={2.2} />
-            {formatDate(row.dueDate)}
-            {isOverdue && <span className="text-[10px] uppercase tracking-wider">lejárt</span>}
-          </span>
-        );
-      },
+      cell: (row) => <DueDateCell date={row.dueDate} today={todayStr} overdue={billOverdue(row)} />,
     },
     {
       key: 'amount',
@@ -161,7 +145,7 @@ export function UtilitiesBillsTable({
       align: 'center',
       width: '18%',
       cell: (row) => {
-        const isOverdue = !row.paidDate && row.dueDate < todayStr;
+        const isOverdue = billOverdue(row);
         if (utilitySplitEnabled) {
           return (
             <ClickableSelect
@@ -179,7 +163,7 @@ export function UtilitiesBillsTable({
                   else
                     await updateBill(row.id, {
                       paidBy: val as 'Mi' | 'Ildi',
-                      paidDate: new Date().toISOString().split('T')[0],
+                      paidDate: today(),
                     });
                 });
               }}
@@ -191,25 +175,25 @@ export function UtilitiesBillsTable({
             />
           );
         }
-        const statusTitle = row.paidDate
+        const statusTitle = hasSettlementDate(row.paidDate)
           ? 'Kifizetve — kattints visszaállításhoz'
           : isOverdue
             ? 'Lejárt — kattints kifizetettként jelöléshez'
             : 'Várakozik — kattints kifizetettként jelöléshez';
         return (
           <StatusToggleButton
-            status={row.paidDate ? 'success' : isOverdue ? 'danger' : 'warning'}
+            status={hasSettlementDate(row.paidDate) ? 'success' : isOverdue ? 'danger' : 'warning'}
             title={statusTitle}
             pending={isBillPending(row.id)}
             onClick={() =>
               void wrapBillPending(row.id, () =>
                 updateBill(row.id, {
-                  paidDate: row.paidDate ? null : new Date().toISOString().split('T')[0],
+                  paidDate: hasSettlementDate(row.paidDate) ? null : today(),
                 }),
               )
             }
           >
-            {row.paidDate ? (
+            {hasSettlementDate(row.paidDate) ? (
               <>
                 <CheckCircle size={9} /> Kész
               </>
@@ -233,31 +217,16 @@ export function UtilitiesBillsTable({
       width: '14%',
       cell: (row) =>
         !isReader ? (
-          <div className="flex items-center justify-end gap-0.5">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              title="Szerkesztés"
-              onClick={() => handleEdit(row)}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <Edit3 size={13} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() =>
-                requestDelete({
-                  title: 'Rezsi tétel törlése',
-                  message: `Biztosan törlöd a „${row.type}" számlát? Ez a művelet nem vonható vissza.`,
-                  onConfirm: () => deleteBill(row.id),
-                })
-              }
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 size={13} />
-            </Button>
-          </div>
+          <RowActions
+            onEdit={() => handleEdit(row)}
+            onDelete={() =>
+              requestDelete({
+                title: 'Rezsi tétel törlése',
+                message: `Biztosan törlöd a „${row.type}" számlát? Ez a művelet nem vonható vissza.`,
+                onConfirm: () => deleteBill(row.id),
+              })
+            }
+          />
         ) : null,
     },
   ];

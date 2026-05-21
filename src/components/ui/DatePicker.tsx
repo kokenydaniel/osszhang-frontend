@@ -2,22 +2,9 @@
 
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  format,
-  addMonths,
-  subMonths,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  isSameMonth,
-  isSameDay,
-  eachDayOfInterval,
-  parseISO,
-} from 'date-fns';
-import { hu } from 'date-fns/locale';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import classNames from 'classnames';
+import { dayjs, d, today, DATE_FORMAT, DISPLAY_FORMAT_LONG } from '@/lib/dates';
 
 interface DatePickerProps {
   value: string;
@@ -38,9 +25,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   const [openUp, setOpenUp] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 288 });
   const [mounted, setMounted] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(value ? parseISO(value) : new Date());
+  const [currentMonth, setCurrentMonth] = useState(() => (value ? d(value) : dayjs()));
   const containerRef = useRef<HTMLDivElement>(null);
-  const selectedDate = value ? parseISO(value) : null;
+  const selectedDate = value ? d(value) : null;
 
   useEffect(() => setMounted(true), []);
 
@@ -96,21 +83,35 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     };
   }, [isOpen]);
 
+  const calendarDays = (() => {
+    const monthStart = currentMonth.startOf('month');
+    const monthEnd = currentMonth.endOf('month');
+    const startDate = monthStart.startOf('isoWeek');
+    const endDate = monthEnd.endOf('isoWeek');
+    const days = [];
+    let cursor = startDate;
+    while (cursor.isBefore(endDate) || cursor.isSame(endDate, 'day')) {
+      days.push(cursor);
+      cursor = cursor.add(1, 'day');
+    }
+    return days;
+  })();
+
   const renderHeader = () => (
     <div className="flex justify-between items-center mb-3 px-1">
       <button
         type="button"
-        onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+        onClick={() => setCurrentMonth((m) => m.subtract(1, 'month'))}
         className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
       >
         <ChevronLeft size={15} />
       </button>
       <div className="text-sm font-medium capitalize text-foreground">
-        {format(currentMonth, 'yyyy. MMMM', { locale: hu })}
+        {currentMonth.format('YYYY. MMMM')}
       </div>
       <button
         type="button"
-        onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+        onClick={() => setCurrentMonth((m) => m.add(1, 'month'))}
         className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
       >
         <ChevronRight size={15} />
@@ -135,25 +136,22 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   };
 
   const renderCells = () => {
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(monthStart);
-    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
-    const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+    const monthStart = currentMonth.startOf('month');
+    const todayDate = dayjs();
 
     return (
       <div className="grid grid-cols-7 gap-0.5">
-        {allDays.map((d, i) => {
-          const isSelected = selectedDate && isSameDay(d, selectedDate);
-          const isCurrentMonth = isSameMonth(d, monthStart);
-          const isToday = isSameDay(d, new Date());
+        {calendarDays.map((cellDate) => {
+          const isSelected = selectedDate?.isSame(cellDate, 'day') ?? false;
+          const isCurrentMonth = cellDate.isSame(monthStart, 'month');
+          const isToday = cellDate.isSame(todayDate, 'day');
 
           return (
             <button
-              key={i}
+              key={cellDate.format(DATE_FORMAT)}
               type="button"
               onClick={() => {
-                onChange(format(d, 'yyyy-MM-dd'));
+                onChange(cellDate.format(DATE_FORMAT));
                 setIsOpen(false);
               }}
               className={classNames(
@@ -164,7 +162,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                 !isCurrentMonth && !isSelected && 'opacity-35',
               )}
             >
-              {format(d, 'd')}
+              {cellDate.format('D')}
             </button>
           );
         })}
@@ -203,7 +201,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           type="button"
           className="px-3 py-1.5 rounded-md text-xs font-medium text-primary hover:bg-primary/10 transition-colors touch-manipulation"
           onClick={() => {
-            onChange(format(new Date(), 'yyyy-MM-dd'));
+            onChange(today());
             setIsOpen(false);
           }}
         >
@@ -226,7 +224,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       >
         <CalendarIcon size={15} className="text-muted-foreground shrink-0" />
         <span className={classNames('flex-1 truncate', value ? 'text-foreground' : 'text-muted-foreground')}>
-          {value ? format(parseISO(value), 'yyyy. MM. dd.', { locale: hu }) : placeholder}
+          {value ? d(value).format(DISPLAY_FORMAT_LONG) : placeholder}
         </span>
         {value && (
           <span

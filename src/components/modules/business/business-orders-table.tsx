@@ -1,6 +1,5 @@
 'use client';
 
-import classNames from 'classnames';
 import { formatHUF, formatDate } from '@/utils';
 import { BusinessOrder } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -8,13 +7,13 @@ import {
   DataTable,
   EmptyState,
   StatusPill,
+  EntityCell,
+  RowActions,
   type DataTableColumn,
 } from '@/components/design';
 import {
   ShoppingBag,
   Plus,
-  Edit3,
-  Trash2,
   User,
   Truck,
   FileText,
@@ -48,19 +47,18 @@ export function BusinessOrdersTable({
       width: '24%',
       cell: (order) => {
         const ChannelIcon = getChannelIcon(order.channel);
-        const tone = order.state === 'RENDBEN' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700';
+        const tone = order.state === 'RENDBEN' ? 'success' : 'warning';
         return (
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={classNames('flex h-8 w-8 shrink-0 items-center justify-center rounded-md', tone)}>
-              <ChannelIcon size={13} strokeWidth={2.2} />
-            </div>
-            <div className="min-w-0">
-              <div className="font-medium text-sm text-foreground truncate">{order.customerName}</div>
-              {order.shopifyOrderNumber && (
-                <div className="text-[0.65rem] font-mono text-muted-foreground mt-0.5">{order.shopifyOrderNumber}</div>
-              )}
-            </div>
-          </div>
+          <EntityCell
+            icon={ChannelIcon}
+            tone={tone}
+            title={order.customerName}
+            subtitle={
+              order.shopifyOrderNumber ? (
+                <span className="font-mono">{order.shopifyOrderNumber}</span>
+              ) : undefined
+            }
+          />
         );
       },
     },
@@ -131,25 +129,16 @@ export function BusinessOrdersTable({
       align: 'right',
       width: '8%',
       cell: (order) => (
-        <div className="flex items-center justify-end gap-0.5">
-          <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground" onClick={() => openForm(order)}>
-            <Edit3 size={13} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="text-muted-foreground hover:text-destructive"
-            onClick={() =>
-              requestDelete({
-                title: 'Rendelés törlése',
-                message: `Biztosan törlöd a „${order.customerName || 'névtelen'}" rendelést? Ez a művelet nem vonható vissza.`,
-                onConfirm: () => deleteOrder(order.id),
-              })
-            }
-          >
-            <Trash2 size={13} />
-          </Button>
-        </div>
+        <RowActions
+          onEdit={() => openForm(order)}
+          onDelete={() =>
+            requestDelete({
+              title: 'Rendelés törlése',
+              message: `Biztosan törlöd a „${order.customerName || 'névtelen'}" rendelést? Ez a művelet nem vonható vissza.`,
+              onConfirm: () => deleteOrder(order.id),
+            })
+          }
+        />
       ),
     },
   ];

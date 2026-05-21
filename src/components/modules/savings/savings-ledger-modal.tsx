@@ -1,15 +1,12 @@
 'use client';
 
-import classNames from 'classnames';
-import { formatDate } from '@/utils';
-import { LedgerEntry } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/FieldLabel';
 import { HELP } from '@/lib/helpTexts';
-import { SegmentedControl } from '@/components/design';
+import { SegmentedControl, LedgerHistoryPanel } from '@/components/design';
 import {
   Plus,
   Trash2,
@@ -141,64 +138,34 @@ export function SavingsLedgerModal({
             )}
           </Button>
         </div>
-        <div className="border-t border-border pt-4">
-          <p className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            Korábbi tételek
-          </p>
-          <div className="flex flex-col gap-1.5 max-h-[280px] overflow-y-auto">
-            {ledgerItems.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">Még nincsenek tételek.</p>
-            ) : (
-              ledgerItems
-                .slice()
-                .reverse()
-                .map((item: LedgerEntry) => (
-                  <div
-                    key={item.id}
-                    className={classNames(
-                      'flex items-center gap-2 bg-muted/40 border rounded-md px-3 py-2',
-                      editingLedgerId === item.id ? 'border-primary/50 ring-1 ring-primary/20' : 'border-border',
-                    )}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{item.reason}</p>
-                      <p className="text-[0.7rem] text-muted-foreground tabular-nums">{formatDate(item.date)}</p>
-                    </div>
-                    <p
-                      className={classNames(
-                        'text-sm font-semibold tabular-nums shrink-0',
-                        item.amount >= 0 ? 'text-emerald-600' : 'text-rose-600',
-                      )}
-                    >
-                      {item.amount >= 0 ? '+' : ''}
-                      {formatCurrencyAmount(item.amount, ledgerCurrency)}
-                    </p>
-                    <div className="flex shrink-0 gap-0.5">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="Szerkesztés"
-                        onClick={() => startEditLedger(item)}
-                      >
-                        <Edit3 size={13} />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-muted-foreground hover:text-destructive"
-                        aria-label="Törlés"
-                        onClick={() => handleDeleteLedgerEntry(item, ledgerCurrency)}
-                      >
-                        <Trash2 size={13} />
-                      </Button>
-                    </div>
-                  </div>
-                ))
-            )}
-          </div>
-        </div>
+        <LedgerHistoryPanel
+          items={ledgerItems}
+          editingId={editingLedgerId}
+          formatAmount={(amount) => formatCurrencyAmount(amount, ledgerCurrency)}
+          actions={(item) => (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Szerkesztés"
+                onClick={() => startEditLedger(item)}
+              >
+                <Edit3 size={13} />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground hover:text-destructive"
+                aria-label="Törlés"
+                onClick={() => handleDeleteLedgerEntry(item, ledgerCurrency)}
+              >
+                <Trash2 size={13} />
+              </Button>
+            </>
+          )}
+        />
       </div>
     </Modal>
   );

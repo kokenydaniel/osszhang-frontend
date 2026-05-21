@@ -1,7 +1,7 @@
 'use client';
 
 import { Modal } from '@/components/ui/Modal';
-import { Button } from '@/components/ui/button';
+import { ModalFormFooter } from '@/components/design';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/FieldLabel';
 import { FormField } from '@/components/ui/FormField';
@@ -121,14 +121,10 @@ export function DebtsFormModal({
             />
           </FormField>
         </div>
-        <div className="flex gap-2 pt-1">
-          <Button type="button" variant="outline" className="flex-1" onClick={() => setIsModalOpen(false)}>
-            Mégse
-          </Button>
-          <Button type="submit" className="flex-1">
-            {editId ? 'Mentés' : 'Létrehozás'}
-          </Button>
-        </div>
+        <ModalFormFooter
+          onCancel={() => setIsModalOpen(false)}
+          submitLabel={editId ? 'Mentés' : 'Létrehozás'}
+        />
       </form>
     </Modal>
   );

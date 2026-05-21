@@ -1,7 +1,7 @@
 'use client';
 
 import classNames from 'classnames';
-import { formatHUF } from '@/utils';
+import { formatHUF, isDueOverdue } from '@/utils';
 import { Button } from '@/components/ui/button';
 import {
   DataTable,
@@ -46,7 +46,7 @@ export function DashboardUnpaidSection({ unpaidItemsList, todayStr, handlePayIte
                 header: 'Tétel',
                 width: '40%',
                 cell: (item) => {
-                  const overdue = item.dueDate < todayStr;
+                  const overdue = isDueOverdue(item, todayStr);
                   const Icon = item.type === 'bill' ? ReceiptText : Wallet;
                   const toneCls = overdue ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700';
                   return (
@@ -67,7 +67,7 @@ export function DashboardUnpaidSection({ unpaidItemsList, todayStr, handlePayIte
                 header: 'Határidő',
                 width: '22%',
                 cell: (item) => {
-                  const overdue = item.dueDate < todayStr;
+                  const overdue = isDueOverdue(item, todayStr);
                   return (
                     <span
                       className={classNames(

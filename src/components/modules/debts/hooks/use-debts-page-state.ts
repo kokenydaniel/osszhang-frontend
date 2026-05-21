@@ -1,160 +1,40 @@
-'use client';
-
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useDebtsStore } from '@/stores/useDebtsStore';
+import { useDebtsUiStore } from '@/stores/useDebtsUiStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useBudgetStore } from '@/stores/useBudgetStore';
-import { useNotificationStore } from '@/stores/useNotificationStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { formatHUF } from '@/utils';
 import { computePayoff, computeAcceleration, formatPayoffDate } from '@/utils/debt';
-import { Debt } from '@/types';
 import { HELP } from '@/lib/helpTexts';
-import { matchPaymentCategory, resolveDebtsSettings } from '@/lib/debtsSettings';
+import { resolveDebtsSettings } from '@/lib/debtsSettings';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import { CalendarDays, CreditCard, Target, TrendingDown } from 'lucide-react';
 import type { MetricItem } from '@/components/design';
 
-export type DebtStrategy = 'avalanche' | 'snowball';
+export type { DebtStrategy } from '@/stores/useDebtsUiStore';
 
 export function useDebtsPageState() {
-  const { debts, fetchDebts, addDebt, deleteDebt, updateDebt, aiDebtPlan, fetchAiDebtPlan } = useDebtsStore();
+  const { debts, fetchDebts, deleteDebt, aiDebtPlan } = useDebtsStore();
+  const ui = useDebtsUiStore();
   const { user } = useAuthStore();
-  const debtsSettings = useMemo(() => resolveDebtsSettings(user?.household), [user?.household]);
-  const { addTransaction, categories } = useBudgetStore();
-  const { addNotification } = useNotificationStore();
+  const { categories } = useBudgetStore();
   const { selectedYear, selectedMonth } = usePreferenceStore();
+  const debtsSettings = useMemo(() => resolveDebtsSettings(user?.household), [user?.household]);
   const isReader = user?.role === 'reader';
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [name, setName] = useState('');
-  const [targetAmount, setTargetAmount] = useState('');
-  const [paidAmount, setPaidAmount] = useState('');
-  const [annualInterestRate, setAnnualInterestRate] = useState('');
-  const [minimumPayment, setMinimumPayment] = useState('');
-  const [dueDay, setDueDay] = useState('');
-
-  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
-  const [payDebt, setPayDebt] = useState<Debt | null>(null);
-  const [payAmount, setPayAmount] = useState('');
-  const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
-  const [payNote, setPayNote] = useState('');
-  const [payAddToBudget, setPayAddToBudget] = useState(debtsSettings.pay_add_to_budget_default);
-  const [payCategory, setPayCategory] = useState(categories[0] || '');
-
-  const [strategy, setStrategy] = useState<DebtStrategy>(debtsSettings.default_strategy);
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [extraMonthly, setExtraMonthly] = useState<number>(debtsSettings.default_extra_monthly);
-  const [paySaving, setPaySaving] = useState(false);
 
   useEffect(() => {
     fetchDebts();
   }, [fetchDebts]);
 
   useEffect(() => {
-    if (categories.length > 0) {
-      const def = matchPaymentCategory(categories, debtsSettings.payment_category_pattern);
-      setPayCategory((current) => current || def);
-    }
-  }, [categories, debtsSettings.payment_category_pattern]);
+    useDebtsUiStore.getState().syncPayCategory(categories);
+  }, [categories]);
 
   useEffect(() => {
-    setStrategy(debtsSettings.default_strategy);
-    setExtraMonthly(debtsSettings.default_extra_monthly);
-    setPayAddToBudget(debtsSettings.pay_add_to_budget_default);
+    useDebtsUiStore.getState().applyHouseholdDefaults();
   }, [debtsSettings]);
-
-  const openForm = (d?: Debt) => {
-    if (d) {
-      setEditId(d.id);
-      setName(d.name);
-      setTargetAmount(String(d.targetAmount));
-      setPaidAmount(String(d.paidAmount));
-      setAnnualInterestRate(d.annualInterestRate ? String(d.annualInterestRate) : '');
-      setMinimumPayment(d.minimumPayment ? String(d.minimumPayment) : '');
-      setDueDay(d.dueDay ? String(d.dueDay) : '');
-    } else {
-      setEditId(null);
-      setName('');
-      setTargetAmount('');
-      setPaidAmount('0');
-      setAnnualInterestRate('');
-      setMinimumPayment('');
-      setDueDay('');
-    }
-    setIsModalOpen(true);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const data = {
-      name,
-      targetAmount: Number(targetAmount),
-      paidAmount: Number(paidAmount) || 0,
-      annualInterestRate: annualInterestRate ? Number(annualInterestRate) : null,
-      minimumPayment: minimumPayment ? Number(minimumPayment) : null,
-      dueDay: dueDay ? Number(dueDay) : null,
-      status: (Number(paidAmount) >= Number(targetAmount) ? 'Maradt' : 'Van még') as Debt['status'],
-    };
-    if (editId) updateDebt(editId, data);
-    else addDebt(data);
-    setIsModalOpen(false);
-  };
-
-  const openPayModal = (d: Debt) => {
-    setPayDebt(d);
-    setPayAmount(d.minimumPayment ? String(d.minimumPayment) : '');
-    setPayDate(new Date().toISOString().split('T')[0]);
-    setPayNote(`${d.name} törlesztés`);
-    setPayAddToBudget(debtsSettings.pay_add_to_budget_default);
-    if (categories.length > 0) {
-      setPayCategory(matchPaymentCategory(categories, debtsSettings.payment_category_pattern));
-    }
-    setIsPayModalOpen(true);
-  };
-
-  const handlePaySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!payDebt) return;
-    const amt = Number(String(payAmount).replace(',', '.'));
-    if (!(amt > 0)) {
-      addNotification('Adj meg egy érvényes pozitív összeget.', 'error');
-      return;
-    }
-    setPaySaving(true);
-    try {
-      const newPaid = Number(payDebt.paidAmount) + amt;
-      const completed = newPaid >= Number(payDebt.targetAmount);
-      await updateDebt(payDebt.id, {
-        paidAmount: newPaid,
-        status: (completed ? 'Maradt' : 'Van még') as Debt['status'],
-      });
-      if (payAddToBudget && payCategory) {
-        await addTransaction({
-          type: 'expense',
-          description: payNote || `${payDebt.name} törlesztés`,
-          category: payCategory,
-          amount: amt,
-          dueDate: payDate,
-          paidDate: payDate,
-          isBudget: false,
-          isReserve: false,
-        });
-      }
-      addNotification(
-        `${formatHUF(amt)} törlesztés rögzítve${payAddToBudget ? ' (költségvetésben is)' : ''}.`,
-        'success',
-      );
-      setIsPayModalOpen(false);
-    } catch (err) {
-      console.error(err);
-      addNotification('Nem sikerült rögzíteni a törlesztést.', 'error');
-    } finally {
-      setPaySaving(false);
-    }
-  };
 
   const debtsWithPayoff = useMemo(() => {
     return debts
@@ -227,15 +107,6 @@ export function useDebtsPageState() {
     },
   ];
 
-  const handleAiOptimize = async () => {
-    setIsAiLoading(true);
-    try {
-      await fetchAiDebtPlan(strategy);
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
-
   const orderedDebts = useMemo(() => {
     if (!aiDebtPlan?.schedule || aiDebtPlan.schedule.length === 0) return [] as typeof debtsWithPayoff;
     const byId = new Map(debtsWithPayoff.map((d) => [d.id, d]));
@@ -246,14 +117,14 @@ export function useDebtsPageState() {
 
   const focusDebt = orderedDebts[0];
   const acceleration = useMemo(() => {
-    if (!focusDebt || extraMonthly <= 0) return null;
+    if (!focusDebt || ui.extraMonthly <= 0) return null;
     return computeAcceleration(
       focusDebt.remaining,
       focusDebt.annualInterestRate,
       focusDebt.minimumPayment,
-      extraMonthly,
+      ui.extraMonthly,
     );
-  }, [focusDebt, extraMonthly]);
+  }, [focusDebt, ui.extraMonthly]);
 
   return {
     isReader,
@@ -264,50 +135,50 @@ export function useDebtsPageState() {
     farthestPayoff,
     totalInterestRemaining,
     aiDebtPlan,
-    strategy,
-    setStrategy,
-    isAiLoading,
-    handleAiOptimize,
+    strategy: ui.strategy,
+    setStrategy: ui.setStrategy,
+    isAiLoading: ui.isAiLoading,
+    handleAiOptimize: ui.handleAiOptimize,
     orderedDebts,
     focusDebt,
-    extraMonthly,
-    setExtraMonthly,
+    extraMonthly: ui.extraMonthly,
+    setExtraMonthly: ui.setExtraMonthly,
     acceleration,
-    openForm,
-    openPayModal,
+    openForm: ui.openForm,
+    openPayModal: ui.openPayModal,
     deleteDebt,
     requestDelete,
-    isModalOpen,
-    setIsModalOpen,
-    editId,
-    name,
-    setName,
-    targetAmount,
-    setTargetAmount,
-    paidAmount,
-    setPaidAmount,
-    annualInterestRate,
-    setAnnualInterestRate,
-    minimumPayment,
-    setMinimumPayment,
-    dueDay,
-    setDueDay,
-    handleSubmit,
-    isPayModalOpen,
-    setIsPayModalOpen,
-    payDebt,
-    payAmount,
-    setPayAmount,
-    payDate,
-    setPayDate,
-    payNote,
-    setPayNote,
-    payAddToBudget,
-    setPayAddToBudget,
-    payCategory,
-    setPayCategory,
-    paySaving,
-    handlePaySubmit,
+    isModalOpen: ui.isModalOpen,
+    setIsModalOpen: ui.setIsModalOpen,
+    editId: ui.editId,
+    name: ui.name,
+    setName: ui.setName,
+    targetAmount: ui.targetAmount,
+    setTargetAmount: ui.setTargetAmount,
+    paidAmount: ui.paidAmount,
+    setPaidAmount: ui.setPaidAmount,
+    annualInterestRate: ui.annualInterestRate,
+    setAnnualInterestRate: ui.setAnnualInterestRate,
+    minimumPayment: ui.minimumPayment,
+    setMinimumPayment: ui.setMinimumPayment,
+    dueDay: ui.dueDay,
+    setDueDay: ui.setDueDay,
+    handleSubmit: ui.handleSubmit,
+    isPayModalOpen: ui.isPayModalOpen,
+    setIsPayModalOpen: ui.setIsPayModalOpen,
+    payDebt: ui.payDebt,
+    payAmount: ui.payAmount,
+    setPayAmount: ui.setPayAmount,
+    payDate: ui.payDate,
+    setPayDate: ui.setPayDate,
+    payNote: ui.payNote,
+    setPayNote: ui.setPayNote,
+    payAddToBudget: ui.payAddToBudget,
+    setPayAddToBudget: ui.setPayAddToBudget,
+    payCategory: ui.payCategory,
+    setPayCategory: ui.setPayCategory,
+    paySaving: ui.paySaving,
+    handlePaySubmit: ui.handlePaySubmit,
     categories,
     selectedYear,
     selectedMonth,

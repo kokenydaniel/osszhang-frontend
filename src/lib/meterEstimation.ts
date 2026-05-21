@@ -1,4 +1,5 @@
 import type { MeterReading } from '@/types';
+import { compareDates, d } from '@/lib/dates';
 
 /** Saját rögzítés (nem AI-becsült) — ezek határozzák meg a becslési szakaszt. */
 export function isAnchorReading(r: MeterReading): boolean {
@@ -7,7 +8,7 @@ export function isAnchorReading(r: MeterReading): boolean {
 
 export function sortReadingsByDate(readings: MeterReading[]): MeterReading[] {
   return [...readings].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.id - b.id,
+    (a, b) => compareDates(a.date, b.date) || a.id - b.id,
   );
 }
 
@@ -22,11 +23,12 @@ export function targetDateForMonth(year: number, month: number): string {
 /** Megbízható leolvasások a cél dátum körül (interpolációhoz). */
 export function bracketAnchorReadings(
   sorted: MeterReading[],
-  targetDate: Date,
+  targetDate: string,
 ): { previous: MeterReading | null; next: MeterReading | null } {
+  const target = d(targetDate);
   const anchors = sorted.filter(isAnchorReading);
-  const previous = anchors.filter((r) => new Date(r.date) < targetDate).at(-1) ?? null;
-  const next = anchors.find((r) => new Date(r.date) > targetDate) ?? null;
+  const previous = anchors.filter((r) => d(r.date).isBefore(target, 'day')).at(-1) ?? null;
+  const next = anchors.find((r) => d(r.date).isAfter(target, 'day')) ?? null;
   return { previous, next };
 }
 
@@ -36,9 +38,9 @@ export function interpolateMeterValue(
   next: { date: string; value: number },
   targetDate: string,
 ): number {
-  const prevMs = new Date(prev.date).getTime();
-  const nextMs = new Date(next.date).getTime();
-  const targetMs = new Date(targetDate).getTime();
+  const prevMs = d(prev.date).valueOf();
+  const nextMs = d(next.date).valueOf();
+  const targetMs = d(targetDate).valueOf();
   if (nextMs <= prevMs) return Math.round(prev.value);
   const t = Math.min(1, Math.max(0, (targetMs - prevMs) / (nextMs - prevMs)));
   return Math.round(prev.value + (next.value - prev.value) * t);
@@ -48,7 +50,7 @@ export function canInterpolateBetween(
   prev: { date: string; value: number },
   next: { date: string; value: number },
 ): boolean {
-  return new Date(next.date).getTime() > new Date(prev.date).getTime() && next.value >= prev.value;
+  return d(next.date).isAfter(d(prev.date), 'day') && next.value >= prev.value;
 }
 
 export function seasonalConsumptionEstimate(

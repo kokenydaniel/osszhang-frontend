@@ -1,9 +1,7 @@
-'use client';
-
 import Link from 'next/link';
 import classNames from 'classnames';
 import { formatHUF } from '@/utils';
-import { Section, EmptyState } from '@/components/design';
+import { Section, EmptyState, ProgressBar, DataList, DataRow } from '@/components/design';
 import { Zap, Droplets, Flame, ChevronRight, PiggyBank, Calendar } from 'lucide-react';
 import type { DashboardPageState } from '@/components/modules/dashboard/hooks/use-dashboard-page-state';
 
@@ -44,7 +42,6 @@ export function DashboardSideColumn({
                   ? 'bg-gradient-to-br from-sky-400 to-cyan-500'
                   : 'bg-gradient-to-br from-rose-400 to-orange-500';
               const maxValue = Math.max(...consumptionData.map((c) => c.value || 1));
-              const progress = maxValue > 0 ? (m.value / maxValue) * 100 : 0;
               return (
                 <div
                   key={m.id}
@@ -69,19 +66,17 @@ export function DashboardSideColumn({
                         <span className="text-[0.65rem] font-normal text-muted-foreground ml-0.5">{m.unit}</span>
                       </span>
                     </div>
-                    <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={classNames(
-                          'h-full rounded-full transition-all duration-500',
-                          m.name.includes('Villany')
-                            ? 'bg-gradient-to-r from-amber-400 to-orange-500'
-                            : m.name.includes('Víz')
-                              ? 'bg-gradient-to-r from-sky-400 to-cyan-500'
-                              : 'bg-gradient-to-r from-rose-400 to-orange-500',
-                        )}
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
+                    <ProgressBar
+                      value={m.value}
+                      max={maxValue}
+                      barClassName={
+                        m.name.includes('Villany')
+                          ? 'bg-gradient-to-r from-amber-400 to-orange-500'
+                          : m.name.includes('Víz')
+                            ? 'bg-gradient-to-r from-sky-400 to-cyan-500'
+                            : 'bg-gradient-to-r from-rose-400 to-orange-500'
+                      }
+                    />
                   </div>
                 </div>
               );
@@ -113,31 +108,28 @@ export function DashboardSideColumn({
           ) : investmentPayouts.length === 0 ? (
             <EmptyState icon={Calendar} title="Nincs ütemezett kifizetés" description="Nem ismert következő kamatkifizetési dátum." />
           ) : (
-            <div className="rounded-lg border border-border bg-card overflow-hidden shadow-soft">
+            <DataList className="shadow-soft">
               {investmentPayouts.slice(0, 4).map((p, idx) => (
-                <div
+                <DataRow
                   key={idx}
-                  className={classNames(
-                    'flex items-center gap-3 px-4 py-3 group hover:bg-muted/30 transition-colors',
-                    idx > 0 && 'border-t border-border',
-                  )}
-                >
-                  <div className="h-9 w-9 shrink-0 rounded-md bg-gradient-to-br from-emerald-400 to-teal-500 text-white flex items-center justify-center shadow-sm">
-                    <PiggyBank size={14} strokeWidth={2.2} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-foreground truncate">{p.invName}</div>
-                    <div className="text-[0.7rem] text-muted-foreground mt-0.5">
-                      {p.owner} · {p.label}
+                  leading={
+                    <div className="h-9 w-9 shrink-0 rounded-md bg-gradient-to-br from-emerald-400 to-teal-500 text-white flex items-center justify-center shadow-sm">
+                      <PiggyBank size={14} strokeWidth={2.2} />
                     </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-sm font-semibold text-emerald-600 tabular-nums">+{formatHUF(p.amount)}</div>
-                    <div className="text-[0.65rem] text-muted-foreground tabular-nums">{p.date ? p.date.replace(/-/g, '.') : 'Lejáratkor'}</div>
-                  </div>
-                </div>
+                  }
+                  title={p.invName}
+                  subtitle={`${p.owner} · ${p.label}`}
+                  trailing={
+                    <div className="flex flex-col items-end gap-0.5">
+                      <div className="text-sm font-semibold text-emerald-600 tabular-nums">+{formatHUF(p.amount)}</div>
+                      <div className="text-[0.65rem] text-muted-foreground tabular-nums">
+                        {p.date ? p.date.replace(/-/g, '.') : 'Lejáratkor'}
+                      </div>
+                    </div>
+                  }
+                />
               ))}
-            </div>
+            </DataList>
           )}
         </Section>
       )}

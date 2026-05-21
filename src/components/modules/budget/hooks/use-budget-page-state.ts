@@ -1,13 +1,11 @@
-'use client';
-
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useBudgetStore } from '@/stores/useBudgetStore';
+import { useBudgetUiStore } from '@/stores/useBudgetUiStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUtilitiesStore } from '@/stores/useUtilitiesStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
-import { formatHUF } from '@/utils';
-import { aiFinanceClient } from '@/lib/api-client';
-import { CashTransaction, LedgerEntry, UtilityBill } from '@/types';
+import { formatHUF, today as todayDate, isDueOverdue, hasSettlementDate } from '@/utils';
+import { LedgerEntry, UtilityBill } from '@/types';
 import { isLegacySettlementBill } from '@/lib/utilityBills';
 import { HELP } from '@/lib/helpTexts';
 import { isUtilityHouseholdSide, ourUtilityPortion } from '@/lib/utilityViewer';
@@ -19,127 +17,35 @@ import type { MetricItem } from '@/components/design';
 export function useBudgetPageState() {
   const {
     transactions,
-    addTransaction,
     deleteTransaction,
     updateTransaction,
-    addSubItem,
     aiOverspend,
     fetchAiOverspend,
     clonePreviousMonth,
     categories,
   } = useBudgetStore();
 
+  const ui = useBudgetUiStore();
+  const { user } = useAuthStore();
   const { bills } = useUtilitiesStore();
-  const { user, updateManualBalance } = useAuthStore();
-  const utilitySplitEnabled = user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? false;
-  const partnerId = user?.household?.utilitySplitPartnerId ?? user?.household?.utility_split_partner_id;
-  const onHouseholdSide = isUtilityHouseholdSide(user?.id, partnerId);
-  const getBillPortion = (b: UtilityBill) => ourUtilityPortion(b, onHouseholdSide, utilitySplitEnabled);
   const { selectedMonth, selectedYear } = usePreferenceStore();
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
   const { pending: cloning, run: runClone } = useAsyncAction();
   const { wrap: wrapTxPending, isPending: isTxPending } = usePendingIds();
 
+  const utilitySplitEnabled = user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? false;
+  const partnerId = user?.household?.utilitySplitPartnerId ?? user?.household?.utility_split_partner_id;
+  const onHouseholdSide = isUtilityHouseholdSide(user?.id, partnerId);
+  const getBillPortion = (b: UtilityBill) => ourUtilityPortion(b, onHouseholdSide, utilitySplitEnabled);
+
   useEffect(() => {
     fetchAiOverspend(selectedYear, selectedMonth);
   }, [fetchAiOverspend, selectedMonth, selectedYear]);
 
-  const [isTxModalOpen, setIsTxModalOpen] = useState(false);
-  const [editTxId, setEditTxId] = useState<number | null>(null);
-  const [txType, setTxType] = useState<'expense' | 'income'>('income');
-  const [txCat, setTxCat] = useState(categories[0] || '');
-  const [txDesc, setTxDesc] = useState('');
-  const [txAmount, setTxAmount] = useState('');
-  const [txDue, setTxDue] = useState(new Date().toISOString().split('T')[0]);
-  const [txIsBudget, setTxIsBudget] = useState(false);
-  const [txIsReserve, setTxIsReserve] = useState(false);
-  const [txPaidDate, setTxPaidDate] = useState<string | null>(null);
-  const [isCategoryLoading, setIsCategoryLoading] = useState(false);
-
-  const [isLedgerModalOpen, setIsLedgerModalOpen] = useState(false);
-  const [activeTxId, setActiveTxId] = useState<number | null>(null);
-  const [ledgerAmount, setLedgerAmount] = useState('');
-  const [ledgerReason, setLedgerReason] = useState('');
-
-  const [manualBalance, setManualBalance] = useState<string>('0');
-  const [balanceSaved, setBalanceSaved] = useState(false);
-  const [balanceSaving, setBalanceSaving] = useState(false);
-
   useEffect(() => {
     const dbVal = user?.household?.manualBalance ?? user?.household?.manual_balance ?? 0;
-    setManualBalance(dbVal.toString());
+    useBudgetUiStore.getState().syncManualBalanceFromDb(dbVal);
   }, [user?.household?.manualBalance, user?.household?.manual_balance]);
-
-  const handleManualBalanceSave = async () => {
-    setBalanceSaving(true);
-    try {
-      await updateManualBalance(Number(manualBalance) || 0);
-      setBalanceSaved(true);
-      window.setTimeout(() => setBalanceSaved(false), 2000);
-    } finally {
-      setBalanceSaving(false);
-    }
-  };
-
-  const handleTxSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanAmount = txAmount.toString().replace(',', '.');
-    const data = {
-      type: txType,
-      description: txDesc,
-      category: txCat,
-      amount: Number(cleanAmount),
-      dueDate: txDue,
-      isBudget: txIsBudget,
-      isReserve: txIsReserve,
-      paidDate: txPaidDate,
-    };
-    if (editTxId) updateTransaction(editTxId, data);
-    else addTransaction(data);
-    setIsTxModalOpen(false);
-  };
-
-  const handleAutoCategory = async () => {
-    if (!txDesc.trim()) return;
-    setIsCategoryLoading(true);
-    try {
-      const res = await aiFinanceClient.autoCategorizeTransaction({
-        description: txDesc,
-        type: txType,
-        amount: txAmount ? Number(txAmount) : undefined,
-        candidate_categories: categories,
-      });
-      const category = res.data?.data?.category;
-      if (category) setTxCat(category);
-    } finally {
-      setIsCategoryLoading(false);
-    }
-  };
-
-  const openTxForm = (tx?: CashTransaction | null, defaultType: 'income' | 'expense' = 'expense') => {
-    if (tx) {
-      setEditTxId(tx.id);
-      setTxType(tx.type);
-      setTxCat(tx.category);
-      setTxDesc(tx.description);
-      setTxAmount(tx.amount.toString());
-      setTxDue(tx.dueDate);
-      setTxIsBudget(tx.isBudget || false);
-      setTxIsReserve(tx.isReserve || false);
-      setTxPaidDate(tx.paidDate || null);
-    } else {
-      setEditTxId(null);
-      setTxType(defaultType);
-      setTxCat(categories[0]);
-      setTxDesc('');
-      setTxAmount('');
-      setTxDue(new Date().toISOString().split('T')[0]);
-      setTxIsBudget(false);
-      setTxIsReserve(false);
-      setTxPaidDate(null);
-    }
-    setIsTxModalOpen(true);
-  };
 
   const selectedYearMonth = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
   const allMonthTransactions = transactions.filter((t) => t.dueDate.startsWith(selectedYearMonth));
@@ -150,37 +56,37 @@ export function useBudgetPageState() {
     (b) => b.dueDate.startsWith(selectedYearMonth) && !isLegacySettlementBill(b),
   );
 
-  const totalIncomeReceived = incomes.filter((t) => !!t.paidDate).reduce((s, t) => s + t.amount, 0);
+  const totalIncomeReceived = incomes.filter((t) => hasSettlementDate(t.paidDate)).reduce((s, t) => s + t.amount, 0);
 
   const totalActualSpent =
     expenses.reduce((s, t) => {
       if (t.isBudget && t.subItems && t.subItems.length > 0) {
         return s + t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0);
       }
-      return s + (t.paidDate ? t.amount : 0);
-    }, 0) + monthlyBills.filter((b) => !!b.paidDate).reduce((s, b) => s + getBillPortion(b), 0);
+      return s + (hasSettlementDate(t.paidDate) ? t.amount : 0);
+    }, 0) + monthlyBills.filter((b) => hasSettlementDate(b.paidDate)).reduce((s, b) => s + getBillPortion(b), 0);
 
   const totalProjectedExpense =
     expenses.reduce((s, t) => s + t.amount, 0) + monthlyBills.reduce((s, b) => s + getBillPortion(b), 0);
 
   const unpaidExpenses =
     expenses
-      .filter((t) => !t.paidDate)
+      .filter((t) => !hasSettlementDate(t.paidDate))
       .reduce((s, t) => {
         if (t.isBudget) {
           const spent = t.subItems ? t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0) : 0;
           return s + Math.max(0, t.amount - spent);
         }
         return s + t.amount;
-      }, 0) + monthlyBills.filter((b) => !b.paidDate).reduce((s, b) => s + getBillPortion(b), 0);
+      }, 0) + monthlyBills.filter((b) => !hasSettlementDate(b.paidDate)).reduce((s, b) => s + getBillPortion(b), 0);
 
-  const unpaidReserves = reserves.filter((t) => !t.paidDate).reduce((s, t) => s + Math.abs(t.amount), 0);
-  const projectedFinalLiquidAssets = Number(manualBalance) - unpaidExpenses - unpaidReserves;
+  const unpaidReserves = reserves.filter((t) => !hasSettlementDate(t.paidDate)).reduce((s, t) => s + Math.abs(t.amount), 0);
+  const projectedFinalLiquidAssets = Number(ui.manualBalance) - unpaidExpenses - unpaidReserves;
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayDate();
   const overdueExpenses =
-    expenses.filter((t) => !t.paidDate && t.dueDate < today).reduce((s, t) => s + t.amount, 0) +
-    monthlyBills.filter((b) => !b.paidDate && b.dueDate < today).reduce((s, b) => s + getBillPortion(b), 0);
+    expenses.filter((t) => isDueOverdue(t, today)).reduce((s, t) => s + t.amount, 0) +
+    monthlyBills.filter((b) => isDueOverdue(b, today)).reduce((s, b) => s + getBillPortion(b), 0);
 
   const allExpenseCategories = Array.from(new Set([...categories, ...expenses.map((e) => e.category || 'Egyéb')]));
   const categoryData = allExpenseCategories
@@ -220,55 +126,30 @@ export function useBudgetPageState() {
     },
   ];
 
-  const summaryMetrics: Array<{ label: string; value: string; tone: string; bar: string }> = [
+  const summaryMetrics: MetricItem[] = [
     {
       label: 'Tervezett keret',
       value: formatHUF(totalProjectedExpense),
-      tone: '',
-      bar: 'bg-muted-foreground/20',
+      tone: 'default',
     },
     {
       label: 'Már kifizetve',
       value: formatHUF(totalActualSpent),
-      tone: '',
-      bar: 'bg-amber-500',
+      tone: 'warning',
     },
     {
       label: 'Befolyt bevétel',
       value: formatHUF(totalIncomeReceived),
-      tone: 'text-emerald-600',
-      bar: 'bg-emerald-500',
+      tone: 'success',
     },
     {
       label: 'Havi egyenleg',
       value: formatHUF(totalIncomeReceived - totalActualSpent),
-      tone: totalIncomeReceived - totalActualSpent < 0 ? 'text-rose-600' : 'text-primary',
-      bar:
-        totalIncomeReceived - totalActualSpent < 0
-          ? 'bg-rose-500'
-          : 'bg-gradient-to-r from-primary to-violet-500',
+      tone: totalIncomeReceived - totalActualSpent < 0 ? 'danger' : 'primary',
     },
   ];
 
-  const handleLedgerSubmit = () => {
-    if (!activeTxId) return;
-    const cleanAmount = ledgerAmount.replace(',', '.');
-    const amt = -Math.abs(Number(cleanAmount));
-    addSubItem(activeTxId, {
-      date: new Date().toISOString().split('T')[0],
-      amount: amt,
-      reason: ledgerReason,
-    });
-    setLedgerAmount('');
-    setLedgerReason('');
-  };
-
-  const closeLedgerModal = () => {
-    setIsLedgerModalOpen(false);
-    setActiveTxId(null);
-  };
-
-  const activeLedgerItems = transactions.find((t) => t.id === activeTxId)?.subItems;
+  const activeLedgerItems = transactions.find((t) => t.id === ui.activeTxId)?.subItems;
 
   return {
     transactions,
@@ -280,13 +161,14 @@ export function useBudgetPageState() {
     selectedYear,
     cloning,
     runClone,
-    openTxForm,
-    manualBalance,
-    setManualBalance,
-    balanceSaved,
-    setBalanceSaved,
-    balanceSaving,
-    handleManualBalanceSave,
+    openTxForm: (tx?: Parameters<typeof ui.openTxForm>[0], defaultType?: 'income' | 'expense') =>
+      ui.openTxForm(tx, defaultType, categories),
+    manualBalance: ui.manualBalance,
+    setManualBalance: ui.setManualBalance,
+    balanceSaved: ui.balanceSaved,
+    setBalanceSaved: ui.setBalanceSaved,
+    balanceSaving: ui.balanceSaving,
+    handleManualBalanceSave: ui.handleManualBalanceSave,
     cashflowMetrics,
     aiOverspend,
     summaryMetrics,
@@ -301,35 +183,36 @@ export function useBudgetPageState() {
     requestDelete,
     wrapTxPending,
     isTxPending,
-    setActiveTxId,
-    setIsLedgerModalOpen,
-    isTxModalOpen,
-    setIsTxModalOpen,
-    editTxId,
-    txType,
-    setTxType,
-    txCat,
-    setTxCat,
-    txDesc,
-    setTxDesc,
-    txAmount,
-    setTxAmount,
-    txDue,
-    setTxDue,
-    txIsBudget,
-    setTxIsBudget,
-    txIsReserve,
-    setTxIsReserve,
-    handleTxSubmit,
-    handleAutoCategory,
-    isCategoryLoading,
-    isLedgerModalOpen,
-    closeLedgerModal,
-    ledgerAmount,
-    setLedgerAmount,
-    ledgerReason,
-    setLedgerReason,
-    handleLedgerSubmit,
+    setActiveTxId: ui.setActiveTxId,
+    setIsLedgerModalOpen: ui.setIsLedgerModalOpen,
+    openLedgerModal: ui.openLedgerModal,
+    isTxModalOpen: ui.isTxModalOpen,
+    setIsTxModalOpen: ui.setIsTxModalOpen,
+    editTxId: ui.editTxId,
+    txType: ui.txType,
+    setTxType: ui.setTxType,
+    txCat: ui.txCat,
+    setTxCat: ui.setTxCat,
+    txDesc: ui.txDesc,
+    setTxDesc: ui.setTxDesc,
+    txAmount: ui.txAmount,
+    setTxAmount: ui.setTxAmount,
+    txDue: ui.txDue,
+    setTxDue: ui.setTxDue,
+    txIsBudget: ui.txIsBudget,
+    setTxIsBudget: ui.setTxIsBudget,
+    txIsReserve: ui.txIsReserve,
+    setTxIsReserve: ui.setTxIsReserve,
+    handleTxSubmit: ui.handleTxSubmit,
+    handleAutoCategory: ui.handleAutoCategory,
+    isCategoryLoading: ui.isCategoryLoading,
+    isLedgerModalOpen: ui.isLedgerModalOpen,
+    closeLedgerModal: ui.closeLedgerModal,
+    ledgerAmount: ui.ledgerAmount,
+    setLedgerAmount: ui.setLedgerAmount,
+    ledgerReason: ui.ledgerReason,
+    setLedgerReason: ui.setLedgerReason,
+    handleLedgerSubmit: ui.handleLedgerSubmit,
     activeLedgerItems,
     ConfirmDeleteModal,
   };

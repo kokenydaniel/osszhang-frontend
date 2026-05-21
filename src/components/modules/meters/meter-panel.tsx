@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
 import { useMetersStore } from '@/stores/useMetersStore';
+import { useMetersUiStore } from '@/stores/useMetersUiStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Meter, MeterReading } from '@/types';
-import { formatNumber, formatDate } from '@/utils';
+import { formatNumber, formatDate, compareDates, today, getCurrentMonth, getCurrentYear } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
@@ -51,11 +51,14 @@ export function MeterPanel({
   onDeleteMeter: (id: number) => void;
   onDeleteReading: (mId: number, rId: number) => void;
 }) {
-  const [showHistory, setShowHistory] = useState(false);
-  const [showFullHistory, setShowFullHistory] = useState(false);
+  const showHistory = useMetersUiStore((s) => s.expandedHistory[meter.id] ?? false);
+  const showFullHistory = useMetersUiStore((s) => s.expandedFullHistory[meter.id] ?? false);
+  const calcValue = useMetersUiStore((s) => s.calcValues[meter.id] ?? '');
+  const toggleHistory = useMetersUiStore((s) => s.toggleHistory);
+  const expandFullHistory = useMetersUiStore((s) => s.expandFullHistory);
+  const setCalcValue = useMetersUiStore((s) => s.setCalcValue);
   const { user } = useAuthStore();
   const isReader = user?.role === 'reader';
-  const [calcValue, setCalcValue] = useState('');
   const { addMeterReading } = useMetersStore();
 
   const chartData = getChartData(meter, selectedYear, getPreviousYearValue);
@@ -64,14 +67,14 @@ export function MeterPanel({
 
   const yearReadings = meter.readings
     .filter((r: MeterReading) => r.year === selectedYear)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    .sort((a, b) => compareDates(b.date, a.date));
   const otherReadings = meter.readings
     .filter((r: MeterReading) => r.year !== selectedYear)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    .sort((a, b) => compareDates(b.date, a.date));
   const displayReadings = showFullHistory ? [...yearReadings, ...otherReadings] : yearReadings;
 
   const sortedAllReadings = [...meter.readings].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    (a, b) => compareDates(b.date, a.date),
   );
   const latestReading = sortedAllReadings[0];
   const currentVal = parseFloat(calcValue);
@@ -79,7 +82,7 @@ export function MeterPanel({
 
   const sortedOfficialReadings = [...meter.readings]
     .filter((r) => r.isOfficial || r.is_official)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    .sort((a, b) => compareDates(b.date, a.date));
   const latestOfficialReading = sortedOfficialReadings[0];
   const consumptionSinceOfficial =
     latestReading && latestOfficialReading ? latestReading.value - latestOfficialReading.value : null;
@@ -87,16 +90,16 @@ export function MeterPanel({
   const handleSaveCalc = (e: React.FormEvent) => {
     e.preventDefault();
     if (!calcValue || isNaN(currentVal) || diff < 0) return;
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = today();
     addMeterReading(meter.id, {
       date: todayStr,
-      month: new Date().getMonth() + 1,
-      year: new Date().getFullYear(),
+      month: getCurrentMonth(),
+      year: getCurrentYear(),
       value: currentVal,
       isReset: false,
       isEstimated: false,
     });
-    setCalcValue('');
+    setCalcValue(meter.id, '');
   };
 
   const yearTotal = yearReadings.reduce((s, r) => s + r.consumption, 0);
@@ -288,7 +291,7 @@ export function MeterPanel({
                   type="number"
                   placeholder="Aktuális állás"
                   value={calcValue}
-                  onChange={(e) => setCalcValue(e.target.value)}
+                  onChange={(e) => setCalcValue(meter.id, e.target.value)}
                   className="w-40 h-8 text-xs"
                 />
                 {calcValue && (
@@ -346,7 +349,7 @@ export function MeterPanel({
       {/* Readings toggle */}
       <button
         type="button"
-        onClick={() => setShowHistory(!showHistory)}
+        onClick={() => toggleHistory(meter.id)}
         className="w-full flex items-center justify-between px-5 py-3 text-xs font-medium text-muted-foreground hover:bg-muted/40 transition-colors"
       >
         <span className="inline-flex items-center gap-2">
@@ -381,7 +384,7 @@ export function MeterPanel({
                 </div>
                 {otherReadings.length > 0 && !showFullHistory && (
                   <button
-                    onClick={() => setShowFullHistory(true)}
+                    onClick={() => expandFullHistory(meter.id)}
                     className="w-full px-5 py-2.5 text-xs font-medium text-primary hover:bg-muted/40 transition-colors border-t border-border"
                   >
                     További {otherReadings.length} leolvasás megjelenítése…

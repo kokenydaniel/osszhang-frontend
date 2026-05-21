@@ -1,11 +1,11 @@
-'use client';
-
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useSavingsStore } from '@/stores/useSavingsStore';
+import { useSavingsUiStore } from '@/stores/useSavingsUiStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { resolveSavingsSettings } from '@/lib/savingsSettings';
 import { formatHUF } from '@/utils';
+import { dayjs, d } from '@/lib/dates';
 import { Investment, LedgerEntry } from '@/types';
 import { HELP } from '@/lib/helpTexts';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
@@ -17,18 +17,15 @@ export function useSavingsPageState() {
     savings,
     updateSavingsAccount,
     deleteSavingsAccount,
-    addLedgerEntry,
-    updateLedgerEntry,
     deleteLedgerEntry,
     investments,
     updateInvestment,
     deleteInvestment,
   } = useSavingsStore();
-
+  const ui = useSavingsUiStore();
   const { user } = useAuthStore();
   const savingsSettings = useMemo(() => resolveSavingsSettings(user?.household), [user?.household]);
   const separateOwner = savingsSettings.separate_owner.trim();
-
   const { exchangeRates, refreshRates } = usePreferenceStore();
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
 
@@ -44,93 +41,10 @@ export function useSavingsPageState() {
     return `${amount.toLocaleString('hu-HU', { maximumFractionDigits: maxFractionDigits })} ${currency}`;
   };
 
-  const [isLedgerModalOpen, setIsLedgerModalOpen] = useState(false);
-  const [selectedSavings, setSelectedSavings] = useState<number | null>(null);
-  const [ledgerType, setLedgerType] = useState<'deposit' | 'withdraw'>('deposit');
-  const [ledgerAmount, setLedgerAmount] = useState('');
-  const [ledgerReason, setLedgerReason] = useState('');
-  const [ledgerDate, setLedgerDate] = useState(new Date().toISOString().split('T')[0]);
-  const [editingLedgerId, setEditingLedgerId] = useState<number | null>(null);
-
-  const clearLedgerForm = () => {
-    setLedgerAmount('');
-    setLedgerReason('');
-    setLedgerDate(new Date().toISOString().split('T')[0]);
-    setLedgerType('deposit');
-    setEditingLedgerId(null);
-  };
-
-  const closeLedgerModal = () => {
-    setIsLedgerModalOpen(false);
-    setSelectedSavings(null);
-    clearLedgerForm();
-  };
-
-  const openLedgerModal = (accId: number) => {
-    setSelectedSavings(accId);
-    clearLedgerForm();
-    setIsLedgerModalOpen(true);
-  };
-
-  const startEditLedger = (item: LedgerEntry) => {
-    setEditingLedgerId(item.id);
-    setLedgerAmount(String(Math.abs(item.amount)));
-    setLedgerType(item.amount >= 0 ? 'deposit' : 'withdraw');
-    setLedgerReason(item.reason);
-    setLedgerDate(item.date);
-  };
-
-  const handleLedgerSubmit = async () => {
-    if (!selectedSavings) return;
-    const cleanAmount = ledgerAmount.replace(',', '.');
-    const amt = ledgerType === 'deposit' ? Number(cleanAmount) : -Number(cleanAmount);
-    if (editingLedgerId) {
-      await updateLedgerEntry(selectedSavings, editingLedgerId, {
-        date: ledgerDate,
-        amount: amt,
-        reason: ledgerReason,
-      });
-      clearLedgerForm();
-    } else {
-      await addLedgerEntry(selectedSavings, {
-        date: ledgerDate,
-        amount: amt,
-        reason: ledgerReason,
-      });
-      clearLedgerForm();
-    }
-  };
-
-  const handleDeleteLedgerEntry = (item: LedgerEntry, ledgerCurrency: string) => {
-    requestDelete({
-      title: 'Tétel törlése',
-      message: `Biztosan törlöd a „${item.reason}" tételt (${formatCurrencyAmount(item.amount, ledgerCurrency)})?`,
-      onConfirm: () => {
-        if (!selectedSavings) return;
-        deleteLedgerEntry(selectedSavings, item.id);
-        if (editingLedgerId === item.id) clearLedgerForm();
-      },
-    });
-  };
-
-  const [isNewAssetModalOpen, setIsNewAssetModalOpen] = useState(false);
-  const [newAssetInitialKind, setNewAssetInitialKind] = useState<'account' | 'investment'>('account');
-
-  const openNewAsset = (kind: 'account' | 'investment' = 'account') => {
-    setNewAssetInitialKind(kind);
-    setIsNewAssetModalOpen(true);
-  };
-
-  const [editingInvId, setEditingInvId] = useState<number | null>(null);
-  const [editingInvValue, setEditingInvValue] = useState('');
-  const [editingPayoutInvId, setEditingPayoutInvId] = useState<number | null>(null);
-  const [editingPayoutAmount, setEditingPayoutAmount] = useState('');
-  const [editingPayoutDate, setEditingPayoutDate] = useState('');
-
   const getInvestmentValue = (inv: Investment) => {
-    const purchase = new Date(inv.purchaseDate);
-    const now = new Date();
-    const diffDays = Math.ceil(Math.max(0, now.getTime() - purchase.getTime()) / (1000 * 60 * 60 * 24));
+    const purchase = d(inv.purchaseDate);
+    const now = dayjs();
+    const diffDays = Math.ceil(Math.max(0, now.diff(purchase, 'day')));
     if (inv.currentValue !== undefined && inv.currentValue !== null && Number(inv.currentValue) > 0) {
       const totalValue = Number(inv.currentValue);
       return { totalValue, accruedInterest: totalValue - Number(inv.principalAmount), daysPassed: diffDays, isManualOverride: true };
@@ -143,9 +57,9 @@ export function useSavingsPageState() {
   const getMaturityAmount = (inv: Investment) => {
     if (inv.maturityAmount) return inv.maturityAmount;
     if (inv.name.toUpperCase().includes('DKJ') && inv.maturityDate) {
-      const purchase = new Date(inv.purchaseDate);
-      const maturity = new Date(inv.maturityDate);
-      const diffDays = Math.ceil(Math.max(0, maturity.getTime() - purchase.getTime()) / (1000 * 60 * 60 * 24));
+      const purchase = d(inv.purchaseDate);
+      const maturity = d(inv.maturityDate);
+      const diffDays = Math.ceil(Math.max(0, maturity.diff(purchase, 'day')));
       if (diffDays > 0) {
         const rate = Number(inv.annualInterestRate) / 100;
         return Math.round(Number(inv.principalAmount) * (1 + rate * (diffDays / 365.25)));
@@ -154,36 +68,22 @@ export function useSavingsPageState() {
     return null;
   };
 
-  const startEditInvestmentValue = (inv: Investment, totalValue: number) => {
-    setEditingInvId(inv.id);
-    setEditingInvValue(inv.currentValue ? String(inv.currentValue) : Math.round(totalValue).toString());
-  };
-
-  const saveInvestmentValue = (invId: number) => {
-    updateInvestment(invId, { currentValue: Number(editingInvValue) });
-    setEditingInvId(null);
-  };
-
-  const cancelEditInvestmentValue = () => {
-    setEditingInvId(null);
-  };
-
-  const saveInvestmentPayout = (invId: number) => {
-    updateInvestment(invId, {
-      nextPayoutAmount: Number(editingPayoutAmount),
-      nextPayoutDate: editingPayoutDate || null,
+  const handleDeleteLedgerEntry = (item: LedgerEntry, ledgerCurrency: string) => {
+    requestDelete({
+      title: 'Tétel törlése',
+      message: `Biztosan törlöd a „${item.reason}" tételt (${formatCurrencyAmount(item.amount, ledgerCurrency)})?`,
+      onConfirm: () => {
+        if (!ui.selectedSavings) return;
+        deleteLedgerEntry(ui.selectedSavings, item.id);
+        if (ui.editingLedgerId === item.id) ui.clearLedgerForm();
+      },
     });
-    setEditingPayoutInvId(null);
   };
 
   const personalSavings = separateOwner ? savings.filter((s) => s.owner !== separateOwner) : savings;
   const wifeSavings = separateOwner ? savings.filter((s) => s.owner === separateOwner) : [];
-  const personalInvestments = separateOwner
-    ? investments.filter((i) => i.owner !== separateOwner)
-    : investments;
-  const wifeInvestments = separateOwner
-    ? investments.filter((i) => i.owner === separateOwner)
-    : [];
+  const personalInvestments = separateOwner ? investments.filter((i) => i.owner !== separateOwner) : investments;
+  const wifeInvestments = separateOwner ? investments.filter((i) => i.owner === separateOwner) : [];
 
   const sumPersonalInvestments = personalInvestments
     .filter((i) => i.countInSavings !== false)
@@ -246,7 +146,7 @@ export function useSavingsPageState() {
     },
   ];
 
-  const selectedAccount = savings.find((s) => s.id === selectedSavings);
+  const selectedAccount = savings.find((s) => s.id === ui.selectedSavings);
   const ledgerCurrency = selectedAccount?.currency || 'HUF';
   const ledgerItems = selectedAccount?.ledger ?? [];
 
@@ -270,42 +170,42 @@ export function useSavingsPageState() {
     updateInvestment,
     deleteInvestment,
     requestDelete,
-    isLedgerModalOpen,
-    closeLedgerModal,
-    openLedgerModal,
-    selectedSavings,
-    ledgerType,
-    setLedgerType,
-    ledgerAmount,
-    setLedgerAmount,
-    ledgerReason,
-    setLedgerReason,
-    ledgerDate,
-    setLedgerDate,
-    editingLedgerId,
-    clearLedgerForm,
-    startEditLedger,
-    handleLedgerSubmit,
+    isLedgerModalOpen: ui.isLedgerModalOpen,
+    closeLedgerModal: ui.closeLedgerModal,
+    openLedgerModal: ui.openLedgerModal,
+    selectedSavings: ui.selectedSavings,
+    ledgerType: ui.ledgerType,
+    setLedgerType: ui.setLedgerType,
+    ledgerAmount: ui.ledgerAmount,
+    setLedgerAmount: ui.setLedgerAmount,
+    ledgerReason: ui.ledgerReason,
+    setLedgerReason: ui.setLedgerReason,
+    ledgerDate: ui.ledgerDate,
+    setLedgerDate: ui.setLedgerDate,
+    editingLedgerId: ui.editingLedgerId,
+    clearLedgerForm: ui.clearLedgerForm,
+    startEditLedger: ui.startEditLedger,
+    handleLedgerSubmit: ui.handleLedgerSubmit,
     handleDeleteLedgerEntry,
     ledgerCurrency,
     ledgerItems,
-    isNewAssetModalOpen,
-    setIsNewAssetModalOpen,
-    newAssetInitialKind,
-    openNewAsset,
-    editingInvId,
-    editingInvValue,
-    setEditingInvValue,
-    editingPayoutInvId,
-    setEditingPayoutInvId,
-    editingPayoutAmount,
-    setEditingPayoutAmount,
-    editingPayoutDate,
-    setEditingPayoutDate,
-    startEditInvestmentValue,
-    saveInvestmentValue,
-    cancelEditInvestmentValue,
-    saveInvestmentPayout,
+    isNewAssetModalOpen: ui.isNewAssetModalOpen,
+    setIsNewAssetModalOpen: ui.setIsNewAssetModalOpen,
+    newAssetInitialKind: ui.newAssetInitialKind,
+    openNewAsset: ui.openNewAsset,
+    editingInvId: ui.editingInvId,
+    editingInvValue: ui.editingInvValue,
+    setEditingInvValue: ui.setEditingInvValue,
+    editingPayoutInvId: ui.editingPayoutInvId,
+    setEditingPayoutInvId: ui.setEditingPayoutInvId,
+    editingPayoutAmount: ui.editingPayoutAmount,
+    setEditingPayoutAmount: ui.setEditingPayoutAmount,
+    editingPayoutDate: ui.editingPayoutDate,
+    setEditingPayoutDate: ui.setEditingPayoutDate,
+    startEditInvestmentValue: ui.startEditInvestmentValue,
+    saveInvestmentValue: ui.saveInvestmentValue,
+    cancelEditInvestmentValue: ui.cancelEditInvestmentValue,
+    saveInvestmentPayout: ui.saveInvestmentPayout,
     ConfirmDeleteModal,
   };
 }

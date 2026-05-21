@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 import { formatHUF } from '@/utils';
 import { AccentPanel } from '@/components/design';

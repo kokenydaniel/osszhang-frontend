@@ -168,7 +168,7 @@ export function SettingsModulesTab({
             title="Költségvetés"
             description="Havi bevételek, kiadások és kategóriák — a pénzügyi alapmodul."
             enabled={budgetEnabled}
-            onToggle={() => setBudgetEnabled((v) => !v)}
+            onToggle={() => setBudgetEnabled(!budgetEnabled)}
             icon={<Wallet size={22} strokeWidth={2} />}
             iconClassName="bg-emerald-500/12 text-emerald-600 border border-emerald-500/20"
             footer={
@@ -239,7 +239,7 @@ export function SettingsModulesTab({
             title="Megtakarítás"
             description="Széf, bankszámlák és befektetések külön modulban."
             enabled={savingsEnabled}
-            onToggle={() => setSavingsEnabled((v) => !v)}
+            onToggle={() => setSavingsEnabled(!savingsEnabled)}
             icon={<PiggyBank size={22} strokeWidth={2} />}
             iconClassName="bg-violet-500/12 text-violet-600 border border-violet-500/20"
             footer={
@@ -256,7 +256,7 @@ export function SettingsModulesTab({
             title="Tartozások"
             description="Hitelek, kölcsönök és visszafizetési tervek."
             enabled={debtsEnabled}
-            onToggle={() => setDebtsEnabled((v) => !v)}
+            onToggle={() => setDebtsEnabled(!debtsEnabled)}
             icon={<TrendingDown size={22} strokeWidth={2} />}
             iconClassName="bg-rose-500/12 text-rose-600 border border-rose-500/20"
             footer={
@@ -273,7 +273,7 @@ export function SettingsModulesTab({
             title="Rezsi"
             description="Közüzemi számlák, megosztás és havi sablon tételek."
             enabled={utilitiesEnabled}
-            onToggle={() => setUtilitiesEnabled((v) => !v)}
+            onToggle={() => setUtilitiesEnabled(!utilitiesEnabled)}
             icon={<Droplets size={22} strokeWidth={2} />}
             iconClassName="bg-sky-500/12 text-sky-600 border border-sky-500/20"
             footer={
@@ -334,7 +334,7 @@ export function SettingsModulesTab({
             title="Közműórák"
             description="Villany, gáz, víz fogyasztás és mérőállások."
             enabled={metersEnabled}
-            onToggle={() => setMetersEnabled((v) => !v)}
+            onToggle={() => setMetersEnabled(!metersEnabled)}
             icon={<Gauge size={22} strokeWidth={2} />}
             iconClassName="bg-amber-500/12 text-amber-600 border border-amber-500/20"
             footer={
@@ -351,7 +351,7 @@ export function SettingsModulesTab({
             title="Vállalkozás"
             description="Rendelések nyilvántartása, csatornák és fizetési módok — Shopify import opcionálisan."
             enabled={businessEnabled}
-            onToggle={() => setBusinessEnabled((v) => !v)}
+            onToggle={() => setBusinessEnabled(!businessEnabled)}
             icon={<TrendingUp size={22} strokeWidth={2} />}
             iconClassName="bg-emerald-500/12 text-emerald-600 border border-emerald-500/20"
             footer={

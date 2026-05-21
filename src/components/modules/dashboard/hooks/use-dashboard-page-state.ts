@@ -1,6 +1,4 @@
-'use client';
-
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useBudgetStore } from '@/stores/useBudgetStore';
 import { useUtilitiesStore } from '@/stores/useUtilitiesStore';
@@ -9,7 +7,8 @@ import { useMetersStore } from '@/stores/useMetersStore';
 import { useBusinessStore } from '@/stores/useBusinessStore';
 import { useDebtsStore } from '@/stores/useDebtsStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
-import { formatHUF } from '@/utils';
+import { formatHUF, isDueOverdue, compareDates } from '@/utils';
+import { dayjs, d, formatTodayLong, toDateString, today as todayDate } from '@/lib/dates';
 import { isLegacySettlementBill } from '@/lib/utilityBills';
 import { computeUtilityNetBalance } from '@/lib/utilityBalance';
 import { ourUtilityPortion, resolveUtilitySplitLabels } from '@/lib/utilityViewer';
@@ -94,23 +93,14 @@ export function useDashboardPageState() {
   const householdMembers = user?.household?.users || [];
 
   const { greeting, GreetingIcon } = useMemo(() => {
-    const hour = new Date().getHours();
+    const hour = dayjs().hour();
     if (hour >= 5 && hour < 12) return { greeting: 'Jó reggelt', GreetingIcon: Sun };
     if (hour >= 12 && hour < 18) return { greeting: 'Jó napot', GreetingIcon: Sun };
     if (hour >= 18 && hour < 21) return { greeting: 'Jó estét', GreetingIcon: Sunset };
     return { greeting: 'Jó éjszakát', GreetingIcon: Moon };
   }, []);
 
-  const todayFormatted = useMemo(
-    () =>
-      new Date().toLocaleDateString('hu-HU', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      }),
-    [],
-  );
+  const todayFormatted = formatTodayLong();
 
   const { transactions, updateTransaction, aiWeeklyBriefing, fetchAiWeeklyBriefing } = useBudgetStore();
   const { bills, settlements, updateBill, aiUtilityAnomalies, fetchAiUtilityAnomalies } = useUtilitiesStore();
@@ -119,8 +109,6 @@ export function useDashboardPageState() {
   const { orders } = useBusinessStore();
   const { debts } = useDebtsStore();
   const { selectedMonth, selectedYear, exchangeRates } = usePreferenceStore();
-
-  const [, setIsAiLoading] = useState(false);
 
   const selectedYearMonthPrefix = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
   const convertToHUF = (amount: number, currency: string) => (exchangeRates[currency] || 1) * amount;
@@ -169,9 +157,9 @@ export function useDashboardPageState() {
   });
 
   const getInvestmentValue = (inv: Investment) => {
-    const purchase = new Date(inv.purchaseDate);
-    const now = new Date();
-    const diffDays = Math.ceil(Math.max(0, now.getTime() - purchase.getTime()) / (1000 * 60 * 60 * 24));
+    const purchase = d(inv.purchaseDate);
+    const now = dayjs();
+    const diffDays = Math.ceil(Math.max(0, now.diff(purchase, 'day')));
     if (inv.currentValue !== undefined && inv.currentValue !== null && Number(inv.currentValue) > 0) {
       const totalValue = Number(inv.currentValue);
       return { totalValue, accruedInterest: totalValue - Number(inv.principalAmount), daysPassed: diffDays, isManualOverride: true };
@@ -185,9 +173,9 @@ export function useDashboardPageState() {
   const getMaturityAmount = (inv: Investment) => {
     if (inv.maturityAmount) return inv.maturityAmount;
     if (inv.name.toUpperCase().includes('DKJ') && inv.maturityDate) {
-      const purchase = new Date(inv.purchaseDate);
-      const maturity = new Date(inv.maturityDate);
-      const diffDays = Math.ceil(Math.max(0, maturity.getTime() - purchase.getTime()) / (1000 * 60 * 60 * 24));
+      const purchase = d(inv.purchaseDate);
+      const maturity = d(inv.maturityDate);
+      const diffDays = Math.ceil(Math.max(0, maturity.diff(purchase, 'day')));
       if (diffDays > 0) {
         const rate = Number(inv.annualInterestRate) / 100;
         return Math.round(Number(inv.principalAmount) * (1 + rate * (diffDays / 365.25)));
@@ -201,44 +189,46 @@ export function useDashboardPageState() {
       return { amount: inv.nextPayoutAmount, date: inv.nextPayoutDate, isEstimated: false, label: 'Következő kamat' };
     }
     const nameUpper = inv.name.toUpperCase();
-    const now = new Date();
+    const now = dayjs();
     if (nameUpper.includes('DKJ')) {
-      const date = inv.maturityDate ? new Date(inv.maturityDate) : null;
+      const maturityDate = inv.maturityDate ? d(inv.maturityDate) : null;
       const amount = getMaturityAmount(inv) || inv.principalAmount;
-      return { amount, date: date ? date.toISOString().split('T')[0] : null, isEstimated: true, label: 'Lejárati kifizetés' };
+      return { amount, date: maturityDate ? toDateString(maturityDate) : null, isEstimated: true, label: 'Lejárati kifizetés' };
     }
     if (nameUpper.includes('FIXMÁP') || nameUpper.includes('FIX MÁP')) {
       const principal = getMaturityAmount(inv) || inv.principalAmount;
       const yearlyRate = Number(inv.annualInterestRate) || 7;
-      const currentYear = now.getFullYear();
+      const currentYear = now.year();
       const payoutMonths = [0, 3, 6, 9];
-      let nextPayoutDateObj = new Date(currentYear, 6, 23);
+      let nextPayoutDateObj = dayjs().year(currentYear).month(6).date(23);
       for (const m of payoutMonths) {
-        const candidate = new Date(currentYear, m, 23);
-        if (candidate > now) { nextPayoutDateObj = candidate; break; }
+        const candidate = dayjs().year(currentYear).month(m).date(23);
+        if (candidate.isAfter(now, 'day')) { nextPayoutDateObj = candidate; break; }
       }
-      if (nextPayoutDateObj <= now) nextPayoutDateObj = new Date(currentYear + 1, 0, 23);
+      if (!nextPayoutDateObj.isAfter(now, 'day')) nextPayoutDateObj = dayjs().year(currentYear + 1).month(0).date(23);
       const amount = Math.round((Number(principal) * (yearlyRate / 100)) / 4);
-      return { amount, date: nextPayoutDateObj.toISOString().split('T')[0], isEstimated: true, label: 'Következő kamat' };
+      return { amount, date: toDateString(nextPayoutDateObj), isEstimated: true, label: 'Következő kamat' };
     }
     if (nameUpper.includes('PMÁP') || nameUpper.includes('PMAP')) {
-      const maturity = inv.maturityDate ? new Date(inv.maturityDate) : null;
+      const maturity = inv.maturityDate ? d(inv.maturityDate) : null;
       const principal = getMaturityAmount(inv) || inv.principalAmount;
       const yearlyRate = Number(inv.annualInterestRate) || 0;
-      let nextPayoutDateObj = new Date();
+      let nextPayoutDateObj = dayjs();
       if (maturity) {
-        const payMonth = maturity.getMonth();
-        const payDay = maturity.getDate();
-        const currentYear = now.getFullYear();
-        nextPayoutDateObj = new Date(currentYear, payMonth, payDay);
-        if (nextPayoutDateObj <= now) nextPayoutDateObj = new Date(currentYear + 1, payMonth, payDay);
+        const payMonth = maturity.month();
+        const payDay = maturity.date();
+        const currentYear = now.year();
+        nextPayoutDateObj = dayjs().year(currentYear).month(payMonth).date(payDay);
+        if (!nextPayoutDateObj.isAfter(now, 'day')) nextPayoutDateObj = dayjs().year(currentYear + 1).month(payMonth).date(payDay);
       } else {
-        const purchase = new Date(inv.purchaseDate);
-        nextPayoutDateObj = new Date(now.getFullYear(), purchase.getMonth(), purchase.getDate());
-        if (nextPayoutDateObj <= now) nextPayoutDateObj = new Date(now.getFullYear() + 1, purchase.getMonth(), purchase.getDate());
+        const purchase = d(inv.purchaseDate);
+        nextPayoutDateObj = dayjs().year(now.year()).month(purchase.month()).date(purchase.date());
+        if (!nextPayoutDateObj.isAfter(now, 'day')) {
+          nextPayoutDateObj = dayjs().year(now.year() + 1).month(purchase.month()).date(purchase.date());
+        }
       }
       const amount = Math.round(Number(principal) * (yearlyRate / 100));
-      return { amount, date: nextPayoutDateObj.toISOString().split('T')[0], isEstimated: true, label: 'Következő kamat' };
+      return { amount, date: toDateString(nextPayoutDateObj), isEstimated: true, label: 'Következő kamat' };
     }
     if (inv.maturityDate) {
       return { amount: getMaturityAmount(inv) || inv.principalAmount, date: inv.maturityDate, isEstimated: true, label: 'Lejárati kifizetés' };
@@ -275,11 +265,11 @@ export function useDashboardPageState() {
       ? monthBills.filter((b) => !b.paidDate).reduce((s, b) => s + ourUtilityPortion(b, onHouseholdSide, utilitySplitEnabled), 0)
       : 0);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = todayDate();
   const overdueExpensesTotal =
     (canUse('budget')
       ? monthExpenses
-          .filter((t) => !t.paidDate && t.dueDate < todayStr)
+          .filter((t) => isDueOverdue(t, todayStr))
           .reduce((s, t) => {
             if (t.isBudget) {
               const spent = t.subItems ? t.subItems.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0) : 0;
@@ -290,7 +280,7 @@ export function useDashboardPageState() {
       : 0) +
     (canUse('utilities')
       ? monthBills
-          .filter((b) => !b.paidDate && b.dueDate < todayStr)
+          .filter((b) => isDueOverdue(b, todayStr))
           .reduce((s, b) => s + ourUtilityPortion(b, onHouseholdSide, utilitySplitEnabled), 0)
       : 0);
 
@@ -316,7 +306,7 @@ export function useDashboardPageState() {
           return { id: b.id as number, type: 'bill' as const, description: `${b.type} számla`, amount: ourPortion, dueDate: b.dueDate, category: 'Rezsi' };
         })
       : []),
-  ].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+  ].sort((a, b) => compareDates(a.dueDate, b.dueDate));
 
   useEffect(() => {
     const currentFingerprint = JSON.stringify({
@@ -333,7 +323,6 @@ export function useDashboardPageState() {
 
     const fetchAiAdvice = async () => {
       if (lastAiFingerprint === currentFingerprint && aiDashboardAdvice) return;
-      setIsAiLoading(true);
       try {
         const promises = [];
         if (canUse('budget')) promises.push(fetchAiWeeklyBriefing());
@@ -346,8 +335,6 @@ export function useDashboardPageState() {
         }
       } catch (err) {
         console.error(err);
-      } finally {
-        setIsAiLoading(false);
       }
     };
 
@@ -358,10 +345,10 @@ export function useDashboardPageState() {
 
   const last6MonthsSparkline = useMemo(() => {
     const result: number[] = [];
-    const now = new Date();
+    const now = dayjs();
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const prefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const monthDate = now.subtract(i, 'month').startOf('month');
+      const prefix = monthDate.format('YYYY-MM');
       const txTotal = transactions
         .filter((t) => t.type === 'expense' && t.dueDate.startsWith(prefix) && t.paidDate)
         .reduce((s, t) => s + t.amount, 0);
@@ -375,10 +362,10 @@ export function useDashboardPageState() {
 
   const last6MonthsIncome = useMemo(() => {
     const result: number[] = [];
-    const now = new Date();
+    const now = dayjs();
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const prefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const monthDate = now.subtract(i, 'month').startOf('month');
+      const prefix = monthDate.format('YYYY-MM');
       const txTotal = transactions
         .filter((t) => t.type === 'income' && t.dueDate.startsWith(prefix) && t.paidDate)
         .reduce((s, t) => s + t.amount, 0);
@@ -391,10 +378,10 @@ export function useDashboardPageState() {
     return chartDataBuilder();
     function chartDataBuilder() {
       const result: number[] = [];
-      const now = new Date();
+      const now = dayjs();
       for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const prefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const monthDate = now.subtract(i, 'month').startOf('month');
+        const prefix = monthDate.format('YYYY-MM');
         const total = orders.filter((o) => o.date.startsWith(prefix)).reduce((s, o) => s + o.amount, 0);
         result.push(total);
       }
@@ -511,12 +498,12 @@ export function useDashboardPageState() {
       return { invName: inv.name, owner: inv.owner, ...p };
     })
     .filter((p): p is DashboardInvestmentPayout => p !== null)
-    .sort((a, b) => (!a.date ? 1 : !b.date ? -1 : new Date(a.date).getTime() - new Date(b.date).getTime()));
+    .sort((a, b) => (!a.date ? 1 : !b.date ? -1 : compareDates(a.date, b.date)));
 
   const handlePayItem = async (item: DashboardUnpaidItem) => {
-    const today = new Date().toISOString().split('T')[0];
-    if (item.type === 'expense') await updateTransaction(item.id, { paidDate: today });
-    else await updateBill(item.id, { paidDate: today });
+    const paidOn = todayDate();
+    if (item.type === 'expense') await updateTransaction(item.id, { paidDate: paidOn });
+    else await updateBill(item.id, { paidDate: paidOn });
   };
 
   return {

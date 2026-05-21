@@ -11,6 +11,8 @@
  *               n = P / M                                    (when r == 0)
  */
 
+import { dayjs, d, today } from '@/lib/dates';
+
 export interface PayoffResult {
   /** Months remaining (rounded up to whole months). `null` if not feasible. */
   months: number | null;
@@ -37,7 +39,7 @@ export function computePayoff(
   const minimumViablePayment = r > 0 ? Math.ceil(P * r) + 1 : 0;
 
   if (P <= 0) {
-    return { months: 0, payoffDate: new Date().toISOString().split('T')[0], totalInterest: 0, minimumViablePayment, isUnderwater: false };
+    return { months: 0, payoffDate: today(), totalInterest: 0, minimumViablePayment, isUnderwater: false };
   }
   if (M <= 0) {
     return { months: null, payoffDate: null, totalInterest: null, minimumViablePayment, isUnderwater: true };
@@ -101,16 +103,13 @@ export function computeAcceleration(
 }
 
 function monthsFromNow(months: number): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() + months);
-  return d.toISOString().split('T')[0];
+  return dayjs().add(months, 'month').format('YYYY-MM-DD');
 }
 
 /** Format a payoff date for display: 'YYYY. MMM' (e.g. '2042. nov.') */
 export function formatPayoffDate(iso: string | null | undefined): string {
   if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleDateString('hu-HU', { year: 'numeric', month: 'short' });
+  return d(iso).format('YYYY. MMM');
 }
 
 /** Format months as 'X év Y hó' (or 'Y hó' for less than 12). */

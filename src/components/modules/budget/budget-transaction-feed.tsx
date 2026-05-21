@@ -1,9 +1,8 @@
 'use client';
 
 import classNames from 'classnames';
-import { formatHUF, formatDate } from '@/utils';
+import { formatHUF, formatDate, isDueOverdue, hasSettlementDate, today as todayDate } from '@/utils';
 import { CashTransaction, LedgerEntry, UtilityBill } from '@/types';
-import { Button } from '@/components/ui/button';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { HELP } from '@/lib/helpTexts';
 import {
@@ -12,6 +11,10 @@ import {
   StatusPill,
   StatusToggleButton,
   EmptyState,
+  EntityCell,
+  DueDateCell,
+  ProgressBar,
+  RowActions,
   type DataTableColumn,
 } from '@/components/design';
 import {
@@ -19,14 +22,11 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Building2,
-  Calendar,
   CheckCircle,
   Clock,
-  Edit3,
   Folder,
   History,
   ReceiptText,
-  Trash2,
 } from 'lucide-react';
 import type { BudgetPageState } from '@/components/modules/budget/hooks/use-budget-page-state';
 
@@ -50,8 +50,7 @@ type BudgetTransactionFeedProps = Pick<
   | 'getBillPortion'
   | 'today'
   | 'openTxForm'
-  | 'setActiveTxId'
-  | 'setIsLedgerModalOpen'
+  | 'openLedgerModal'
   | 'updateTransaction'
   | 'deleteTransaction'
   | 'requestDelete'
@@ -117,8 +116,7 @@ export function BudgetTransactionFeed({
   getBillPortion,
   today,
   openTxForm,
-  setActiveTxId,
-  setIsLedgerModalOpen,
+  openLedgerModal,
   updateTransaction,
   deleteTransaction,
   requestDelete,
@@ -153,31 +151,23 @@ export function BudgetTransactionFeed({
       header: 'Megnevezés',
       width: '30%',
       cell: (t) => {
-        const isOverdue = !t.paidDate && t.dueDate < today;
+        const settled = hasSettlementDate(t.paidDate);
+        const isOverdue = isDueOverdue(t, today);
         const Icon = t.isBill ? ReceiptText : type === 'income' ? ArrowUpRight : ArrowDownRight;
-        const toneCls = t.paidDate
-          ? 'bg-emerald-100 text-emerald-700'
-          : isOverdue
-            ? 'bg-rose-100 text-rose-700'
-            : type === 'income'
-              ? 'bg-emerald-100 text-emerald-700'
-              : 'bg-amber-100 text-amber-700';
+        const tone = settled ? 'success' : isOverdue ? 'danger' : type === 'income' ? 'success' : 'warning';
         return (
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={classNames('flex h-8 w-8 shrink-0 items-center justify-center rounded-md', toneCls)}>
-              <Icon size={13} strokeWidth={2.2} />
-            </div>
-            <div className="min-w-0">
-              <div className="font-medium text-sm text-foreground truncate flex items-center gap-2">
-                <span className="truncate">{t.description}</span>
-                {t.isBill && (
-                  <StatusPill status="info" size="xs">
-                    <Building2 size={9} /> rezsi
-                  </StatusPill>
-                )}
-              </div>
-            </div>
-          </div>
+          <EntityCell
+            icon={Icon}
+            tone={tone}
+            title={t.description}
+            badge={
+              t.isBill ? (
+                <StatusPill status="info" size="xs">
+                  <Building2 size={9} /> rezsi
+                </StatusPill>
+              ) : undefined
+            }
+          />
         );
       },
     },
@@ -185,21 +175,14 @@ export function BudgetTransactionFeed({
       key: 'date',
       header: 'Határidő',
       width: '14%',
-      cell: (t) => {
-        const isOverdue = !t.paidDate && t.dueDate < today;
-        return (
-          <span
-            className={classNames(
-              'inline-flex items-center gap-1.5 text-xs tabular-nums',
-              isOverdue ? 'text-rose-600 font-medium' : 'text-muted-foreground',
-            )}
-          >
-            <Calendar size={11} strokeWidth={2.2} />
-            {formatDate(t.dueDate)}
-            {isOverdue && <span className="text-[10px] uppercase tracking-wider">lejárt</span>}
-          </span>
-        );
-      },
+      cell: (t) => (
+        <DueDateCell
+          date={t.dueDate}
+          today={today}
+          settled={hasSettlementDate(t.paidDate)}
+          overdue={isDueOverdue(t, today)}
+        />
+      ),
     },
     {
       key: 'budget',
@@ -208,28 +191,18 @@ export function BudgetTransactionFeed({
       cell: (t) => {
         if (!t.isBudget) return <span className="text-xs text-muted-foreground/60">—</span>;
         const spent = t.subItems ? t.subItems.reduce((acc, si) => acc + Math.abs(si.amount), 0) : 0;
-        const progress = Math.min(100, (spent / t.amount) * 100);
         return (
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setActiveTxId(t.id as number);
-              setIsLedgerModalOpen(true);
+              openLedgerModal(t.id as number);
             }}
             className="flex flex-col gap-1 w-full text-left group/budget"
           >
             <span className="text-[0.65rem] text-primary inline-flex items-center gap-1 group-hover/budget:underline">
               <History size={10} /> {t.subItems?.length || 0} ledger · {formatHUF(spent)}/{formatHUF(t.amount)}
             </span>
-            <span className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-              <span
-                className={classNames(
-                  'block h-full rounded-full transition-all',
-                  progress > 100 ? 'bg-rose-500' : progress > 90 ? 'bg-amber-500' : 'bg-primary',
-                )}
-                style={{ width: `${progress}%` }}
-              />
-            </span>
+            <ProgressBar value={spent} max={t.amount} size="md" tone="thresholds" />
           </button>
         );
       },
@@ -278,34 +251,36 @@ export function BudgetTransactionFeed({
       width: '12%',
       cell: (t) => {
         if (t.isBill) {
+          const settled = hasSettlementDate(t.paidDate);
           return (
-            <StatusPill status={t.paidDate ? 'success' : 'warning'} size="xs" dot>
-              {t.paidDate ? 'kész' : 'függőben'}
+            <StatusPill status={settled ? 'success' : 'warning'} size="xs" dot>
+              {settled ? 'kész' : 'függőben'}
             </StatusPill>
           );
         }
-        const isOverdue = !t.paidDate && t.dueDate < today;
-        const statusLabel = t.paidDate
-          ? `Kifizetve (${formatDate(t.paidDate)}) — kattints visszaállításhoz`
+        const settled = hasSettlementDate(t.paidDate);
+        const isOverdue = isDueOverdue(t, today);
+        const statusLabel = settled
+          ? `Kifizetve (${formatDate(t.paidDate!)}) — kattints visszaállításhoz`
           : isOverdue
             ? 'Lejárt — kattints kifizetettként jelöléshez'
             : 'Függőben — kattints kifizetettként jelöléshez';
         return (
           <StatusToggleButton
-            status={t.paidDate ? 'success' : isOverdue ? 'danger' : 'warning'}
+            status={settled ? 'success' : isOverdue ? 'danger' : 'warning'}
             title={statusLabel}
             pending={isTxPending(t.id as number)}
             onClick={() =>
               void wrapTxPending(t.id as number, () =>
                 updateTransaction(t.id as number, {
-                  paidDate: t.paidDate ? null : new Date().toISOString().split('T')[0],
+                  paidDate: settled ? null : todayDate(),
                 }),
               )
             }
           >
-            {t.paidDate ? (
+            {settled ? (
               <>
-                <CheckCircle size={9} /> {formatDate(t.paidDate)}
+                <CheckCircle size={9} /> {formatDate(t.paidDate!)}
               </>
             ) : isOverdue ? (
               <>
@@ -327,30 +302,16 @@ export function BudgetTransactionFeed({
       width: '8%',
       cell: (t) =>
         !t.isBill ? (
-          <div className="flex items-center justify-end gap-0.5">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => openTxForm(t as unknown as CashTransaction)}
-            >
-              <Edit3 size={13} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground hover:text-destructive"
-              onClick={() =>
-                requestDelete({
-                  title: 'Tétel törlése',
-                  message: `Biztosan törlöd a „${t.description}" tételt? Ez a művelet nem vonható vissza.`,
-                  onConfirm: () => deleteTransaction(t.id as number),
-                })
-              }
-            >
-              <Trash2 size={13} />
-            </Button>
-          </div>
+          <RowActions
+            onEdit={() => openTxForm(t as unknown as CashTransaction)}
+            onDelete={() =>
+              requestDelete({
+                title: 'Tétel törlése',
+                message: `Biztosan törlöd a „${t.description}" tételt? Ez a művelet nem vonható vissza.`,
+                onConfirm: () => deleteTransaction(t.id as number),
+              })
+            }
+          />
         ) : null,
     },
   ];

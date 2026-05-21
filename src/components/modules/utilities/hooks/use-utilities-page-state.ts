@@ -1,14 +1,13 @@
-'use client';
-
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useUtilitiesStore } from '@/stores/useUtilitiesStore';
+import { useUtilitiesUiStore } from '@/stores/useUtilitiesUiStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useBudgetStore } from '@/stores/useBudgetStore';
-import { formatHUF, formatDate } from '@/utils';
-import { UtilitySplitRule, UtilityBill } from '@/types';
+import { formatHUF, formatDate, today, compareDates } from '@/utils';
 import { resolveUtilityTemplates } from '@/lib/utilityTemplates';
+import { billMatchesMonthYear } from '@/lib/utilityBills';
 import { computeUtilityNetBalance } from '@/lib/utilityBalance';
 import {
   otherPrivateRule,
@@ -18,7 +17,6 @@ import {
 import { HELP } from '@/lib/helpTexts';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import { useAsyncAction, usePendingIds } from '@/hooks/useAsyncAction';
-import { metricDebtHint, SettleDebtButton, UnsettleDebtButton } from '@/components/modules/utilities/utilities-settlement-buttons';
 import { ArrowLeftRight, CheckCircle, Clock, Receipt, User, Users } from 'lucide-react';
 import type { MetricItem } from '@/components/design';
 
@@ -36,6 +34,7 @@ export function useUtilitiesPageState() {
     aiUtilityAnomalies,
     fetchAiUtilityAnomalies,
   } = useUtilitiesStore();
+  const ui = useUtilitiesUiStore();
   const { fetchTransactions } = useBudgetStore();
   const { fetchMe, user } = useAuthStore();
   const { addNotification } = useNotificationStore();
@@ -91,13 +90,6 @@ export function useUtilitiesPageState() {
     [onHouseholdSide, partnerSideLabel, householdSideLabel, ourSplitRule, partnerSplitRule],
   );
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingBill, setEditingBill] = useState<UtilityBill | null>(null);
-  const [type, setType] = useState('');
-  const [total, setTotal] = useState('');
-  const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
-  const [splitRule, setSplitRule] = useState<UtilitySplitRule>('shared');
-
   useEffect(() => {
     if (bills.length === 0 && settlements.length === 0) {
       fetchBills();
@@ -108,41 +100,7 @@ export function useUtilitiesPageState() {
     fetchAiUtilityAnomalies(selectedYear, selectedMonth);
   }, [fetchAiUtilityAnomalies, selectedMonth, selectedYear]);
 
-  const filteredBills = bills.filter((b) => {
-    const d = new Date(b.dueDate);
-    return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear;
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isReader) return;
-    if (!total) return;
-    const targetSplitRule = utilitySplitEnabled ? splitRule : 'dani-private';
-    if (editingBill) {
-      updateBill(editingBill.id, { type, total: Number(total), dueDate, splitRule: targetSplitRule });
-      setEditingBill(null);
-    } else {
-      addBill({ type, total: Number(total), dueDate, paidDate: null, paidBy: null, splitRule: targetSplitRule });
-    }
-    setIsModalOpen(false);
-    setType('');
-    setTotal('');
-    setSplitRule('shared');
-  };
-
-  const handleEdit = (bill: UtilityBill) => {
-    setEditingBill(bill);
-    setType(bill.type);
-    setTotal(bill.total.toString());
-    setDueDate(bill.dueDate);
-    setSplitRule(bill.splitRule);
-    setIsModalOpen(true);
-  };
-
-  const openNewBillModal = () => {
-    setEditingBill(null);
-    setIsModalOpen(true);
-  };
+  const filteredBills = bills.filter((b) => billMatchesMonthYear(b.dueDate, selectedMonth, selectedYear));
 
   const handleGenerateFromTemplates = () => {
     if (isReader || utilityTemplates.length === 0 || templating) return;
@@ -206,6 +164,15 @@ export function useUtilitiesPageState() {
     });
   };
 
+  const balanceMetricAction: 'settle' | 'unsettle' | null =
+    utilitySplitEnabled && isAdmin
+      ? monthSettlement
+        ? 'unsettle'
+        : rawNetBalance !== 0
+          ? 'settle'
+          : null
+      : null;
+
   const paidCount = filteredBills.filter((b) => !!b.paidDate).length;
   const totalCount = filteredBills.length;
   const paidPercent = totalCount > 0 ? Math.round((paidCount / totalCount) * 100) : 0;
@@ -234,18 +201,12 @@ export function useUtilitiesPageState() {
           icon: ArrowLeftRight,
           tone: monthSettlement || rawNetBalance === 0 ? 'success' : rawNetBalance > 0 ? 'success' : 'danger',
           emphasis: true,
-          action:
-            monthSettlement && isAdmin ? (
-              <UnsettleDebtButton loading={unsettling} onClick={handleUnsettle} />
-            ) : !monthSettlement && rawNetBalance !== 0 && isAdmin ? (
-              <SettleDebtButton loading={settling} onClick={handleSettlement} />
-            ) : undefined,
         },
         {
           label: `Te fizettél`,
           value: formatHUF(wePaidGrandTotal),
           info: HELP.utilities.wePaid,
-          hint: metricDebtHint(`${counterpartyLabel} tartozása:`, partnerOwesUsTotal),
+          hint: `${counterpartyLabel} tartozása: ${formatHUF(partnerOwesUsTotal)}`,
           icon: Receipt,
           tone: 'primary',
         },
@@ -253,7 +214,7 @@ export function useUtilitiesPageState() {
           label: `${counterpartyLabel} fizetett`,
           value: formatHUF(partnerPaidGrandTotal),
           info: HELP.utilities.partnerPaid,
-          hint: metricDebtHint('Te tartozol:', weOwePartnerTotal),
+          hint: `Te tartozol: ${formatHUF(weOwePartnerTotal)}`,
           icon: Receipt,
           tone: 'info',
         },
@@ -301,9 +262,9 @@ export function useUtilitiesPageState() {
         },
       ];
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = today();
   const sortedBills = useMemo(
-    () => [...filteredBills].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()),
+    () => [...filteredBills].sort((a, b) => compareDates(a.dueDate, b.dueDate)),
     [filteredBills],
   );
 
@@ -321,35 +282,36 @@ export function useUtilitiesPageState() {
     clonePreviousMonth,
     templating,
     handleGenerateFromTemplates,
-    openNewBillModal,
+    openNewBillModal: ui.openNewBillModal,
     monthSettlement,
     splitPartnerUser,
     settling,
     unsettling,
     handleSettlement,
     handleUnsettle,
+    balanceMetricAction,
     metrics,
     aiUtilityAnomalies,
     fetchAiUtilityAnomalies,
     filteredBills,
     sortedBills,
     todayStr,
-    isModalOpen,
-    setIsModalOpen,
-    editingBill,
-    type,
-    setType,
-    total,
-    setTotal,
-    dueDate,
-    setDueDate,
-    splitRule,
-    setSplitRule,
+    isModalOpen: ui.isModalOpen,
+    setIsModalOpen: ui.setIsModalOpen,
+    editingBill: ui.editingBill,
+    type: ui.type,
+    setType: ui.setType,
+    total: ui.total,
+    setTotal: ui.setTotal,
+    dueDate: ui.dueDate,
+    setDueDate: ui.setDueDate,
+    splitRule: ui.splitRule,
+    setSplitRule: ui.setSplitRule,
     settlementOptions,
     householdSideLabel,
     partnerSideLabel,
-    handleSubmit,
-    handleEdit,
+    handleSubmit: (e: React.FormEvent) => ui.handleSubmit(e, { isReader, utilitySplitEnabled }),
+    handleEdit: ui.handleEdit,
     deleteBill,
     updateBill,
     requestDelete,

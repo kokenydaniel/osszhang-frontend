@@ -1,15 +1,19 @@
-'use client';
-
 import Link from 'next/link';
 import classNames from 'classnames';
-import { formatHUF } from '@/utils';
-import { Section, StatusPill, EmptyState } from '@/components/design';
+import { formatHUF, hasSettlementDate } from '@/utils';
+import { isUtilityBillOverdue } from '@/lib/utilityBills';
+import { Section, StatusPill, EmptyState, DataList, DataRow } from '@/components/design';
 import { ChevronRight, ReceiptText } from 'lucide-react';
 import type { DashboardPageState } from '@/components/modules/dashboard/hooks/use-dashboard-page-state';
 
-type Props = Pick<DashboardPageState, 'monthBills' | 'todayStr'>;
+type Props = Pick<DashboardPageState, 'monthBills' | 'todayStr' | 'utilitySplitEnabled'>;
 
-export function DashboardUtilitiesSnapshot({ monthBills, todayStr }: Props) {
+export function DashboardUtilitiesSnapshot({ monthBills, todayStr, utilitySplitEnabled }: Props) {
+  const items = monthBills
+    .slice()
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    .slice(0, 6);
+
   return (
     <Section
       title="Aktuális rezsi"
@@ -23,25 +27,18 @@ export function DashboardUtilitiesSnapshot({ monthBills, todayStr }: Props) {
       {monthBills.length === 0 ? (
         <EmptyState icon={ReceiptText} title="Nincs rezsi" description="Ebben a hónapban még nincs rögzített számla." />
       ) : (
-        <div className="rounded-lg border border-border bg-card overflow-hidden shadow-soft">
-          {monthBills
-            .slice()
-            .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
-            .slice(0, 6)
-            .map((b, i) => {
-              const overdue = !b.paidDate && b.dueDate < todayStr;
-              return (
-                <div
-                  key={b.id}
-                  className={classNames(
-                    'flex items-center gap-3 px-4 py-3 group hover:bg-muted/30 transition-colors',
-                    i > 0 && 'border-t border-border',
-                  )}
-                >
+        <DataList className="shadow-soft">
+          {items.map((b) => {
+            const settled = utilitySplitEnabled ? !!b.paidBy : hasSettlementDate(b.paidDate);
+            const overdue = isUtilityBillOverdue(b, { splitEnabled: utilitySplitEnabled, today: todayStr });
+            return (
+              <DataRow
+                key={b.id}
+                leading={
                   <div
                     className={classNames(
                       'h-9 w-9 shrink-0 rounded-md flex items-center justify-center text-white shadow-sm',
-                      b.paidDate
+                      settled
                         ? 'bg-gradient-to-br from-emerald-400 to-teal-500'
                         : overdue
                           ? 'bg-gradient-to-br from-rose-400 to-pink-500'
@@ -50,26 +47,21 @@ export function DashboardUtilitiesSnapshot({ monthBills, todayStr }: Props) {
                   >
                     <ReceiptText size={14} strokeWidth={2.2} />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-foreground truncate">{b.type}</div>
-                    <div className="text-[0.7rem] text-muted-foreground tabular-nums mt-0.5">
-                      {b.dueDate.replace(/-/g, '.')}
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
+                }
+                title={b.type}
+                subtitle={b.dueDate.replace(/-/g, '.')}
+                trailing={
+                  <div className="flex flex-col items-end gap-1">
                     <div className="text-sm font-semibold text-foreground tabular-nums">{formatHUF(b.total)}</div>
-                    <StatusPill
-                      status={b.paidDate ? 'success' : overdue ? 'danger' : 'warning'}
-                      size="xs"
-                      dot
-                    >
-                      {b.paidDate ? 'kész' : overdue ? 'lejárt' : 'függőben'}
+                    <StatusPill status={settled ? 'success' : overdue ? 'danger' : 'warning'} size="xs" dot>
+                      {settled ? 'kész' : overdue ? 'lejárt' : 'függőben'}
                     </StatusPill>
                   </div>
-                </div>
-              );
-            })}
-        </div>
+                }
+              />
+            );
+          })}
+        </DataList>
       )}
     </Section>
   );

@@ -3,7 +3,7 @@
 import { formatHUF } from '@/utils';
 import { Modal } from '@/components/ui/Modal';
 import { DatePicker } from '@/components/ui/DatePicker';
-import { Button } from '@/components/ui/button';
+import { ModalFormFooter, ObjectDetails } from '@/components/design';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/FieldLabel';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
@@ -65,6 +65,32 @@ export function DebtsPayModal({
       }
     >
       <form onSubmit={handlePaySubmit} className="flex flex-col gap-4">
+        {payDebt ? (
+          <ObjectDetails
+            compact
+            columns={2}
+            groups={[
+              {
+                items: [
+                  {
+                    label: 'Hátralévő',
+                    value: formatHUF(Math.max(0, Number(payDebt.targetAmount) - Number(payDebt.paidAmount))),
+                  },
+                  { label: 'Eredeti összeg', value: formatHUF(Number(payDebt.targetAmount)) },
+                  {
+                    label: 'Havi minimum',
+                    value: payDebt.minimumPayment ? formatHUF(Number(payDebt.minimumPayment)) : '—',
+                  },
+                  {
+                    label: 'Kamat',
+                    value: payDebt.annualInterestRate ? `${payDebt.annualInterestRate}% / év` : '—',
+                  },
+                ],
+              },
+            ]}
+            className="rounded-md border border-border bg-muted/20 px-3 py-3"
+          />
+        ) : null}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <FieldLabel info={HELP.debts.payAmount}>Összeg (Ft)</FieldLabel>
@@ -144,21 +170,12 @@ export function DebtsPayModal({
           )}
         </div>
 
-        <div className="flex gap-2 pt-1">
-          <Button
-            type="button"
-            variant="outline"
-            className="flex-1"
-            onClick={() => setIsPayModalOpen(false)}
-            disabled={paySaving}
-          >
-            Mégse
-          </Button>
-          <Button type="submit" className="flex-1" disabled={paySaving}>
-            {paySaving ? <RefreshCw size={13} className="animate-spin" /> : <Banknote size={13} />}
-            Befizetés rögzítése
-          </Button>
-        </div>
+        <ModalFormFooter
+          onCancel={() => setIsPayModalOpen(false)}
+          submitLabel="Befizetés rögzítése"
+          submitIcon={paySaving ? <RefreshCw size={13} className="animate-spin" /> : <Banknote size={13} />}
+          loading={paySaving}
+        />
       </form>
     </Modal>
   );

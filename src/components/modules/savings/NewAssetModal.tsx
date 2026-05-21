@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/FieldLabel';
 import { HELP } from '@/lib/helpTexts';
-import { SegmentedControl } from '@/components/design';
+import { today, d } from '@/lib/dates';
+import { SegmentedControl, ModalFormFooter } from '@/components/design';
 import { Wallet, TrendingUp } from 'lucide-react';
 
 type AssetKind = 'account' | 'investment';
@@ -36,7 +37,7 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
   const [invType, setInvType] = useState('bond');
   const [invPrincipal, setInvPrincipal] = useState('');
   const [invRate, setInvRate] = useState('');
-  const [invPurchaseDate, setInvPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
+  const [invPurchaseDate, setInvPurchaseDate] = useState(today());
   const [invMaturityDate, setInvMaturityDate] = useState('');
   const [invOwner, setInvOwner] = useState(savingsSettings.default_owner);
   const [invMaturityValue, setInvMaturityValue] = useState('');
@@ -61,7 +62,7 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
     setInvType('bond');
     setInvPrincipal('');
     setInvRate('');
-    setInvPurchaseDate(new Date().toISOString().split('T')[0]);
+    setInvPurchaseDate(today());
     setInvMaturityDate('');
     setInvOwner(savingsSettings.default_owner);
     setInvMaturityValue('');
@@ -84,9 +85,9 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
     e.preventDefault();
     let finalRate = Number(invRate);
     if (invMaturityValue && Number(invMaturityValue) > 0 && invMaturityDate && invPurchaseDate) {
-      const pDate = new Date(invPurchaseDate);
-      const mDate = new Date(invMaturityDate);
-      const diffDays = Math.ceil(Math.max(0, mDate.getTime() - pDate.getTime()) / (1000 * 60 * 60 * 24));
+      const pDate = d(invPurchaseDate);
+      const mDate = d(invMaturityDate);
+      const diffDays = Math.ceil(Math.max(0, mDate.diff(pDate, 'day')));
       if (diffDays > 0) {
         const totalReturnRatio = (Number(invMaturityValue) - Number(invPrincipal)) / Number(invPrincipal);
         finalRate = Math.round(totalReturnRatio * (365.25 / diffDays) * 100 * 100) / 100;
@@ -206,14 +207,7 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
               )}
             </div>
           </div>
-          <div className="flex gap-2 pt-1">
-            <Button type="button" variant="outline" className="flex-1" onClick={resetAndClose}>
-              Mégse
-            </Button>
-            <Button type="submit" className="flex-1">
-              Létrehozás
-            </Button>
-          </div>
+          <ModalFormFooter onCancel={resetAndClose} submitLabel="Létrehozás" />
         </form>
       ) : (
         <form onSubmit={handleInvestmentSubmit} className="flex flex-col gap-4">
@@ -342,14 +336,7 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
               </div>
             </div>
           </div>
-          <div className="flex gap-2 pt-1">
-            <Button type="button" variant="outline" className="flex-1" onClick={resetAndClose}>
-              Mégse
-            </Button>
-            <Button type="submit" className="flex-1">
-              Létrehozás
-            </Button>
-          </div>
+          <ModalFormFooter onCancel={resetAndClose} submitLabel="Létrehozás" />
         </form>
       )}
     </Modal>

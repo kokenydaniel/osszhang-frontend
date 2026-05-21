@@ -8,13 +8,14 @@ import {
   DataTable,
   Section,
   EmptyState,
+  EntityCell,
+  ProgressBar,
+  RowActions,
   type DataTableColumn,
 } from '@/components/design';
 import {
-  Edit3,
-  Trash2,
-  CreditCard,
   Banknote,
+  CreditCard,
   Sparkles,
   AlertTriangle,
 } from 'lucide-react';
@@ -47,22 +48,18 @@ export function DebtsTable({
       key: 'name',
       header: 'Tartozás',
       width: '24%',
-      cell: (d) => {
-        const tone = d.payoff.isUnderwater ? 'bg-rose-100 text-rose-700' : 'bg-violet-100 text-violet-700';
-        return (
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={classNames('flex h-8 w-8 shrink-0 items-center justify-center rounded-md', tone)}>
-              <CreditCard size={13} strokeWidth={2.2} />
-            </div>
-            <div className="min-w-0">
-              <div className="font-medium text-sm text-foreground truncate">{d.name}</div>
-              <div className="text-[0.7rem] text-muted-foreground mt-0.5">
-                {d.dueDay ? `Minden hó ${d.dueDay}. · ` : ''}Eredeti: {formatHUF(d.targetAmount)}
-              </div>
-            </div>
-          </div>
-        );
-      },
+      cell: (d) => (
+        <EntityCell
+          icon={CreditCard}
+          tone={d.payoff.isUnderwater ? 'danger' : 'primary'}
+          title={d.name}
+          subtitle={
+            <>
+              {d.dueDay ? `Minden hó ${d.dueDay}. · ` : ''}Eredeti: {formatHUF(d.targetAmount)}
+            </>
+          }
+        />
+      ),
     },
     {
       key: 'progress',
@@ -70,6 +67,14 @@ export function DebtsTable({
       width: '20%',
       cell: (d) => {
         const progress = d.targetAmount > 0 ? Math.min(100, (d.paidAmount / d.targetAmount) * 100) : 0;
+        const barClassName =
+          progress >= 100
+            ? 'bg-emerald-500'
+            : progress >= 75
+              ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
+              : progress >= 25
+                ? 'bg-gradient-to-r from-primary to-violet-500'
+                : 'bg-gradient-to-r from-rose-400 to-orange-500';
         return (
           <div className="flex flex-col gap-1.5 w-full">
             <div className="flex justify-between items-center">
@@ -80,21 +85,7 @@ export function DebtsTable({
                 {Math.round(progress)}%
               </span>
             </div>
-            <span className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-              <span
-                className={classNames(
-                  'block h-full rounded-full transition-all',
-                  progress >= 100
-                    ? 'bg-emerald-500'
-                    : progress >= 75
-                      ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
-                      : progress >= 25
-                        ? 'bg-gradient-to-r from-primary to-violet-500'
-                        : 'bg-gradient-to-r from-rose-400 to-orange-500',
-                )}
-                style={{ width: `${progress}%` }}
-              />
-            </span>
+            <ProgressBar value={d.paidAmount} max={d.targetAmount} size="md" barClassName={barClassName} />
           </div>
         );
       },
@@ -182,28 +173,13 @@ export function DebtsTable({
             >
               <Banknote size={12} /> Befizetés
             </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => openForm(d)}
-            >
-              <Edit3 size={13} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground hover:text-destructive"
-              onClick={() =>
+            <RowActions onEdit={() => openForm(d)} onDelete={() =>
                 requestDelete({
                   title: 'Tartozás törlése',
                   message: `Biztosan törlöd a „${d.name}" tartozást? Ez a művelet nem vonható vissza.`,
                   onConfirm: () => deleteDebt(d.id),
                 })
-              }
-            >
-              <Trash2 size={13} />
-            </Button>
+              } />
           </div>
         ) : null,
     },

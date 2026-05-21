@@ -5,7 +5,7 @@ import { motion } from 'motion/react';
 import { Sparkles, Trash2, Pencil, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { StatusPill } from '@/components/design';
+import { StatusPill, MiniSwitch, ObjectDetails, type DetailGroup } from '@/components/design';
 import { formatHUF, formatDate } from '@/utils';
 import { Investment } from '@/types';
 import type { SavingsPageState } from '@/components/modules/savings/hooks/use-savings-page-state';
@@ -60,6 +60,27 @@ export function SavingsInvestmentCard({
   const mAmount = getMaturityAmount(inv);
   const isEditingValue = editingInvId === inv.id;
   const isEditingPayout = editingPayoutInvId === inv.id;
+
+  const detailGroups: DetailGroup[] = [
+    {
+      items: [
+        { label: 'Tőke', value: formatHUF(inv.principalAmount) },
+        { label: 'Éves kamat', value: `${inv.annualInterestRate}%` },
+        ...(mAmount
+          ? [{ label: 'Lejáratkor', value: <span className="text-amber-700">{formatHUF(mAmount)}</span> }]
+          : []),
+        {
+          label: `Hozam (${daysPassed} nap)`,
+          value: (
+            <span className={accruedInterest >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
+              {accruedInterest >= 0 ? '+' : ''}
+              {formatHUF(accruedInterest)}
+            </span>
+          ),
+        },
+      ],
+    },
+  ];
 
   return (
     <motion.div
@@ -147,31 +168,7 @@ export function SavingsInvestmentCard({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border text-xs">
-        <div>
-          <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">Tőke</p>
-          <p className="text-foreground tabular-nums mt-0.5">{formatHUF(inv.principalAmount)}</p>
-        </div>
-        <div>
-          <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">Éves kamat</p>
-          <p className="text-foreground tabular-nums mt-0.5">{inv.annualInterestRate}%</p>
-        </div>
-        {mAmount && (
-          <div>
-            <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">Lejáratkor</p>
-            <p className="text-amber-700 tabular-nums mt-0.5">{formatHUF(mAmount)}</p>
-          </div>
-        )}
-        <div>
-          <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
-            Hozam ({daysPassed} nap)
-          </p>
-          <p className={classNames('tabular-nums mt-0.5', accruedInterest >= 0 ? 'text-emerald-600' : 'text-rose-600')}>
-            {accruedInterest >= 0 ? '+' : ''}
-            {formatHUF(accruedInterest)}
-          </p>
-        </div>
-      </div>
+      <ObjectDetails groups={detailGroups} columns={2} compact className="pt-3 border-t border-border" />
 
       {isEditingPayout && (
         <div className="rounded-md border border-border bg-muted/30 px-3 py-2.5 space-y-2">
@@ -200,24 +197,13 @@ export function SavingsInvestmentCard({
       )}
 
       <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
-        <label className="inline-flex items-center gap-2 text-xs text-foreground">
-          <button
-            type="button"
-            onClick={() => updateInvestment(inv.id, { countInSavings: !inv.countInSavings })}
-            className={classNames(
-              'relative h-4 w-7 rounded-full transition-colors',
-              inv.countInSavings !== false ? 'bg-emerald-500' : 'bg-muted-foreground/30',
-            )}
-          >
-            <span
-              className={classNames(
-                'absolute top-0.5 h-3 w-3 rounded-full bg-card transition-all',
-                inv.countInSavings !== false ? 'left-[14px]' : 'left-0.5',
-              )}
-            />
-          </button>
-          <span title="Beleszámít a fő vagyon összegébe a Széf nézetben">Vagyonba</span>
-        </label>
+        <MiniSwitch
+          checked={inv.countInSavings !== false}
+          onChange={(checked) => updateInvestment(inv.id, { countInSavings: checked })}
+          label="Vagyonba"
+          title="Beleszámít a fő vagyon összegébe a Széf nézetben"
+          tone="success"
+        />
         <span className="text-[0.65rem] text-muted-foreground tabular-nums">
           {formatDate(inv.purchaseDate)}
           {inv.maturityDate && ` → ${formatDate(inv.maturityDate)}`}
