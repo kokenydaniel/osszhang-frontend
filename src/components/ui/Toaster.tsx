@@ -3,7 +3,7 @@
 import React from 'react';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { CheckCircle2, XCircle, Info, X, AlertTriangle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import { Button } from '@/components/ui/button';
 
 export const Toaster: React.FC = () => {
@@ -25,12 +25,12 @@ export const Toaster: React.FC = () => {
         return (
           <div
             key={n.id}
-            className={cn(
+            className={classNames(
               "flex items-center gap-3 p-3.5 rounded-xl border shadow-md animate-in slide-in-from-right-8 duration-200",
               c.className
             )}
           >
-            <Icon size={18} className={cn("shrink-0", c.iconClass)} />
+            <Icon size={18} className={classNames("shrink-0", c.iconClass)} />
             <p className="flex-1 text-sm font-semibold leading-snug">{n.message}</p>
             <button
               onClick={() => removeNotification(n.id)}

@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from 'motion/react';
 import { Sparkles, Star, Tag } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import type { OnboardingModuleId } from '@/lib/householdOnboarding';
 import { ONBOARDING_MODULE_OPTIONS } from '@/lib/householdOnboarding';
 
@@ -30,7 +30,7 @@ export function OnboardingLivePreview({
 
   return (
     <div
-      className={cn(
+      className={classNames(
         'rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.06] via-card to-card p-4 space-y-3',
         className,
       )}
@@ -89,7 +89,7 @@ export function OnboardingLivePreview({
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.8 }}
                     transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                    className={cn(
+                    className={classNames(
                       'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[0.65rem] font-medium',
                       isPersonalized
                         ? 'border-primary/40 bg-primary/15 text-primary shadow-sm shadow-primary/10'

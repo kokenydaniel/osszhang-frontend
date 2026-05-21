@@ -2,7 +2,7 @@
 
 import { Loader2, MousePointerClick } from 'lucide-react';
 import { StatusPill } from './StatusPill';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 type Status = 'success' | 'danger' | 'warning' | 'info' | 'neutral' | 'primary';
 
@@ -31,7 +31,7 @@ export function StatusToggleButton({
       disabled={disabled || pending}
       title={title}
       aria-label={title}
-      className={cn(
+      className={classNames(
         'group inline-flex max-w-full items-center gap-1 rounded-lg px-1 py-0.5',
         'cursor-pointer transition-all duration-150',
         'border border-transparent hover:border-border/80 hover:bg-muted/50 hover:shadow-sm',

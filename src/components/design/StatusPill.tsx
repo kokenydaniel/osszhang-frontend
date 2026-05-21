@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 type Status = 'success' | 'danger' | 'warning' | 'info' | 'neutral' | 'primary';
 
@@ -23,7 +23,7 @@ export function StatusPill({ status = 'neutral', dot, children, className, size 
   const s = styles[status];
   return (
     <span
-      className={cn(
+      className={classNames(
         'inline-flex items-center gap-1.5 rounded-md font-medium',
         size === 'xs' ? 'px-1.5 py-0.5 text-[0.65rem]' : 'px-2 py-0.5 text-[0.7rem]',
         s.bg,
@@ -31,7 +31,7 @@ export function StatusPill({ status = 'neutral', dot, children, className, size 
         className,
       )}
     >
-      {dot && <span className={cn('h-1.5 w-1.5 rounded-full', s.dot)} />}
+      {dot && <span className={classNames('h-1.5 w-1.5 rounded-full', s.dot)} />}
       {children}
     </span>
   );

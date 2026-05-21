@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 export function OptionsSelect({
   value,
@@ -19,7 +19,7 @@ export function OptionsSelect({
 
   return (
     <select
-      className={cn(
+      className={classNames(
         'h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none',
         className,
       )}

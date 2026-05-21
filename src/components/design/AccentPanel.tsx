@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import { motion } from 'motion/react';
 import type { LucideIcon } from 'lucide-react';
 import React from 'react';
@@ -88,21 +88,21 @@ export function AccentPanel({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className={cn(
+      className={classNames(
         'relative overflow-hidden rounded-lg border border-border bg-card before:absolute before:inset-0 before:pointer-events-none',
         glow ? 'shadow-glow' : 'shadow-soft',
         s.mesh,
         className,
       )}
     >
-      <div className={cn('relative bg-gradient-to-br to-transparent', s.surface)}>
+      <div className={classNames('relative bg-gradient-to-br to-transparent', s.surface)}>
         <div className="flex gap-4 p-5">
-          <div className={cn('w-[3px] shrink-0 rounded-full', s.bar)} />
+          <div className={classNames('w-[3px] shrink-0 rounded-full', s.bar)} />
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-3 mb-2">
               <div className="flex items-start gap-3 min-w-0">
                 {Icon && (
-                  <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-md shadow-sm', s.iconBg)}>
+                  <div className={classNames('flex h-9 w-9 shrink-0 items-center justify-center rounded-md shadow-sm', s.iconBg)}>
                     <Icon size={16} strokeWidth={2.2} />
                   </div>
                 )}

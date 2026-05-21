@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, Check, SkipForward } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import { OnboardingLivePreview } from '@/components/onboarding/OnboardingLivePreview';
 import { PERSONALIZATION_QUESTION_ICONS } from '@/lib/onboardingIcons';
 import {
@@ -138,7 +138,7 @@ export function OnboardingPersonalizationStep({
               type="button"
               aria-label={`${i + 1}. kérdés`}
               onClick={() => goToQuestion(i)}
-              className={cn(
+              className={classNames(
                 'h-1.5 rounded-full transition-all',
                 i === questionIndex ? 'w-5 bg-primary' : 'w-1.5 bg-muted hover:bg-muted-foreground/30',
                 isQuestionAnswered(q, answers[q.id]) && i !== questionIndex && 'bg-primary/40',
@@ -183,7 +183,7 @@ export function OnboardingPersonalizationStep({
                 type="button"
                 whileTap={{ scale: 0.97 }}
                 onClick={() => handleYesNo(true)}
-                className={cn(
+                className={classNames(
                   'flex-1 rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-colors',
                   answer.yes === true
                     ? 'border-primary bg-primary text-primary-foreground shadow-md shadow-primary/20'
@@ -196,7 +196,7 @@ export function OnboardingPersonalizationStep({
                 type="button"
                 whileTap={{ scale: 0.97 }}
                 onClick={() => handleYesNo(false)}
-                className={cn(
+                className={classNames(
                   'flex-1 rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-colors',
                   answer.yes === false
                     ? 'border-foreground/20 bg-muted text-foreground'
@@ -245,7 +245,7 @@ export function OnboardingPersonalizationStep({
                           type="button"
                           whileTap={{ scale: 0.96 }}
                           onClick={() => toggleProvider(provider)}
-                          className={cn(
+                          className={classNames(
                             'inline-flex items-center gap-1.5 rounded-xl border-2 px-3 py-2 text-xs font-semibold transition-colors',
                             active
                               ? 'border-primary bg-primary/10 text-primary'

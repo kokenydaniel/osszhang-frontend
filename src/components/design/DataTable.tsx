@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import { motion } from 'motion/react';
 import React from 'react';
 
@@ -49,7 +49,7 @@ export function DataTable<T>({
     s === 'left' ? 'sticky left-0 bg-card z-[1]' : s === 'right' ? 'sticky right-0 bg-card z-[1]' : '';
 
   if (data.length === 0 && empty) {
-    return <div className={cn('rounded-lg border border-border bg-card overflow-hidden', className)}>{empty}</div>;
+    return <div className={classNames('rounded-lg border border-border bg-card overflow-hidden', className)}>{empty}</div>;
   }
 
   const groups: { name: string | null; rows: { row: T; idx: number }[] }[] = (() => {
@@ -69,7 +69,7 @@ export function DataTable<T>({
 
   return (
     <div
-      className={cn(
+      className={classNames(
         'rounded-lg border border-border bg-card overflow-hidden shadow-soft',
         className,
       )}
@@ -81,7 +81,7 @@ export function DataTable<T>({
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  className={cn(alignClass(c.align), stickyClass(c.sticky), c.headerClassName)}
+                  className={classNames(alignClass(c.align), stickyClass(c.sticky), c.headerClassName)}
                   style={{ width: c.width }}
                 >
                   {c.header}
@@ -111,7 +111,7 @@ export function DataTable<T>({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.18, delay: Math.min(idx * 0.015, 0.2), ease: [0.22, 1, 0.36, 1] }}
                     onClick={onRowClick ? () => onRowClick(row, idx) : undefined}
-                    className={cn(
+                    className={classNames(
                       onRowClick && 'cursor-pointer',
                       dense && '[&>td]:!py-2',
                       rowClassName?.(row, idx),
@@ -120,7 +120,7 @@ export function DataTable<T>({
                     {columns.map((c) => (
                       <td
                         key={c.key}
-                        className={cn(alignClass(c.align), stickyClass(c.sticky), c.className)}
+                        className={classNames(alignClass(c.align), stickyClass(c.sticky), c.className)}
                         style={{ width: c.width }}
                       >
                         {c.cell(row, idx)}

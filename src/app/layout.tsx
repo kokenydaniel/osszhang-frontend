@@ -5,7 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { APP_DESCRIPTION, APP_META_TITLE } from '@/lib/branding';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 export const metadata: Metadata = {
   title: APP_META_TITLE,
@@ -26,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="hu" className={cn(GeistSans.variable, GeistMono.variable)}>
+    <html lang="hu" className={classNames(GeistSans.variable, GeistMono.variable)}>
       <body className="bg-background text-foreground antialiased font-sans">
         <TooltipProvider delayDuration={200}>
           <Toaster />

@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Label } from '@/components/ui/label';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { FieldHint } from '@/components/ui/FieldHint';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 interface FieldLabelProps extends React.ComponentProps<typeof Label> {
   /** Részletes tooltip (asztali hover + mobil érintés) */
@@ -18,7 +18,7 @@ export function FieldLabel({ info, hint, children, className, required, ...props
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-1.5 min-h-[1.125rem]">
-        <Label className={cn('text-xs font-medium', className)} {...props}>
+        <Label className={classNames('text-xs font-medium', className)} {...props}>
           {children}
           {required ? <span className="text-destructive ml-0.5" aria-hidden>*</span> : null}
         </Label>

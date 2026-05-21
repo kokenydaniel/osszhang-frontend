@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Investment } from '@/types';
-import { investmentsClient } from '@/api/investmentsClient';
+import { investmentsClient } from '@/api';
 import { useNotificationStore } from './useNotificationStore';
 
 interface InvestmentsState {

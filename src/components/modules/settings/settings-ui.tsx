@@ -3,7 +3,7 @@
 import type { LucideIcon } from 'lucide-react';
 import { Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 export interface SettingsTabItem {
   id: string;
@@ -39,7 +39,7 @@ export function SettingsTopTabs<T extends string>({
             aria-selected={isActive}
             title={tab.hint}
             onClick={() => onChange(tab.id as T)}
-            className={cn(
+            className={classNames(
               'flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-2 transition-all touch-manipulation sm:flex-row sm:gap-2 sm:px-3',
               isActive
                 ? 'bg-card text-foreground shadow-sm ring-1 ring-border'
@@ -47,8 +47,8 @@ export function SettingsTopTabs<T extends string>({
             )}
           >
             <span className="flex items-center gap-1.5 sm:gap-2">
-              <Icon size={15} strokeWidth={2.2} className={cn('shrink-0', isActive && 'text-primary')} />
-              <span className={cn('truncate text-[0.9375rem] font-semibold', !isActive && 'font-medium')}>
+              <Icon size={15} strokeWidth={2.2} className={classNames('shrink-0', isActive && 'text-primary')} />
+              <span className={classNames('truncate text-[0.9375rem] font-semibold', !isActive && 'font-medium')}>
                 {tab.label}
               </span>
             </span>
@@ -103,7 +103,7 @@ export function SettingsBlock({
     <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
       <header className="flex items-start gap-3 border-b border-border bg-gradient-to-r from-muted/30 to-transparent px-5 py-4">
         <div
-          className={cn(
+          className={classNames(
             'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary',
             toneClassName,
           )}
@@ -147,7 +147,7 @@ export function ModuleFeatureCard({
 }) {
   return (
     <article
-      className={cn(
+      className={classNames(
         'flex flex-col rounded-xl border transition-all duration-200 overflow-hidden',
         enabled
           ? 'border-primary/30 bg-card shadow-sm ring-1 ring-primary/10'
@@ -156,7 +156,7 @@ export function ModuleFeatureCard({
     >
       <div className="flex gap-4 p-5 sm:p-6">
         <div
-          className={cn(
+          className={classNames(
             'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm',
             enabled
               ? iconClassName ?? 'bg-primary/10 text-primary border border-primary/20'
@@ -169,7 +169,7 @@ export function ModuleFeatureCard({
           <div className="flex flex-wrap items-center gap-2">
             <h4 className="text-base font-semibold text-foreground leading-snug">{title}</h4>
             <span
-              className={cn(
+              className={classNames(
                 'text-[0.6rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border',
                 enabled
                   ? 'border-primary/30 bg-primary/10 text-primary'
@@ -242,7 +242,7 @@ export function PermissionChip({
       disabled={disabled || pending}
       onClick={onClick}
       title={title}
-      className={cn(
+      className={classNames(
         'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[0.8rem] font-medium transition-colors duration-100 touch-manipulation',
         active
           ? 'border-primary/40 bg-primary/10 text-primary'

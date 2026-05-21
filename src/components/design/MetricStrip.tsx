@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import { motion } from 'motion/react';
 import type { LucideIcon } from 'lucide-react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
@@ -101,7 +101,7 @@ function MetricLabelRow({
   return (
     <div className="flex items-start gap-1.5 min-w-0">
       {Icon && (
-        <div className={cn('mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md', iconClass)}>
+        <div className={classNames('mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md', iconClass)}>
           <Icon size={13} strokeWidth={2.2} />
         </div>
       )}
@@ -129,7 +129,7 @@ function MetricLabelRowCompact({
   return (
     <div className="flex items-start gap-1.5 min-w-0">
       {Icon && (
-        <div className={cn('mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md', iconClass)}>
+        <div className={classNames('mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md', iconClass)}>
           <Icon size={11} strokeWidth={2.2} />
         </div>
       )}
@@ -152,7 +152,7 @@ export function MetricStrip({ items, columns = 4, className, variant = 'unified'
   if (variant === 'separated') {
     return (
       <div
-        className={cn(
+        className={classNames(
           'grid gap-3',
           columnGridClass[cols] ?? 'grid-cols-1',
           className,
@@ -168,14 +168,14 @@ export function MetricStrip({ items, columns = 4, className, variant = 'unified'
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.15, delay: i * 0.02, ease: [0.22, 1, 0.36, 1] }}
-              className={cn(
+              className={classNames(
                 'group relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-soft hover:shadow-lift transition-shadow',
                 t.bg,
               )}
             >
-              <span className={cn('absolute inset-x-0 top-0 h-[2px]', t.bar)} />
+              <span className={classNames('absolute inset-x-0 top-0 h-[2px]', t.bar)} />
               <div
-                className={cn(
+                className={classNames(
                   'mb-3 flex flex-col gap-3 min-w-0',
                   m.action ? 'lg:flex-row lg:items-start lg:justify-between lg:gap-3' : '',
                 )}
@@ -186,7 +186,7 @@ export function MetricStrip({ items, columns = 4, className, variant = 'unified'
                 ) : null}
               </div>
               <div className="flex items-end justify-between gap-2 min-w-0">
-                <div className={cn('min-w-0 text-xl sm:text-[1.5rem] font-semibold tabular-nums tracking-tight leading-none', t.value)}>
+                <div className={classNames('min-w-0 text-xl sm:text-[1.5rem] font-semibold tabular-nums tracking-tight leading-none', t.value)}>
                   {m.value}
                 </div>
                 {m.sparkline && m.sparkline.length > 1 && (
@@ -196,7 +196,7 @@ export function MetricStrip({ items, columns = 4, className, variant = 'unified'
               {(m.hint || m.trend) && (
                 <div className="flex flex-wrap items-start gap-x-1.5 gap-y-1 text-xs text-muted-foreground mt-2 min-w-0">
                   {TrendIcon && (
-                    <span className={cn('inline-flex shrink-0 items-center gap-0.5 font-medium px-1.5 py-0.5 rounded text-[0.65rem]', trendToneMap[m.trend!])}>
+                    <span className={classNames('inline-flex shrink-0 items-center gap-0.5 font-medium px-1.5 py-0.5 rounded text-[0.65rem]', trendToneMap[m.trend!])}>
                       <TrendIcon size={10} strokeWidth={2.5} />
                       {m.trendValue}
                     </span>
@@ -212,10 +212,9 @@ export function MetricStrip({ items, columns = 4, className, variant = 'unified'
     );
   }
 
-  // Unified: single bordered container with vertical dividers
   return (
     <div
-      className={cn(
+      className={classNames(
         'grid rounded-lg border border-border bg-card overflow-hidden shadow-soft divide-x divide-border',
         columnGridClass[cols] ?? 'grid-cols-1',
         cols >= 4 ? '[&>*:not(:last-child)]:border-b lg:[&>*:not(:last-child)]:border-b-0' : '[&>*:nth-child(-n+2)]:border-b sm:[&>*:nth-child(-n+2)]:border-b-0',
@@ -232,14 +231,14 @@ export function MetricStrip({ items, columns = 4, className, variant = 'unified'
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
-            className={cn(
+            className={classNames(
               'relative flex flex-col gap-2 px-4 py-4 min-w-0 group hover:bg-muted/30 transition-colors',
               t.bg,
             )}
           >
-            <span className={cn('absolute inset-y-0 left-0 w-[2px] opacity-0 group-hover:opacity-100 transition-opacity', t.bar)} />
+            <span className={classNames('absolute inset-y-0 left-0 w-[2px] opacity-0 group-hover:opacity-100 transition-opacity', t.bar)} />
             <div
-              className={cn(
+              className={classNames(
                 'flex flex-col gap-2 min-w-0',
                 m.action ? 'lg:flex-row lg:items-start lg:justify-between lg:gap-3' : '',
               )}
@@ -250,7 +249,7 @@ export function MetricStrip({ items, columns = 4, className, variant = 'unified'
               ) : null}
             </div>
             <div className="flex items-end justify-between gap-2 min-w-0">
-              <div className={cn('min-w-0 text-lg sm:text-xl md:text-[1.4rem] font-semibold tabular-nums tracking-tight leading-none', t.value)}>
+              <div className={classNames('min-w-0 text-lg sm:text-xl md:text-[1.4rem] font-semibold tabular-nums tracking-tight leading-none', t.value)}>
                 {m.value}
               </div>
               {m.sparkline && m.sparkline.length > 1 && (
@@ -260,7 +259,7 @@ export function MetricStrip({ items, columns = 4, className, variant = 'unified'
             {(m.hint || m.trend) && (
               <div className="flex flex-wrap items-start gap-x-1.5 gap-y-1 text-xs text-muted-foreground min-h-[1rem] min-w-0">
                 {TrendIcon && (
-                  <span className={cn('inline-flex shrink-0 items-center gap-0.5 font-medium px-1.5 py-0.5 rounded text-[0.65rem]', trendToneMap[m.trend!])}>
+                  <span className={classNames('inline-flex shrink-0 items-center gap-0.5 font-medium px-1.5 py-0.5 rounded text-[0.65rem]', trendToneMap[m.trend!])}>
                     <TrendIcon size={10} strokeWidth={2.5} />
                     {m.trendValue}
                   </span>

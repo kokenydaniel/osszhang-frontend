@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import type { LucideIcon } from 'lucide-react';
 
 export interface FormChoiceCardProps {
@@ -33,7 +33,7 @@ export function FormChoiceCard({
       role="radio"
       aria-checked={selected}
       onClick={onSelect}
-      className={cn(
+      className={classNames(
         'w-full cursor-pointer rounded-lg border p-3.5 text-left transition-all active:scale-[0.99]',
         selected
           ? 'border-primary/50 bg-primary/[0.06] ring-1 ring-primary/20 shadow-sm'
@@ -43,7 +43,7 @@ export function FormChoiceCard({
     >
       <div className="flex items-start gap-3">
         <span
-          className={cn(
+          className={classNames(
             'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
             selected ? 'border-primary bg-primary' : 'border-muted-foreground/40 bg-transparent',
           )}
@@ -55,7 +55,7 @@ export function FormChoiceCard({
           <div className="flex flex-wrap items-center gap-2">
             {Icon && (
               <span
-                className={cn(
+                className={classNames(
                   'inline-flex h-6 w-6 items-center justify-center rounded-md',
                   selected ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground',
                 )}

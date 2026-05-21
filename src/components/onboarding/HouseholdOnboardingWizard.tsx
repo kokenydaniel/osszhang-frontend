@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { FormField } from '@/components/ui/FormField';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import { APP_NAME } from '@/lib/branding';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useInitStore } from '@/stores/useInit';
@@ -227,7 +227,7 @@ export function HouseholdOnboardingWizard() {
       await updateHouseholdSettings(payload);
 
       if (modules.budget && finalCategories.length > 0) {
-        const { householdClient } = await import('@/api/householdClient');
+        const { householdClient } = await import('@/api');
         await householdClient.updateCategories(finalCategories);
         setCategories(finalCategories);
       }
@@ -278,7 +278,7 @@ export function HouseholdOnboardingWizard() {
             {STEP_TITLES.map((_, i) => (
               <div
                 key={i}
-                className={cn(
+                className={classNames(
                   'h-1 flex-1 rounded-full transition-colors',
                   i <= step ? 'bg-primary' : 'bg-muted',
                 )}
@@ -330,7 +330,7 @@ export function HouseholdOnboardingWizard() {
                                 setHouseholdName(vibe.nameHint.replace('Pl. ', ''));
                               }
                             }}
-                            className={cn(
+                            className={classNames(
                               'flex items-start gap-3 rounded-xl border-2 px-3 py-3 text-left transition-colors',
                               selectedVibe === vibe.id
                                 ? 'border-primary bg-primary/10 text-primary'
@@ -338,7 +338,7 @@ export function HouseholdOnboardingWizard() {
                             )}
                           >
                             <div
-                              className={cn(
+                              className={classNames(
                                 'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
                                 selectedVibe === vibe.id
                                   ? 'bg-primary/15 text-primary'
@@ -350,7 +350,7 @@ export function HouseholdOnboardingWizard() {
                             <div className="min-w-0">
                               <span className="text-sm font-semibold text-foreground block">{vibe.label}</span>
                               <span
-                                className={cn(
+                                className={classNames(
                                   'text-[0.7rem] leading-snug mt-0.5 block',
                                   selectedVibe === vibe.id ? 'text-primary/90' : 'text-muted-foreground',
                                 )}
@@ -422,7 +422,7 @@ export function HouseholdOnboardingWizard() {
                           disabled={locked}
                           whileTap={locked ? undefined : { scale: 0.98 }}
                           onClick={() => toggleModule(mod.id)}
-                          className={cn(
+                          className={classNames(
                             'flex flex-col gap-2 rounded-xl border p-4 text-left transition-all',
                             active
                               ? 'border-primary/40 bg-primary/5 ring-1 ring-primary/15'
@@ -433,7 +433,7 @@ export function HouseholdOnboardingWizard() {
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div
-                              className={cn(
+                              className={classNames(
                                 'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
                                 active ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground',
                               )}
@@ -447,7 +447,7 @@ export function HouseholdOnboardingWizard() {
                                 </span>
                               )}
                               <span
-                                className={cn(
+                                className={classNames(
                                   'text-[0.6rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border whitespace-nowrap',
                                   active
                                     ? 'border-primary/30 bg-primary/10 text-primary'
@@ -500,7 +500,7 @@ export function HouseholdOnboardingWizard() {
                               layout
                               whileTap={{ scale: 0.95 }}
                               onClick={() => toggleCategory(cat)}
-                              className={cn(
+                              className={classNames(
                                 'inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
                                 active
                                   ? 'border-primary/40 bg-primary/10 text-primary'

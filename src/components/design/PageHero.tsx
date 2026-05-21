@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import type { LucideIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -20,7 +20,7 @@ export function PageHero({ eyebrow, title, subtitle, icon: Icon, action, meta, c
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className={cn('flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between pb-2', className)}
+      className={classNames('flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between pb-2', className)}
     >
       <div className="flex items-start gap-3 min-w-0">
         {Icon && (

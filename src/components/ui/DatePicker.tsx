@@ -17,7 +17,7 @@ import {
 } from 'date-fns';
 import { hu } from 'date-fns/locale';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 interface DatePickerProps {
   value: string;
@@ -156,7 +156,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                 onChange(format(d, 'yyyy-MM-dd'));
                 setIsOpen(false);
               }}
-              className={cn(
+              className={classNames(
                 'h-9 flex items-center justify-center text-xs rounded-md transition-colors touch-manipulation',
                 isSelected && 'bg-primary text-primary-foreground font-semibold',
                 !isSelected && isToday && 'border border-primary/50 text-primary font-semibold',
@@ -214,18 +214,18 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   );
 
   return (
-    <div ref={containerRef} className={cn('relative w-full', className)}>
+    <div ref={containerRef} className={classNames('relative w-full', className)}>
       <button
         type="button"
         onClick={() => setIsOpen((o) => !o)}
-        className={cn(
+        className={classNames(
           'flex w-full items-center gap-2.5 h-9 px-3 bg-input border border-border rounded-md',
           'cursor-pointer hover:border-foreground/20 transition-colors text-sm text-left touch-manipulation',
           isOpen && 'border-primary/50 ring-2 ring-primary/20',
         )}
       >
         <CalendarIcon size={15} className="text-muted-foreground shrink-0" />
-        <span className={cn('flex-1 truncate', value ? 'text-foreground' : 'text-muted-foreground')}>
+        <span className={classNames('flex-1 truncate', value ? 'text-foreground' : 'text-muted-foreground')}>
           {value ? format(parseISO(value), 'yyyy. MM. dd.', { locale: hu }) : placeholder}
         </span>
         {value && (

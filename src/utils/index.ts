@@ -1,8 +1,5 @@
 import { MONTH_NAMES } from '@/types';
 
-// ==============================
-// CURRENCY FORMATTING
-// ==============================
 export function formatHUF(amount: number, compact = false): string {
   if (compact && Math.abs(amount) >= 1_000_000) {
     return `${(amount / 1_000_000).toFixed(1).replace('.', ',')} M Ft`;
@@ -32,9 +29,6 @@ export function formatNumber(n: number): string {
   return new Intl.NumberFormat('hu-HU').format(n);
 }
 
-// ==============================
-// DATE FORMATTING
-// ==============================
 export function formatDate(dateStr: string): string {
   if (!dateStr) return '—';
   const date = new Date(dateStr);
@@ -79,9 +73,6 @@ export function daysUntil(dateStr: string): number {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-// ==============================
-// PERCENTAGE
-// ==============================
 export function calcPercent(part: number, total: number): number {
   if (total === 0) return 0;
   return Math.round((part / total) * 100);
@@ -91,16 +82,6 @@ export function formatPercent(value: number): string {
   return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
 }
 
-// ==============================
-// CLASS NAMES
-// ==============================
-export function cn(...classes: (string | undefined | null | false)[]): string {
-  return classes.filter(Boolean).join(' ');
-}
-
-// ==============================
-// COLORS & STATUSES
-// ==============================
 export const STATUS_COLORS = {
   rendben: 'badge-success',
   kint: 'badge-danger',

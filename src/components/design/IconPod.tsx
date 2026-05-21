@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import type { LucideIcon } from 'lucide-react';
 
 const tones = {
@@ -49,7 +49,7 @@ export function IconPod({ icon: Icon, tone = 'primary', size = 'md', className, 
 
   return (
     <div
-      className={cn(
+      className={classNames(
         'flex items-center justify-center shrink-0 shadow-sm',
         sizeClass,
         solid ? solidTones[resolved] : tones[resolved],

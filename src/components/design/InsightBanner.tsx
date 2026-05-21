@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import type { LucideIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -50,20 +50,20 @@ export function InsightBanner({ tone = 'info', icon: Icon, title, children, acti
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className={cn(
+      className={classNames(
         'flex items-start gap-3 rounded-lg border px-4 py-3',
         styles.container,
         className,
       )}
     >
       {Icon && (
-        <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-md mt-0.5', styles.icon)}>
+        <div className={classNames('flex h-7 w-7 shrink-0 items-center justify-center rounded-md mt-0.5', styles.icon)}>
           <Icon size={14} strokeWidth={2.2} />
         </div>
       )}
       <div className="flex-1 min-w-0 text-sm">
-        {title && <div className={cn('font-medium leading-tight', styles.title)}>{title}</div>}
-        {children && <div className={cn('text-foreground/80 mt-1 text-[0.8rem]', title && 'leading-relaxed')}>{children}</div>}
+        {title && <div className={classNames('font-medium leading-tight', styles.title)}>{title}</div>}
+        {children && <div className={classNames('text-foreground/80 mt-1 text-[0.8rem]', title ? 'leading-relaxed' : undefined)}>{children}</div>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </motion.div>

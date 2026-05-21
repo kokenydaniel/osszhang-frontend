@@ -16,7 +16,7 @@ type HouseholdLike = NonNullable<UserProfile['household']>;
 
 function readFlag(household: HouseholdLike | undefined, snake: string, camel: string): boolean {
   if (!household) return false;
-  const record = household as Record<string, unknown>;
+  const record = household as unknown as Record<string, unknown>;
   if (record[snake] !== undefined) return Boolean(record[snake]);
   if (record[camel] !== undefined) return Boolean(record[camel]);
   return false;

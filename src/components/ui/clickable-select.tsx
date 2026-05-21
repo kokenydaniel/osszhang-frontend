@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronDown, MousePointerClick } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 export interface ClickableSelectOption {
   value: string;
@@ -35,7 +35,7 @@ export function ClickableSelect({
   return (
     <label
       title={title}
-      className={cn(
+      className={classNames(
         'group relative inline-flex max-w-full items-center gap-1 rounded-lg border px-2 py-1 transition-all',
         'cursor-pointer focus-within:ring-2 focus-within:ring-primary/30',
         disabled && 'cursor-not-allowed opacity-60',
@@ -48,7 +48,7 @@ export function ClickableSelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label={title}
-        className={cn(
+        className={classNames(
           'min-w-0 max-w-full cursor-pointer appearance-none bg-transparent pr-5 text-xs font-medium outline-none',
           disabled && 'cursor-not-allowed',
         )}

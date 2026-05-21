@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedHeight } from '@/components/ui/AnimatedHeight';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 interface ModalProps {
   isOpen: boolean;
@@ -72,7 +72,7 @@ export function Modal({
       role="presentation"
     >
       <div
-        className={cn(
+        className={classNames(
           'w-full flex flex-col bg-card border border-border shadow-xl',
           'max-h-[min(92dvh,100%)] sm:max-h-[90vh] sm:rounded-xl rounded-t-xl',
           'animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200',

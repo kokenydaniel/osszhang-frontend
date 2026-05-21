@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 interface AnimatedHeightProps {
   children: ReactNode;
@@ -31,7 +31,7 @@ export function AnimatedHeight({ children, contentKey, className }: AnimatedHeig
 
   return (
     <motion.div
-      className={cn('overflow-hidden', className)}
+      className={classNames('overflow-hidden', className)}
       initial={false}
       animate={{ height: height ?? 'auto' }}
       transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}

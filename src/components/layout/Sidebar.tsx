@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { canAccessModule, type ModuleId } from '@/lib/moduleAccess';
 import { resolveAppName } from '@/lib/branding';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import {
   LayoutDashboard, Wallet, Home, Settings,
   TrendingUp, Gauge, PanelLeftClose, PanelLeftOpen, X, Command,
@@ -78,7 +78,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       )}
 
       <aside
-        className={cn(
+        className={classNames(
           'fixed md:sticky top-0 left-0 z-50 flex h-screen flex-col',
           'border-r border-border bg-sidebar transition-[width] duration-200 ease-out',
           collapsed ? 'md:w-[68px]' : 'md:w-[220px]',
@@ -87,7 +87,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       >
         {/* Brand */}
         <div
-          className={cn(
+          className={classNames(
             'flex h-14 shrink-0 items-center border-b border-border px-4',
             !showLabels && 'justify-center px-0',
           )}
@@ -130,7 +130,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                       href={item.href}
                       onClick={onMobileClose}
                       title={!showLabels ? item.label : undefined}
-                      className={cn(
+                      className={classNames(
                         'nav-item',
                         active && 'active',
                         !showLabels && 'justify-center px-2',
@@ -149,7 +149,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
         <div className="shrink-0 border-t border-border p-2">
           <button
             onClick={onToggle}
-            className={cn(
+            className={classNames(
               'hidden md:flex w-full items-center justify-center gap-2 rounded-md py-2 px-2',
               'text-xs font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground',
             )}

@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Tooltip as TooltipPrimitive } from "radix-ui"
 
-import { cn } from "@/lib/utils"
+import classNames from "classnames"
 
 function TooltipProvider({
   delayDuration = 0,
@@ -42,7 +42,7 @@ function TooltipContent({
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         collisionPadding={12}
-        className={cn(
+        className={classNames(
           "z-[450] w-fit max-w-[min(18rem,calc(100vw-2rem))] origin-(--radix-tooltip-content-transform-origin)",
           "rounded-[10px] bg-popover px-3.5 py-2.5 text-popover-foreground",
           "text-[13px] leading-[1.5] font-normal tracking-normal text-balance",

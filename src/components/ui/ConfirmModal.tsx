@@ -4,7 +4,7 @@ import React from 'react';
 import { Modal } from './Modal';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from './button';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -25,7 +25,7 @@ export function ConfirmModal({
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <div className="flex flex-col gap-4 py-1">
         <div className="flex gap-3 items-start">
-          <div className={cn(
+          <div className={classNames(
             'h-9 w-9 rounded-md flex items-center justify-center shrink-0',
             type === 'danger' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-700',
           )}>

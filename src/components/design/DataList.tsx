@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import type { LucideIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import React from 'react';
@@ -15,7 +15,7 @@ interface DataListProps {
 export function DataList({ children, className, bordered = true }: DataListProps) {
   return (
     <div
-      className={cn(
+      className={classNames(
         'flex flex-col divide-y divide-border',
         bordered && 'rounded-lg border border-border bg-card overflow-hidden',
         className,
@@ -73,7 +73,7 @@ export function DataRow({
     } else {
       const Icon = IconProp as LucideIcon;
       iconNode = (
-        <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-md', iconToneClass[iconTone])}>
+        <div className={classNames('flex h-8 w-8 shrink-0 items-center justify-center rounded-md', iconToneClass[iconTone])}>
           <Icon size={14} strokeWidth={2} />
         </div>
       );
@@ -83,7 +83,7 @@ export function DataRow({
   return (
     <div
       onClick={onClick}
-      className={cn(
+      className={classNames(
         'flex items-center gap-3 px-4 py-3 transition-colors min-w-0',
         isClickable && 'cursor-pointer hover:bg-muted/40',
         highlight && 'bg-primary/[0.04]',
@@ -119,7 +119,7 @@ export function Section({ title, description, info, action, children, className,
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: delay / 1000, ease: [0.22, 1, 0.36, 1] }}
-      className={cn('flex flex-col gap-3', className)}
+      className={classNames('flex flex-col gap-3', className)}
     >
       {(title || action) && (
         <div className="flex items-end justify-between gap-3 px-1">

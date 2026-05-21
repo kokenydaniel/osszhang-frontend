@@ -2,7 +2,7 @@
 
 import type { LucideIcon } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 export interface ToggleOptionCardProps {
   checked: boolean;
@@ -39,17 +39,17 @@ export function ToggleOptionCard({
           onCheckedChange(!checked);
         }
       }}
-      className={cn(
+      className={classNames(
         'flex w-full cursor-pointer gap-3 rounded-xl border p-3.5 text-left transition-all outline-none',
         'focus-visible:ring-2 focus-visible:ring-primary/30',
         disabled && 'cursor-not-allowed opacity-50',
         checked
-          ? cn('border-primary/30 bg-primary/5 shadow-sm ring-1 ring-primary/10', activeClassName)
+          ? classNames('border-primary/30 bg-primary/5 shadow-sm ring-1 ring-primary/10', activeClassName)
           : 'border-border bg-muted/15 hover:border-border/80 hover:bg-muted/25',
       )}
     >
       <div
-        className={cn(
+        className={classNames(
           'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-sm transition-colors',
           checked
             ? iconClassName ?? 'bg-primary/15 text-primary'

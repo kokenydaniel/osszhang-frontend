@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 interface InfoTooltipProps {
   content: React.ReactNode;
@@ -28,7 +28,7 @@ export function InfoTooltip({
       <TooltipTrigger asChild>
         <button
           type="button"
-          className={cn(
+          className={classNames(
             'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full',
             'text-muted-foreground/75 hover:text-primary hover:bg-primary/8 transition-colors',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
@@ -71,7 +71,7 @@ export function LabelWithInfo({
   className?: string;
 }) {
   return (
-    <span className={cn('inline-flex items-center gap-1.5 min-w-0', className)}>
+    <span className={classNames('inline-flex items-center gap-1.5 min-w-0', className)}>
       <span className="truncate">{children}</span>
       <InfoTooltip content={info} />
     </span>

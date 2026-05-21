@@ -16,7 +16,7 @@ import { canAccessModule, type ModuleId } from '@/lib/moduleAccess';
 import { needsHouseholdOnboarding } from '@/lib/householdOnboarding';
 import { loadRouteData } from '@/lib/loadRouteData';
 import { formatDisplayName } from '@/lib/personName';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 function SkeletonCard({ className }: { className?: string }) {
   return (
@@ -138,9 +138,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const showOnboarding = needsHouseholdOnboarding(user);
 
   return (
-    <div className={cn('flex min-h-screen bg-background', showOnboarding && 'overflow-hidden')}>
+    <div className={classNames('flex min-h-screen bg-background', showOnboarding && 'overflow-hidden')}>
       <ChangePasswordModal />
-      <div className={cn('flex min-h-screen w-full', showOnboarding && 'pointer-events-none select-none blur-[6px] opacity-60')}>
+      <div className={classNames('flex min-h-screen w-full', showOnboarding && 'pointer-events-none select-none blur-[6px] opacity-60')}>
       <Sidebar
         collapsed={collapsed}
         onToggle={handleToggle}

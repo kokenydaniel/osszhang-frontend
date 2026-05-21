@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import type { LucideIcon } from 'lucide-react';
 
 interface EmptyStateProps {
@@ -12,7 +12,7 @@ interface EmptyStateProps {
 export function EmptyState({ icon: Icon, title, description, action, className }: EmptyStateProps) {
   return (
     <div
-      className={cn(
+      className={classNames(
         'flex flex-col items-center justify-center rounded-lg border border-dashed border-border',
         'bg-muted/30 py-10 px-6 text-center',
         className,

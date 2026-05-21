@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import { motion } from 'motion/react';
 import { Slash } from 'lucide-react';
 
@@ -24,7 +24,7 @@ export function PageHeader({ breadcrumbs, title, description, actions, meta, cla
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className={cn('relative flex flex-col gap-3 pb-5 mb-1 border-b border-border', className)}
+      className={classNames('relative flex flex-col gap-3 pb-5 mb-1 border-b border-border', className)}
     >
       {/* Subtle accent decoration */}
       <span

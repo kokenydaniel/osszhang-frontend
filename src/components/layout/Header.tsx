@@ -7,7 +7,7 @@ import { formatMonthYear } from '@/utils';
 import { APP_NAME } from '@/lib/branding';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 interface HeaderProps {
   pathname: string;
@@ -101,7 +101,7 @@ export function Header({ pathname, month, year, onMonthChange, onYearChange, use
         <button
           id="user-menu-btn"
           onClick={() => setOpen((v) => !v)}
-          className={cn(
+          className={classNames(
             'flex h-8 max-w-none items-center gap-2 rounded-md pl-1 pr-2.5 text-sm transition-colors',
             open ? 'bg-muted' : 'hover:bg-muted',
           )}
@@ -115,7 +115,7 @@ export function Header({ pathname, month, year, onMonthChange, onYearChange, use
           <ChevronDown
             size={12}
             strokeWidth={2.5}
-            className={cn('hidden md:block text-muted-foreground transition-transform', open && 'rotate-180')}
+            className={classNames('hidden md:block text-muted-foreground transition-transform', open && 'rotate-180')}
           />
         </button>
 

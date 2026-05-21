@@ -1,6 +1,6 @@
 import { Command } from 'lucide-react';
 import { APP_NAME } from '@/lib/branding';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 const sizes = {
   sm: { box: 'h-8 w-8 rounded-md', icon: 15, text: 'text-sm' },
@@ -24,9 +24,9 @@ export function AppLogo({
   const s = sizes[size];
 
   return (
-    <div className={cn('flex items-center gap-2.5', className)}>
+    <div className={classNames('flex items-center gap-2.5', className)}>
       <div
-        className={cn(
+        className={classNames(
           'flex shrink-0 items-center justify-center bg-gradient-to-br from-primary to-violet-500 shadow-glow',
           s.box,
         )}
@@ -34,7 +34,7 @@ export function AppLogo({
         <Command size={s.icon} className="text-primary-foreground" strokeWidth={2.5} />
       </div>
       {showName ? (
-        <span className={cn('font-semibold tracking-tight text-foreground', s.text, nameClassName)}>
+        <span className={classNames('font-semibold tracking-tight text-foreground', s.text, nameClassName)}>
           {APP_NAME}
         </span>
       ) : null}

@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import type { LucideIcon } from 'lucide-react';
 import { IconPod, type IconPodTone } from './IconPod';
 import { motion } from 'motion/react';
@@ -36,7 +36,7 @@ export function SectionPanel({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className={cn(
+      className={classNames(
         'rounded-lg border border-border bg-card shadow-sm overflow-hidden',
         className,
       )}
@@ -57,7 +57,7 @@ export function SectionPanel({
         </div>
         {action}
       </header>
-      <div className={cn(!noPadding && 'p-5')}>{children}</div>
+      <div className={classNames(!noPadding && 'p-5')}>{children}</div>
     </motion.section>
   );
 }

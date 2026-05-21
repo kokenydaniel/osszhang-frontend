@@ -1,7 +1,7 @@
 'use client';
 
 import { useId } from 'react';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import type { LucideIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -72,7 +72,7 @@ export function SegmentedControl<T extends string = string>({
     return (
       <div
         role="tablist"
-        className={cn(
+        className={classNames(
           'grid gap-2 w-full',
           options.length <= 2 ? 'grid-cols-2' : 'grid-cols-3',
           className,
@@ -90,17 +90,17 @@ export function SegmentedControl<T extends string = string>({
               role="tab"
               aria-selected={active}
               onClick={() => onChange(opt.value)}
-              className={cn(
+              className={classNames(
                 'relative flex flex-col items-center gap-2 rounded-lg border-2 px-3 py-3.5 text-center transition-all touch-manipulation',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
                 active
-                  ? cn(styles.active, styles.ring, 'shadow-sm')
+                  ? classNames(styles.active, styles.ring, 'shadow-sm')
                   : 'border-border/80 bg-muted/25 text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground',
               )}
             >
               {Icon && (
                 <span
-                  className={cn(
+                  className={classNames(
                     'flex h-10 w-10 items-center justify-center rounded-full transition-colors',
                     active ? styles.icon : 'bg-muted/60 text-muted-foreground',
                   )}
@@ -108,12 +108,12 @@ export function SegmentedControl<T extends string = string>({
                   <Icon size={18} strokeWidth={2.2} />
                 </span>
               )}
-              <span className={cn('text-sm font-semibold leading-tight', active && 'text-inherit')}>
+              <span className={classNames('text-sm font-semibold leading-tight', active && 'text-inherit')}>
                 {opt.label}
               </span>
               {opt.description && (
                 <span
-                  className={cn(
+                  className={classNames(
                     'text-[0.65rem] leading-snug max-w-[11rem]',
                     active ? 'text-inherit/80' : 'text-muted-foreground',
                   )}
@@ -136,7 +136,7 @@ export function SegmentedControl<T extends string = string>({
   return (
     <div
       role="tablist"
-      className={cn(
+      className={classNames(
         'relative inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-1',
         className,
       )}
@@ -153,12 +153,12 @@ export function SegmentedControl<T extends string = string>({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(opt.value)}
-            className={cn(
+            className={classNames(
               'relative inline-flex flex-1 items-center justify-center gap-1.5 rounded-md font-medium transition-colors touch-manipulation',
               size === 'sm' ? 'h-8 px-3 text-xs' : 'h-9 px-3.5 text-[0.8rem]',
               active
                 ? styles
-                  ? cn(styles.active, 'border-0 shadow-none')
+                  ? classNames(styles.active, 'border-0 shadow-none')
                   : 'text-foreground'
                 : 'text-muted-foreground hover:text-foreground',
             )}
@@ -168,16 +168,16 @@ export function SegmentedControl<T extends string = string>({
                 <motion.span
                   layoutId={pillLayoutId}
                   transition={{ type: 'spring', stiffness: 320, damping: 30 }}
-                  className={cn(
+                  className={classNames(
                     'absolute inset-0 rounded-md border border-border bg-card shadow-sm',
                     styles && 'border-transparent bg-card',
                   )}
                 />
               ) : (
                 <span
-                  className={cn(
+                  className={classNames(
                     'absolute inset-0 rounded-md border border-border bg-card shadow-sm',
-                    styles && cn(styles.active, 'border-2'),
+                    styles && classNames(styles.active, 'border-2'),
                   )}
                 />
               ))}
@@ -185,13 +185,13 @@ export function SegmentedControl<T extends string = string>({
               <Icon
                 size={size === 'sm' ? 13 : 14}
                 strokeWidth={2.2}
-                className={cn('relative shrink-0', active && styles?.icon && 'text-inherit')}
+                className={classNames('relative shrink-0', active && styles?.icon && 'text-inherit')}
               />
             )}
             <span className="relative">{opt.label}</span>
             {opt.count !== undefined && (
               <span
-                className={cn(
+                className={classNames(
                   'relative rounded px-1.5 py-px text-[0.65rem] font-semibold tabular-nums',
                   active ? 'bg-muted text-foreground' : 'bg-muted/60 text-muted-foreground',
                 )}

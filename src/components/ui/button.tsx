@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { Loader2 } from "lucide-react"
 import { Slot } from "radix-ui"
 
-import { cn } from "@/lib/utils"
+import classNames from "classnames"
 
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-md border border-transparent text-sm font-medium whitespace-nowrap transition-colors outline-none select-none cursor-pointer focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -63,7 +63,7 @@ function Button({
       data-size={size}
       data-loading={loading ? "" : undefined}
       aria-busy={loading || undefined}
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={classNames(buttonVariants({ variant, size, className }))}
       disabled={isDisabled}
       {...props}
     >

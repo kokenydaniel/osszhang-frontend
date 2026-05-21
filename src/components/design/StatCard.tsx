@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 import type { LucideIcon } from 'lucide-react';
 import { IconPod, type IconPodTone } from './IconPod';
 import { motion } from 'motion/react';
@@ -41,7 +41,7 @@ export function StatCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: delay / 1000, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -2 }}
-      className={cn(
+      className={classNames(
         'relative rounded-lg border border-border bg-card p-5 shadow-sm transition-colors',
         'hover:border-foreground/15',
         className,
@@ -54,7 +54,7 @@ export function StatCard({
           {info && <InfoTooltip content={info} />}
         </span>
       </div>
-      <p className={cn('mt-3 text-2xl font-semibold tabular-nums tracking-tight leading-none', variantValueClass[variant])}>
+      <p className={classNames('mt-3 text-2xl font-semibold tabular-nums tracking-tight leading-none', variantValueClass[variant])}>
         {value}
       </p>
       {hint && <p className="mt-2 text-xs text-muted-foreground">{hint}</p>}

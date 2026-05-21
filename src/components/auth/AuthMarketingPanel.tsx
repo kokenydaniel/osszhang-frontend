@@ -19,7 +19,7 @@ import { motion } from 'motion/react';
 import { AppLogo } from '@/components/branding/AppLogo';
 import { Sparkline } from '@/components/design/Sparkline';
 import { APP_DESCRIPTION, APP_TAGLINE } from '@/lib/branding';
-import { cn } from '@/lib/utils';
+import classNames from 'classnames';
 
 const highlights = [
   {
@@ -157,7 +157,7 @@ function AuthPreviewMockup() {
                   key={label}
                   className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-[0.6rem] font-medium text-foreground"
                 >
-                  <span className={cn('flex h-3.5 w-3.5 items-center justify-center rounded-full', tone)}>
+                  <span className={classNames('flex h-3.5 w-3.5 items-center justify-center rounded-full', tone)}>
                     <Icon size={8} strokeWidth={2.5} />
                   </span>
                   {label}
@@ -277,7 +277,7 @@ export function AuthMarketingPanel() {
                   className="group flex items-start gap-3 rounded-2xl border border-border/60 bg-card/50 p-3.5 backdrop-blur-sm transition-colors hover:border-primary/20 hover:bg-card/80"
                 >
                   <div
-                    className={cn(
+                    className={classNames(
                       'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br',
                       tone,
                     )}
