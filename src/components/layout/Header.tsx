@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { Settings, LogOut, ChevronDown, Menu, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatMonthYear } from '@/utils';
+import { APP_NAME } from '@/lib/branding';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -30,7 +31,7 @@ const pageTitles: Record<string, string> = {
 function getPageTitle(pathname: string) {
   if (pathname === '/') return pageTitles['/'];
   const match = Object.entries(pageTitles).find(([k]) => k !== '/' && pathname.startsWith(k));
-  return match?.[1] ?? 'PénzPilot';
+  return match?.[1] ?? APP_NAME;
 }
 
 export function Header({ pathname, month, year, onMonthChange, onYearChange, user, onMobileMenuToggle }: HeaderProps) {
@@ -57,7 +58,7 @@ export function Header({ pathname, month, year, onMonthChange, onYearChange, use
 
   const initials = user?.name
     ? user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
-    : 'PP';
+    : 'ÖS';
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur md:px-6">
@@ -69,7 +70,7 @@ export function Header({ pathname, month, year, onMonthChange, onYearChange, use
         <Menu size={18} />
       </button>
 
-      <h1 className="text-sm font-semibold tracking-tight text-foreground hidden sm:block">
+      <h1 className="hidden text-sm font-semibold tracking-tight text-foreground lg:block">
         {getPageTitle(pathname)}
       </h1>
 
@@ -96,19 +97,19 @@ export function Header({ pathname, month, year, onMonthChange, onYearChange, use
         </button>
       </div>
 
-      <div className="relative" ref={ref}>
+      <div className="relative shrink-0" ref={ref}>
         <button
           id="user-menu-btn"
           onClick={() => setOpen((v) => !v)}
           className={cn(
-            'flex h-8 items-center gap-2 rounded-md pl-1 pr-2.5 text-sm transition-colors',
+            'flex h-8 max-w-none items-center gap-2 rounded-md pl-1 pr-2.5 text-sm transition-colors',
             open ? 'bg-muted' : 'hover:bg-muted',
           )}
         >
-          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[0.6rem] font-semibold text-primary-foreground">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[0.6rem] font-semibold text-primary-foreground">
             {initials}
           </div>
-          <span className="hidden md:block max-w-[140px] truncate font-medium text-foreground">
+          <span className="hidden whitespace-nowrap font-medium text-foreground md:block">
             {user?.name ?? 'Tag'}
           </span>
           <ChevronDown
@@ -119,9 +120,9 @@ export function Header({ pathname, month, year, onMonthChange, onYearChange, use
         </button>
 
         {open && (
-          <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-52 animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-popover p-1.5 shadow-md duration-150">
+          <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-52 max-w-[min(calc(100vw-2rem),18rem)] animate-in fade-in slide-in-from-top-1 rounded-lg border border-border bg-popover p-1.5 shadow-md duration-150">
             <div className="px-2.5 py-2">
-              <p className="text-sm font-medium text-foreground">{user?.name}</p>
+              <p className="text-sm font-medium leading-snug break-words text-foreground">{user?.name}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">Háztartás tagja</p>
             </div>
             <Separator className="my-1" />
