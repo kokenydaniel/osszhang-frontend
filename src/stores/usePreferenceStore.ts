@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { APP_NAME, LEGACY_APP_NAMES } from '@/lib/branding';
 
 interface PreferenceState {
   selectedMonth: number;
@@ -27,7 +28,7 @@ export const usePreferenceStore = create<PreferenceState>()(
       userPreferences: {
         currency: 'HUF',
         notificationsEnabled: true,
-        appName: 'Aura',
+        appName: APP_NAME,
         themeColor: 'violet',
         appLogo: 'diamond',
       },
@@ -85,6 +86,24 @@ export const usePreferenceStore = create<PreferenceState>()(
       partialize: (state) => ({
         userPreferences: state.userPreferences,
       }),
+      merge: (persisted, current) => {
+        const stored = persisted as Partial<PreferenceState> | undefined;
+        const storedName = stored?.userPreferences?.appName;
+        const appName =
+          storedName && !LEGACY_APP_NAMES.includes(storedName as (typeof LEGACY_APP_NAMES)[number])
+            ? storedName
+            : APP_NAME;
+
+        return {
+          ...current,
+          ...stored,
+          userPreferences: {
+            ...current.userPreferences,
+            ...stored?.userPreferences,
+            appName,
+          },
+        };
+      },
     }
   )
 );

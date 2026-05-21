@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
+import { canAccessModule, type ModuleId } from '@/lib/moduleAccess';
+import { resolveAppName } from '@/lib/branding';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Wallet, Home, Settings,
@@ -23,8 +25,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   const { user } = useAuthStore();
   const { userPreferences } = usePreferenceStore();
 
-  const appName = userPreferences?.appName || 'PénzPilot';
-  const businessEnabled = user?.household?.businessEnabled ?? user?.household?.business_enabled ?? false;
+  const appName = resolveAppName(userPreferences?.appName);
   const businessName = user?.household?.businessName ?? user?.household?.business_name ?? 'Vállalkozás';
 
   const navGroups = [
@@ -47,14 +48,10 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
         { href: '/meters', icon: Gauge, label: 'Közműórák', id: 'meters' },
       ],
     },
-    ...(businessEnabled
-      ? [
-          {
-            section: 'Vállalkozás',
-            items: [{ href: '/business', icon: TrendingUp, label: businessName, id: 'business' }],
-          },
-        ]
-      : []),
+    {
+      section: 'Vállalkozás',
+      items: [{ href: '/business', icon: TrendingUp, label: businessName, id: 'business' }],
+    },
     {
       section: 'Rendszer',
       items: [{ href: '/settings', icon: Settings, label: 'Beállítások', id: 'settings' }],
@@ -65,9 +62,8 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
 
   const hasPermission = (id: string) => {
     if (!user) return false;
-    if (user.role === 'admin') return true;
     if (['dashboard', 'settings'].includes(id)) return true;
-    return user.permissions?.includes(id) ?? false;
+    return canAccessModule(user, id as ModuleId);
   };
 
   const showLabels = !collapsed || mobileOpen;

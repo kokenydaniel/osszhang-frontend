@@ -9,7 +9,6 @@ import {
   ShieldCheck,
   Loader2,
   ArrowLeft,
-  Command,
   ArrowRight,
   Sparkles,
   Users,
@@ -18,6 +17,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/FieldLabel';
+import { AppLogo } from '@/components/branding/AppLogo';
 import { HELP } from '@/lib/helpTexts';
 import { motion } from 'motion/react';
 
@@ -95,11 +95,8 @@ export default function RegisterPage() {
           className="w-full max-w-lg"
         >
           <div className="flex flex-col items-center mb-7">
-            <Link
-              href="/login"
-              className="flex h-11 w-11 items-center justify-center rounded-md bg-gradient-to-br from-primary to-violet-500 mb-5 shadow-glow"
-            >
-              <Command size={20} className="text-primary-foreground" strokeWidth={2.5} />
+            <Link href="/login" className="mb-5">
+              <AppLogo size="lg" />
             </Link>
             <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/8 px-3 py-1 mb-3">
               <Sparkles size={11} className="text-primary" strokeWidth={2.3} />
@@ -134,17 +131,6 @@ export default function RegisterPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <FieldLabel className="text-xs font-medium text-foreground" info={HELP.auth.firstName}>
-                      Keresztnév
-                    </FieldLabel>
-                    <Input
-                      value={formData.firstName}
-                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                      required
-                      placeholder="Ildi"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
                     <FieldLabel className="text-xs font-medium text-foreground" info={HELP.auth.lastName}>
                       Vezetéknév
                     </FieldLabel>
@@ -153,6 +139,17 @@ export default function RegisterPage() {
                       onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                       required
                       placeholder="Kovács"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <FieldLabel className="text-xs font-medium text-foreground" info={HELP.auth.firstName}>
+                      Keresztnév
+                    </FieldLabel>
+                    <Input
+                      value={formData.firstName}
+                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                      required
+                      placeholder="Ildi"
                     />
                   </div>
                 </div>
