@@ -80,6 +80,68 @@ const toneClass: Record<NonNullable<MetricItem['tone']>, { value: string; icon: 
   },
 };
 
+const columnGridClass: Record<number, string> = {
+  2: 'grid-cols-1 sm:grid-cols-2',
+  3: 'grid-cols-1 md:grid-cols-3',
+  4: 'grid-cols-1 lg:grid-cols-4',
+  5: 'grid-cols-1 lg:grid-cols-5',
+};
+
+function MetricLabelRow({
+  icon: Icon,
+  iconClass,
+  label,
+  info,
+}: {
+  icon?: LucideIcon;
+  iconClass: string;
+  label: string;
+  info?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-1.5 min-w-0">
+      {Icon && (
+        <div className={cn('mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md', iconClass)}>
+          <Icon size={13} strokeWidth={2.2} />
+        </div>
+      )}
+      <div className="min-w-0 flex-1 flex items-start gap-1">
+        <span className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground leading-snug break-words">
+          {label}
+        </span>
+        {info && <InfoTooltip content={info} className="mt-px shrink-0" />}
+      </div>
+    </div>
+  );
+}
+
+function MetricLabelRowCompact({
+  icon: Icon,
+  iconClass,
+  label,
+  info,
+}: {
+  icon?: LucideIcon;
+  iconClass: string;
+  label: string;
+  info?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-1.5 min-w-0">
+      {Icon && (
+        <div className={cn('mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md', iconClass)}>
+          <Icon size={11} strokeWidth={2.2} />
+        </div>
+      )}
+      <div className="min-w-0 flex-1 flex items-start gap-1">
+        <span className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground leading-snug break-words">
+          {label}
+        </span>
+        {info && <InfoTooltip content={info} className="mt-px shrink-0" />}
+      </div>
+    </div>
+  );
+}
 const trendIconMap = { up: TrendingUp, down: TrendingDown, flat: Minus };
 const trendToneMap = { up: 'text-emerald-600 bg-emerald-50', down: 'text-rose-600 bg-rose-50', flat: 'text-muted-foreground bg-muted/60' };
 
@@ -92,10 +154,7 @@ export function MetricStrip({ items, columns = 4, className, variant = 'unified'
       <div
         className={cn(
           'grid gap-3',
-          cols === 2 && 'grid-cols-1 sm:grid-cols-2',
-          cols === 3 && 'grid-cols-1 sm:grid-cols-3',
-          cols === 4 && 'grid-cols-2 lg:grid-cols-4',
-          cols === 5 && 'grid-cols-2 lg:grid-cols-5',
+          columnGridClass[cols] ?? 'grid-cols-1',
           className,
         )}
       >
@@ -115,22 +174,19 @@ export function MetricStrip({ items, columns = 4, className, variant = 'unified'
               )}
             >
               <span className={cn('absolute inset-x-0 top-0 h-[2px]', t.bar)} />
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  {Icon && (
-                    <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-md', t.icon)}>
-                      <Icon size={13} strokeWidth={2.2} />
-                    </div>
-                  )}
-                  <span className="text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground truncate">
-                    {m.label}
-                  </span>
-                  {m.info && <InfoTooltip content={m.info} />}
-                </div>
-                {m.action}
+              <div
+                className={cn(
+                  'mb-3 flex flex-col gap-3 min-w-0',
+                  m.action ? 'lg:flex-row lg:items-start lg:justify-between lg:gap-3' : '',
+                )}
+              >
+                <MetricLabelRow icon={Icon} iconClass={t.icon} label={m.label} info={m.info} />
+                {m.action ? (
+                  <div className="hidden lg:block shrink-0">{m.action}</div>
+                ) : null}
               </div>
-              <div className="flex items-end justify-between gap-3">
-                <div className={cn('text-[1.5rem] font-semibold tabular-nums tracking-tight leading-none', t.value)}>
+              <div className="flex items-end justify-between gap-2 min-w-0">
+                <div className={cn('min-w-0 text-xl sm:text-[1.5rem] font-semibold tabular-nums tracking-tight leading-none', t.value)}>
                   {m.value}
                 </div>
                 {m.sparkline && m.sparkline.length > 1 && (
@@ -138,16 +194,17 @@ export function MetricStrip({ items, columns = 4, className, variant = 'unified'
                 )}
               </div>
               {(m.hint || m.trend) && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                <div className="flex flex-wrap items-start gap-x-1.5 gap-y-1 text-xs text-muted-foreground mt-2 min-w-0">
                   {TrendIcon && (
-                    <span className={cn('inline-flex items-center gap-0.5 font-medium px-1.5 py-0.5 rounded text-[0.65rem]', trendToneMap[m.trend!])}>
+                    <span className={cn('inline-flex shrink-0 items-center gap-0.5 font-medium px-1.5 py-0.5 rounded text-[0.65rem]', trendToneMap[m.trend!])}>
                       <TrendIcon size={10} strokeWidth={2.5} />
                       {m.trendValue}
                     </span>
                   )}
-                  {m.hint && <span className="truncate">{m.hint}</span>}
+                  {m.hint && <span className="min-w-0 break-words leading-snug">{m.hint}</span>}
                 </div>
               )}
+              {m.action ? <div className="mt-3 lg:hidden">{m.action}</div> : null}
             </motion.article>
           );
         })}
@@ -160,11 +217,8 @@ export function MetricStrip({ items, columns = 4, className, variant = 'unified'
     <div
       className={cn(
         'grid rounded-lg border border-border bg-card overflow-hidden shadow-soft divide-x divide-border',
-        cols === 2 && 'grid-cols-1 sm:grid-cols-2',
-        cols === 3 && 'grid-cols-1 sm:grid-cols-3',
-        cols === 4 && 'grid-cols-2 lg:grid-cols-4',
-        cols === 5 && 'grid-cols-2 lg:grid-cols-5',
-        '[&>*:nth-child(-n+2)]:border-b sm:[&>*:nth-child(-n+2)]:border-b-0',
+        columnGridClass[cols] ?? 'grid-cols-1',
+        cols >= 4 ? '[&>*:not(:last-child)]:border-b lg:[&>*:not(:last-child)]:border-b-0' : '[&>*:nth-child(-n+2)]:border-b sm:[&>*:nth-child(-n+2)]:border-b-0',
         className,
       )}
     >
@@ -178,25 +232,25 @@ export function MetricStrip({ items, columns = 4, className, variant = 'unified'
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
-            className={cn('relative flex flex-col gap-2 px-4 py-4 min-w-0 group hover:bg-muted/30 transition-colors', t.bg)}
+            className={cn(
+              'relative flex flex-col gap-2 px-4 py-4 min-w-0 group hover:bg-muted/30 transition-colors',
+              t.bg,
+            )}
           >
             <span className={cn('absolute inset-y-0 left-0 w-[2px] opacity-0 group-hover:opacity-100 transition-opacity', t.bar)} />
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                {Icon && (
-                  <div className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-md', t.icon)}>
-                    <Icon size={11} strokeWidth={2.2} />
-                  </div>
-                )}
-                <span className="text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground truncate">
-                  {m.label}
-                </span>
-                {m.info && <InfoTooltip content={m.info} />}
-              </div>
-              {m.action}
+            <div
+              className={cn(
+                'flex flex-col gap-2 min-w-0',
+                m.action ? 'lg:flex-row lg:items-start lg:justify-between lg:gap-3' : '',
+              )}
+            >
+              <MetricLabelRowCompact icon={Icon} iconClass={t.icon} label={m.label} info={m.info} />
+              {m.action ? (
+                <div className="hidden lg:block shrink-0">{m.action}</div>
+              ) : null}
             </div>
-            <div className="flex items-end justify-between gap-2">
-              <div className={cn('text-xl md:text-[1.4rem] font-semibold tabular-nums tracking-tight leading-none', t.value)}>
+            <div className="flex items-end justify-between gap-2 min-w-0">
+              <div className={cn('min-w-0 text-lg sm:text-xl md:text-[1.4rem] font-semibold tabular-nums tracking-tight leading-none', t.value)}>
                 {m.value}
               </div>
               {m.sparkline && m.sparkline.length > 1 && (
@@ -204,16 +258,17 @@ export function MetricStrip({ items, columns = 4, className, variant = 'unified'
               )}
             </div>
             {(m.hint || m.trend) && (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-h-[1rem]">
+              <div className="flex flex-wrap items-start gap-x-1.5 gap-y-1 text-xs text-muted-foreground min-h-[1rem] min-w-0">
                 {TrendIcon && (
-                  <span className={cn('inline-flex items-center gap-0.5 font-medium px-1.5 py-0.5 rounded text-[0.65rem]', trendToneMap[m.trend!])}>
+                  <span className={cn('inline-flex shrink-0 items-center gap-0.5 font-medium px-1.5 py-0.5 rounded text-[0.65rem]', trendToneMap[m.trend!])}>
                     <TrendIcon size={10} strokeWidth={2.5} />
                     {m.trendValue}
                   </span>
                 )}
-                {m.hint && <span className="truncate">{m.hint}</span>}
+                {m.hint && <span className="min-w-0 break-words leading-snug">{m.hint}</span>}
               </div>
             )}
+            {m.action ? <div className="mt-1 lg:hidden">{m.action}</div> : null}
           </motion.div>
         );
       })}
