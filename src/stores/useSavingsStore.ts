@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { SavingsAccount, AiSavingsPlan, LedgerEntry, Investment } from '@/types';
-import { savingsClient, investmentsClient, aiFinanceClient } from '@/api';
+import { savingsClient, investmentsClient, aiFinanceClient } from '@/lib/api-client';
+import { unwrapApiData } from '@/lib/unwrapApiData';
 
 interface SavingsFetchOptions {
   silent?: boolean;
@@ -136,7 +137,7 @@ export const useSavingsStore = create<SavingsState>((set, get) => ({
   fetchAiSavingsPlan: async (payload) => {
     try {
       const res = await aiFinanceClient.getSavingsRecommendations(payload);
-      set({ aiSavingsPlan: res.data });
+      set({ aiSavingsPlan: unwrapApiData<AiSavingsPlan>(res.data) });
     } catch (e) {
       console.error('Failed to fetch AI Savings plan', e);
     }

@@ -1,11 +1,13 @@
-import type { AxiosInstance } from 'axios';
+import type { ApiClient } from '../api-client';
 import type { UserProfile } from '@/types';
 
 export class HouseholdClient {
-  constructor(protected http: AxiosInstance) {}
+  constructor(protected apiClient: ApiClient, protected baseEndpoint = 'household') {}
 
   get() {
-    return this.http.get<{ id: number; name: string; invite_code: string; users: UserProfile[]; manual_balance: number }>('/household');
+    return this.apiClient.getJson<{ id: number; name: string; invite_code: string; users: UserProfile[]; manual_balance: number }>(
+      this.baseEndpoint,
+    );
   }
 
   update(data: {
@@ -30,15 +32,15 @@ export class HouseholdClient {
     business_settings?: import('@/lib/businessSettings').BusinessSettings;
     utility_templates?: import('@/lib/utilityTemplates').UtilityTemplate[];
   }) {
-    return this.http.put('/household', data);
+    return this.apiClient.putJson(this.baseEndpoint, data);
   }
 
   updateCategories(categories: string[]) {
-    return this.http.put<{ categories: string[] }>('/household/categories', { categories });
+    return this.apiClient.putJson<{ categories: string[] }>(`${this.baseEndpoint}/categories`, { categories });
   }
 
   updateCode(code: string) {
-    return this.http.put<{ invite_code: string }>('/household/code', { invite_code: code });
+    return this.apiClient.putJson<{ invite_code: string }>(`${this.baseEndpoint}/code`, { invite_code: code });
   }
 
   createMember(data: {
@@ -51,18 +53,18 @@ export class HouseholdClient {
     firstName?: string;
     lastName?: string;
   }) {
-    return this.http.post<UserProfile>('/household/members', data);
+    return this.apiClient.postJson<UserProfile>(`${this.baseEndpoint}/members`, data);
   }
 
   updateMember(userId: number, data: { role?: string; permissions?: string[] }) {
-    return this.http.put<UserProfile>(`/household/members/${userId}`, data);
+    return this.apiClient.putJson<UserProfile>(`${this.baseEndpoint}/members/${userId}`, data);
   }
 
   deleteMember(userId: number) {
-    return this.http.delete(`/household/members/${userId}`);
+    return this.apiClient.deleteJson(`${this.baseEndpoint}/members/${userId}`);
   }
 
   destroy(confirmName: string) {
-    return this.http.delete('/household', { data: { confirm_name: confirmName } });
+    return this.apiClient.deleteJson(`${this.baseEndpoint}`, { confirm_name: confirmName });
   }
 }

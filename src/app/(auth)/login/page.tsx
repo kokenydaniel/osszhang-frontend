@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { authClient } from '@/api';
+import { authClient } from '@/lib/api-client';
 import { Mail, Lock, Loader2, ArrowRight, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

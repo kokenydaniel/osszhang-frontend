@@ -23,7 +23,7 @@ import { LabelWithInfo } from '@/components/ui/InfoTooltip';
 import { HELP } from '@/lib/helpTexts';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Legend } from 'recharts';
 import { Tooltip as UiTooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { aiFinanceClient } from '@/api';
+import { aiFinanceClient } from '@/lib/api-client';
 import classNames from 'classnames';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import {

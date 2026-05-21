@@ -8,7 +8,7 @@ import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { useUtilitiesStore } from '@/stores/useUtilitiesStore';
 import { Meter, MeterReading } from '@/types';
 import { formatNumber, formatDate } from '@/utils';
-import { aiFinanceClient } from '@/api';
+import { aiFinanceClient } from '@/lib/api-client';
 import { Modal } from '@/components/ui/Modal';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import { DatePicker } from '@/components/ui/DatePicker';

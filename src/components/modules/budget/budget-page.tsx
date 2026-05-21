@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useUtilitiesStore } from '@/stores/useUtilitiesStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { formatHUF, formatDate } from '@/utils';
-import { aiFinanceClient } from '@/api';
+import { aiFinanceClient } from '@/lib/api-client';
 import { CashTransaction, LedgerEntry, UtilityBill } from '@/types';
 import { isLegacySettlementBill } from '@/lib/utilityBills';
 import { Modal } from '@/components/ui/Modal';

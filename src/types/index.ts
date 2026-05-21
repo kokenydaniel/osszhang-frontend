@@ -14,6 +14,7 @@ export type { BusinessOrder } from './business';
 export type { Debt } from './debts';
 export type {
   AiMeta,
+  AiEnvelope,
   AiOverspendAnalysis,
   AiCashflowForecast,
   AiSavingsPlan,

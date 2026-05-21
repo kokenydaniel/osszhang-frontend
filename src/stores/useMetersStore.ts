@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Meter, MeterReading } from '@/types';
-import { metersClient } from '@/api';
+import { metersClient } from '@/lib/api-client';
 
 interface MetersState {
   meters: Meter[];

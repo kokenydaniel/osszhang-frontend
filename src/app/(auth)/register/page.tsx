@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { authClient } from '@/api';
+import { authClient } from '@/lib/api-client';
 import {
   Mail,
   Lock,

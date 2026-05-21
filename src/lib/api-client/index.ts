@@ -1,7 +1,10 @@
-import { ApiClient, apiClient } from './api-client';
+export { ApiClient, ApiClientError } from './api-client';
+export { apiClient, ApiClientFacade } from './api-client-instance';
+export { API_URL } from './public-env';
+export type { ApiResponse, RequestOptions } from './response';
+export * from './clients';
 
-export { ApiClient, apiClient } from './api-client';
-export { createHttpClient } from './http-client';
+import { apiClient } from './api-client-instance';
 
 export const authClient = apiClient.auth;
 export const householdClient = apiClient.household;
@@ -13,5 +16,3 @@ export const debtsClient = apiClient.debts;
 export const savingsClient = apiClient.savings;
 export const investmentsClient = apiClient.investments;
 export const aiFinanceClient = apiClient.aiFinance;
-
-export default apiClient.http;

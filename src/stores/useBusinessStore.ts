@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { BusinessOrder } from '@/types';
-import { businessClient } from '@/api';
+import { businessClient } from '@/lib/api-client';
 import { useNotificationStore } from './useNotificationStore';
 
 interface BusinessState {

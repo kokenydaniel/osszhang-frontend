@@ -6,6 +6,11 @@ export interface AiMeta {
   generated_at: string;
 }
 
+export interface AiEnvelope<T> {
+  data: T;
+  meta: AiMeta;
+}
+
 export interface AiOverspendAnalysis {
   status: 'ok' | 'overspent';
   overspend_amount: number;

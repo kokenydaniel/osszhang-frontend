@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { UserProfile, RawApiUser } from '@/types';
-import { authClient, householdClient } from '@/api';
+import { authClient, householdClient } from '@/lib/api-client';
 import { resetRouteDataCache } from '@/lib/loadRouteData';
 import { useNotificationStore } from './useNotificationStore';
 import { mapHouseholdFromApi } from '@/lib/mapHousehold';

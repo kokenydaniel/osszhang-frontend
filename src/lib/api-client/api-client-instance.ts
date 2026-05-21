@@ -1,0 +1,43 @@
+import { ApiClient } from './api-client';
+import {
+  AiFinanceClient,
+  AuthClient,
+  BudgetClient,
+  BusinessClient,
+  DebtsClient,
+  HouseholdClient,
+  InvestmentsClient,
+  MetersClient,
+  SavingsClient,
+  UtilitiesClient,
+} from './clients';
+import { API_URL } from './public-env';
+
+export class ApiClientFacade extends ApiClient {
+  readonly auth: AuthClient;
+  readonly household: HouseholdClient;
+  readonly budget: BudgetClient;
+  readonly utilities: UtilitiesClient;
+  readonly meters: MetersClient;
+  readonly business: BusinessClient;
+  readonly debts: DebtsClient;
+  readonly savings: SavingsClient;
+  readonly investments: InvestmentsClient;
+  readonly aiFinance: AiFinanceClient;
+
+  constructor(baseUrl: string = API_URL) {
+    super(baseUrl);
+    this.auth = new AuthClient(this);
+    this.household = new HouseholdClient(this);
+    this.budget = new BudgetClient(this);
+    this.utilities = new UtilitiesClient(this);
+    this.meters = new MetersClient(this);
+    this.business = new BusinessClient(this);
+    this.debts = new DebtsClient(this);
+    this.savings = new SavingsClient(this);
+    this.investments = new InvestmentsClient(this);
+    this.aiFinance = new AiFinanceClient(this);
+  }
+}
+
+export const apiClient = new ApiClientFacade();

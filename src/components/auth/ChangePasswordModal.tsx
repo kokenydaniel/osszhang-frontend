@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { authClient } from '@/api';
+import { authClient } from '@/lib/api-client';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { Modal } from '@/components/ui/Modal';

@@ -227,7 +227,7 @@ export function HouseholdOnboardingWizard() {
       await updateHouseholdSettings(payload);
 
       if (modules.budget && finalCategories.length > 0) {
-        const { householdClient } = await import('@/api');
+        const { householdClient } = await import('@/lib/api-client');
         await householdClient.updateCategories(finalCategories);
         setCategories(finalCategories);
       }

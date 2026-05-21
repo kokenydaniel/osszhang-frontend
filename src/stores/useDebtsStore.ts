@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Debt, AiDebtPlan } from '@/types';
-import { debtsClient, aiFinanceClient } from '@/api';
+import { debtsClient, aiFinanceClient } from '@/lib/api-client';
+import { unwrapApiData } from '@/lib/unwrapApiData';
 
 interface DebtsState {
   debts: Debt[];
@@ -50,8 +51,7 @@ export const useDebtsStore = create<DebtsState>((set, get) => ({
   fetchAiDebtPlan: async (strategy) => {
     try {
       const res = await aiFinanceClient.optimizeDebts({ strategy });
-      const payload = (res.data && typeof res.data === 'object' && 'data' in res.data ? (res.data as { data: AiDebtPlan }).data : (res.data as AiDebtPlan)) as AiDebtPlan;
-      set({ aiDebtPlan: payload });
+      set({ aiDebtPlan: unwrapApiData<AiDebtPlan>(res.data) });
     } catch (e) {
       console.error('Failed to fetch AI Debt optimization strategy', e);
     }

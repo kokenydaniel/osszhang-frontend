@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { CashTransaction, AiOverspendAnalysis, AiCashflowForecast, AiWeeklyBriefing, LedgerEntry } from '@/types';
-import { budgetClient, householdClient, aiFinanceClient } from '@/api';
+import { budgetClient, householdClient, aiFinanceClient } from '@/lib/api-client';
+import { unwrapApiData } from '@/lib/unwrapApiData';
 import { useAuthStore } from './useAuthStore';
 import { useUtilitiesStore } from './useUtilitiesStore';
 
@@ -118,7 +119,7 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
   fetchAiOverspend: async (y, m) => {
     try {
       const res = await aiFinanceClient.getOverspendRootCause(y, m);
-      set({ aiOverspend: res.data });
+      set({ aiOverspend: unwrapApiData<AiOverspendAnalysis>(res.data) });
     } catch (e) {
       console.error('Failed to fetch AI Overspend analysis', e);
     }
@@ -127,7 +128,7 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
   fetchAiCashflowForecast: async (y, m) => {
     try {
       const res = await aiFinanceClient.getCashflowForecast(y, m);
-      set({ aiCashflowForecast: res.data });
+      set({ aiCashflowForecast: unwrapApiData<AiCashflowForecast>(res.data) });
     } catch (e) {
       console.error('Failed to fetch AI Cashflow forecast', e);
     }
@@ -136,7 +137,7 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
   fetchAiWeeklyBriefing: async (weekStart) => {
     try {
       const res = await aiFinanceClient.getWeeklyBriefing(weekStart);
-      set({ aiWeeklyBriefing: res.data });
+      set({ aiWeeklyBriefing: unwrapApiData<AiWeeklyBriefing>(res.data) });
     } catch (e) {
       console.error('Failed to fetch AI Weekly Briefing', e);
     }

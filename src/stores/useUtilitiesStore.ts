@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { UtilityBill, UtilitySettlement, AiUtilityAnomalies } from '@/types';
-import { utilitiesClient, aiFinanceClient } from '@/api';
+import { utilitiesClient, aiFinanceClient } from '@/lib/api-client';
 import { parseUtilitiesIndexResponse } from '@/lib/parseUtilitiesResponse';
+import { unwrapApiData } from '@/lib/unwrapApiData';
 
 interface UtilitiesState {
   bills: UtilityBill[];
@@ -93,7 +94,7 @@ export const useUtilitiesStore = create<UtilitiesState>((set, get) => ({
   fetchAiUtilityAnomalies: async (y, m) => {
     try {
       const res = await aiFinanceClient.getUtilitiesAnomalies(y, m);
-      set({ aiUtilityAnomalies: res.data });
+      set({ aiUtilityAnomalies: unwrapApiData<AiUtilityAnomalies>(res.data) });
     } catch (e) {
       console.error('Failed to fetch AI Utility anomalies', e);
     }
