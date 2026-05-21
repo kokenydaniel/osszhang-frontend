@@ -22,6 +22,7 @@ import { FieldLabel } from '@/components/ui/FieldLabel';
 import { LabelWithInfo } from '@/components/ui/InfoTooltip';
 import { HELP } from '@/lib/helpTexts';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Legend } from 'recharts';
+import { Tooltip as UiTooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { aiFinanceClient } from '@/api/aiFinanceClient';
 import { cn } from '@/lib/utils';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
@@ -61,6 +62,8 @@ import {
 export default function BusinessClient() {
   const { orders, addOrder, deleteOrder, updateOrder, shopifyImport } = useBusinessStore();
   const { user } = useAuthStore();
+  const shopifyImportEnabled =
+    user?.household?.shopifyImportEnabled ?? user?.household?.shopify_import_enabled ?? false;
   const { selectedMonth, selectedYear } = usePreferenceStore();
   const bizOptions = useMemo(() => resolveBusinessSettings(user?.household), [user?.household]);
   const [activeTab, setActiveTab] = useState<'monthly' | 'summary'>('monthly');
@@ -430,13 +433,29 @@ Adataim:
       {activeTab === 'monthly' && (
         <Section
           title={`Rendelések · ${selectedYear}. ${String(selectedMonth).padStart(2, '0')}.`}
-          description="Hivatalos rendelési napló · Shopify-import támogatással"
+          description="Rendelési napló — manuális rögzítés vagy opcionális Shopify import"
           action={
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleShopifySync} disabled={isSyncing}>
-                <RefreshCw size={13} className={cn(isSyncing && 'animate-spin')} />
-                {isSyncing ? 'Szinkron…' : 'Shopify import'}
-              </Button>
+              <UiTooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleShopifySync}
+                      disabled={isSyncing || !shopifyImportEnabled}
+                    >
+                      <RefreshCw size={13} className={cn(isSyncing && 'animate-spin')} />
+                      {isSyncing ? 'Szinkron…' : 'Shopify import'}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!shopifyImportEnabled && (
+                  <TooltipContent side="bottom" className="max-w-xs text-center">
+                    A Shopify import ki van kapcsolva. Kapcsold be a Beállítások → Modulok → Vállalkozás menüpontban, ha használni szeretnéd.
+                  </TooltipContent>
+                )}
+              </UiTooltip>
               <Button size="sm" onClick={() => openForm()}>
                 <Plus size={13} /> Új rendelés
               </Button>

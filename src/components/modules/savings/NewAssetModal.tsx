@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSavingsStore } from '@/stores/useSavingsStore';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { resolveSavingsSettings } from '@/lib/savingsSettings';
 import { Modal } from '@/components/ui/Modal';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Button } from '@/components/ui/button';
@@ -21,12 +23,14 @@ interface NewAssetModalProps {
 
 export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewAssetModalProps) {
   const { addSavingsAccount, addInvestment } = useSavingsStore();
+  const { user } = useAuthStore();
+  const savingsSettings = useMemo(() => resolveSavingsSettings(user?.household), [user?.household]);
 
   const [kind, setKind] = useState<AssetKind>(initialKind);
 
   const [savInst, setSavInst] = useState('');
-  const [savCurr, setSavCurr] = useState('HUF');
-  const [savOwner, setSavOwner] = useState('Közös');
+  const [savCurr, setSavCurr] = useState(savingsSettings.currencies[0] ?? 'HUF');
+  const [savOwner, setSavOwner] = useState(savingsSettings.default_owner);
 
   const [invName, setInvName] = useState('');
   const [invType, setInvType] = useState('bond');
@@ -34,27 +38,32 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
   const [invRate, setInvRate] = useState('');
   const [invPurchaseDate, setInvPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
   const [invMaturityDate, setInvMaturityDate] = useState('');
-  const [invOwner, setInvOwner] = useState('Közös');
+  const [invOwner, setInvOwner] = useState(savingsSettings.default_owner);
   const [invMaturityValue, setInvMaturityValue] = useState('');
   const [invNextPayoutAmount, setInvNextPayoutAmount] = useState('');
   const [invNextPayoutDate, setInvNextPayoutDate] = useState('');
 
   useEffect(() => {
-    if (isOpen) setKind(initialKind);
-  }, [isOpen, initialKind]);
+    if (isOpen) {
+      setKind(initialKind);
+      setSavCurr(savingsSettings.currencies[0] ?? 'HUF');
+      setSavOwner(savingsSettings.default_owner);
+      setInvOwner(savingsSettings.default_owner);
+    }
+  }, [isOpen, initialKind, savingsSettings]);
 
   const resetAndClose = () => {
     onClose();
     setSavInst('');
-    setSavCurr('HUF');
-    setSavOwner('Közös');
+    setSavCurr(savingsSettings.currencies[0] ?? 'HUF');
+    setSavOwner(savingsSettings.default_owner);
     setInvName('');
     setInvType('bond');
     setInvPrincipal('');
     setInvRate('');
     setInvPurchaseDate(new Date().toISOString().split('T')[0]);
     setInvMaturityDate('');
-    setInvOwner('Közös');
+    setInvOwner(savingsSettings.default_owner);
     setInvMaturityValue('');
     setInvNextPayoutAmount('');
     setInvNextPayoutDate('');
@@ -62,7 +71,12 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
 
   const handleSavingsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addSavingsAccount({ institution: savInst, currency: savCurr, owner: savOwner, count_in_savings: true });
+    addSavingsAccount({
+      institution: savInst,
+      currency: savCurr,
+      owner: savOwner,
+      count_in_savings: savingsSettings.default_count_in_savings,
+    });
     resetAndClose();
   };
 
@@ -86,7 +100,7 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
       purchaseDate: invPurchaseDate,
       maturityDate: invMaturityDate || null,
       owner: invOwner,
-      countInSavings: true,
+      countInSavings: savingsSettings.default_count_in_savings,
       maturityAmount: invMaturityValue ? Number(invMaturityValue) : null,
       nextPayoutAmount: invNextPayoutAmount ? Number(invNextPayoutAmount) : null,
       nextPayoutDate: invNextPayoutDate || null,
@@ -146,34 +160,48 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
                 value={savCurr}
                 onChange={(e) => setSavCurr(e.target.value)}
               >
-                <option value="HUF">HUF</option>
-                <option value="EUR">EUR</option>
-                <option value="USD">USD</option>
-                <option value="BTC">BTC</option>
-                <option value="ETH">ETH</option>
+                {savingsSettings.currencies.map((currency) => (
+                  <option key={currency} value={currency}>
+                    {currency}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="space-y-1.5">
               <FieldLabel info={HELP.savings.owner}>Tulajdonos</FieldLabel>
-              <select
-                className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
-                value={savOwner === 'Közös' || savOwner === 'Little Loom' ? savOwner : 'custom'}
-                onChange={(e) => {
-                  if (e.target.value === 'custom') setSavOwner('');
-                  else setSavOwner(e.target.value);
-                }}
-              >
-                <option value="Közös">Közös</option>
-                <option value="Little Loom">Little Loom</option>
-                <option value="custom">Egyedi…</option>
-              </select>
-              {savOwner !== 'Közös' && savOwner !== 'Little Loom' && (
+              {savingsSettings.owners.length > 0 ? (
+                <>
+                  <select
+                    className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
+                    value={savingsSettings.owners.includes(savOwner) ? savOwner : 'custom'}
+                    onChange={(e) => {
+                      if (e.target.value === 'custom') setSavOwner('');
+                      else setSavOwner(e.target.value);
+                    }}
+                  >
+                    {savingsSettings.owners.map((owner) => (
+                      <option key={owner} value={owner}>
+                        {owner}
+                      </option>
+                    ))}
+                    <option value="custom">Egyedi…</option>
+                  </select>
+                  {!savingsSettings.owners.includes(savOwner) && (
+                    <Input
+                      placeholder="Pl. Szandi, Dani"
+                      value={savOwner}
+                      onChange={(e) => setSavOwner(e.target.value)}
+                      required
+                      className="mt-2"
+                    />
+                  )}
+                </>
+              ) : (
                 <Input
-                  placeholder="Pl. Szandi, Dani"
+                  placeholder="Pl. Közös, Szandi…"
                   value={savOwner}
                   onChange={(e) => setSavOwner(e.target.value)}
                   required
-                  className="mt-2"
                 />
               )}
             </div>
@@ -213,25 +241,39 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
             </div>
             <div className="space-y-1.5">
               <FieldLabel info={HELP.savings.owner}>Tulajdonos</FieldLabel>
-              <select
-                className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
-                value={invOwner === 'Közös' || invOwner === 'Little Loom' ? invOwner : 'custom'}
-                onChange={(e) => {
-                  if (e.target.value === 'custom') setInvOwner('');
-                  else setInvOwner(e.target.value);
-                }}
-              >
-                <option value="Közös">Közös</option>
-                <option value="Little Loom">Little Loom</option>
-                <option value="custom">Egyedi…</option>
-              </select>
-              {invOwner !== 'Közös' && invOwner !== 'Little Loom' && (
+              {savingsSettings.owners.length > 0 ? (
+                <>
+                  <select
+                    className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
+                    value={savingsSettings.owners.includes(invOwner) ? invOwner : 'custom'}
+                    onChange={(e) => {
+                      if (e.target.value === 'custom') setInvOwner('');
+                      else setInvOwner(e.target.value);
+                    }}
+                  >
+                    {savingsSettings.owners.map((owner) => (
+                      <option key={owner} value={owner}>
+                        {owner}
+                      </option>
+                    ))}
+                    <option value="custom">Egyedi…</option>
+                  </select>
+                  {!savingsSettings.owners.includes(invOwner) && (
+                    <Input
+                      placeholder="Pl. Szandi, Dani"
+                      value={invOwner}
+                      onChange={(e) => setInvOwner(e.target.value)}
+                      required
+                      className="mt-2"
+                    />
+                  )}
+                </>
+              ) : (
                 <Input
-                  placeholder="Pl. Szandi, Dani"
+                  placeholder="Pl. Közös, Szandi…"
                   value={invOwner}
                   onChange={(e) => setInvOwner(e.target.value)}
                   required
-                  className="mt-2"
                 />
               )}
             </div>

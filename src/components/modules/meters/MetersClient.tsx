@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMetersStore } from '@/stores/useMetersStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { resolveMetersSettings } from '@/lib/metersSettings';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { useUtilitiesStore } from '@/stores/useUtilitiesStore';
 import { Meter, MeterReading } from '@/types';
@@ -509,6 +510,7 @@ function MeterPanel({
 
 export default function MetersClient() {
   const { user } = useAuthStore();
+  const metersSettings = useMemo(() => resolveMetersSettings(user?.household), [user?.household]);
   const isReader = user?.role === 'reader';
   const { meters, addMeter, deleteMeter, addMeterReading, updateMeterReading, deleteMeterReading } = useMetersStore();
   const { selectedMonth, selectedYear } = usePreferenceStore();
@@ -531,8 +533,21 @@ export default function MetersClient() {
 
   const [isNewMeterModalOpen, setIsNewMeterModalOpen] = useState(false);
   const [newMeterName, setNewMeterName] = useState('');
-  const [newMeterUnit, setNewMeterUnit] = useState('kWh');
-  const [newMeterLoc, setNewMeterLoc] = useState('Otthon');
+  const [newMeterUnit, setNewMeterUnit] = useState(metersSettings.units[0] ?? 'kWh');
+  const [newMeterLoc, setNewMeterLoc] = useState(metersSettings.default_location);
+
+  const openNewMeterModal = () => {
+    setNewMeterName('');
+    setNewMeterUnit(metersSettings.units[0] ?? 'kWh');
+    setNewMeterLoc(metersSettings.default_location);
+    setIsNewMeterModalOpen(true);
+  };
+
+  const applyMeterTemplate = (template: (typeof metersSettings.templates)[number]) => {
+    setNewMeterName(template.name);
+    setNewMeterUnit(template.unit);
+    setNewMeterLoc(template.location || metersSettings.default_location);
+  };
 
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
 
@@ -713,7 +728,7 @@ Válasz: egyetlen egész szám, semmi más.`;
         description="Mérőóra állások, fogyasztás és AI-alapú becslések."
         actions={
           !isReader ? (
-            <Button size="sm" onClick={() => setIsNewMeterModalOpen(true)}>
+            <Button size="sm" onClick={openNewMeterModal}>
               <PlusCircle size={13} /> Új mérőóra
             </Button>
           ) : undefined
@@ -753,7 +768,7 @@ Válasz: egyetlen egész szám, semmi más.`;
           description="Adj hozzá egy mérőórát az óraállások és fogyasztás követéséhez."
           action={
             !isReader ? (
-              <Button size="sm" onClick={() => setIsNewMeterModalOpen(true)}>
+              <Button size="sm" onClick={openNewMeterModal}>
                 <PlusCircle size={13} /> Új mérőóra
               </Button>
             ) : undefined
@@ -906,6 +921,24 @@ Válasz: egyetlen egész szám, semmi más.`;
 
       <Modal isOpen={isNewMeterModalOpen} onClose={() => setIsNewMeterModalOpen(false)} title="Új mérőóra hozzáadása">
         <form onSubmit={handleMeterSubmit} className="flex flex-col gap-4">
+          {metersSettings.templates.length > 0 && (
+            <div className="space-y-2">
+              <FieldLabel info="Sablonok a Beállítások → Modulok → Közműórák alól">Gyors sablon</FieldLabel>
+              <div className="flex flex-wrap gap-2">
+                {metersSettings.templates.map((template) => (
+                  <Button
+                    key={`${template.name}-${template.unit}`}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => applyMeterTemplate(template)}
+                  >
+                    {template.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="space-y-1.5">
             <FieldLabel info={HELP.meters.newMeterName}>Megnevezés</FieldLabel>
             <Input placeholder="pl. Villanyóra, Vízóra (Nappali)" value={newMeterName} onChange={(e) => setNewMeterName(e.target.value)} required />
@@ -913,7 +946,17 @@ Válasz: egyetlen egész szám, semmi más.`;
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <FieldLabel info={HELP.meters.newMeterUnit}>Mértékegység</FieldLabel>
-              <Input value={newMeterUnit} onChange={(e) => setNewMeterUnit(e.target.value)} />
+              <select
+                className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
+                value={newMeterUnit}
+                onChange={(e) => setNewMeterUnit(e.target.value)}
+              >
+                {metersSettings.units.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1.5">
               <FieldLabel info={HELP.meters.newMeterLocation}>Helyszín</FieldLabel>

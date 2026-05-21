@@ -17,6 +17,7 @@ import { FieldLabel } from '@/components/ui/FieldLabel';
 import { FormField } from '@/components/ui/FormField';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { HELP } from '@/lib/helpTexts';
+import { matchPaymentCategory, resolveDebtsSettings } from '@/lib/debtsSettings';
 import { cn } from '@/lib/utils';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import { motion } from 'motion/react';
@@ -57,6 +58,7 @@ type DebtStrategy = 'avalanche' | 'snowball';
 export default function DebtsClient() {
   const { debts, fetchDebts, addDebt, deleteDebt, updateDebt, aiDebtPlan, fetchAiDebtPlan } = useDebtsStore();
   const { user } = useAuthStore();
+  const debtsSettings = useMemo(() => resolveDebtsSettings(user?.household), [user?.household]);
   const { addTransaction, categories } = useBudgetStore();
   const { addNotification } = useNotificationStore();
   const { selectedYear, selectedMonth } = usePreferenceStore();
@@ -78,24 +80,30 @@ export default function DebtsClient() {
   const [payAmount, setPayAmount] = useState('');
   const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
   const [payNote, setPayNote] = useState('');
-  const [payAddToBudget, setPayAddToBudget] = useState(true);
+  const [payAddToBudget, setPayAddToBudget] = useState(debtsSettings.pay_add_to_budget_default);
   const [payCategory, setPayCategory] = useState(categories[0] || '');
-  const [paySaving, setPaySaving] = useState(false);
 
-  const [strategy, setStrategy] = useState<DebtStrategy>('avalanche');
+  const [strategy, setStrategy] = useState<DebtStrategy>(debtsSettings.default_strategy);
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const [extraMonthly, setExtraMonthly] = useState<number>(0);
+  const [extraMonthly, setExtraMonthly] = useState<number>(debtsSettings.default_extra_monthly);
+  const [paySaving, setPaySaving] = useState(false);
 
   useEffect(() => {
     fetchDebts();
   }, [fetchDebts]);
 
   useEffect(() => {
-    if (payCategory === '' && categories.length > 0) {
-      const def = categories.find((c) => /hitel|tartoz|törleszt/i.test(c)) || categories[0];
-      setPayCategory(def);
+    if (categories.length > 0) {
+      const def = matchPaymentCategory(categories, debtsSettings.payment_category_pattern);
+      setPayCategory((current) => current || def);
     }
-  }, [categories, payCategory]);
+  }, [categories, debtsSettings.payment_category_pattern]);
+
+  useEffect(() => {
+    setStrategy(debtsSettings.default_strategy);
+    setExtraMonthly(debtsSettings.default_extra_monthly);
+    setPayAddToBudget(debtsSettings.pay_add_to_budget_default);
+  }, [debtsSettings]);
 
   const openForm = (d?: Debt) => {
     if (d) {
@@ -139,10 +147,9 @@ export default function DebtsClient() {
     setPayAmount(d.minimumPayment ? String(d.minimumPayment) : '');
     setPayDate(new Date().toISOString().split('T')[0]);
     setPayNote(`${d.name} törlesztés`);
-    setPayAddToBudget(true);
-    if (!payCategory && categories.length > 0) {
-      const def = categories.find((c) => /hitel|tartoz|törleszt/i.test(c)) || categories[0];
-      setPayCategory(def);
+    setPayAddToBudget(debtsSettings.pay_add_to_budget_default);
+    if (categories.length > 0) {
+      setPayCategory(matchPaymentCategory(categories, debtsSettings.payment_category_pattern));
     }
     setIsPayModalOpen(true);
   };

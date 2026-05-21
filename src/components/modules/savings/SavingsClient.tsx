@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSavingsStore } from '@/stores/useSavingsStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
+import { resolveSavingsSettings } from '@/lib/savingsSettings';
 import { formatHUF, formatDate } from '@/utils';
 import { LedgerEntry } from '@/types';
 import { Modal } from '@/components/ui/Modal';
@@ -36,6 +38,7 @@ import {
   Sparkles,
   ArrowUpRight,
   ArrowDownRight,
+  X,
 } from 'lucide-react';
 
 interface Investment {
@@ -66,6 +69,10 @@ export default function SavingsClient() {
     updateInvestment,
     deleteInvestment,
   } = useSavingsStore();
+
+  const { user } = useAuthStore();
+  const savingsSettings = useMemo(() => resolveSavingsSettings(user?.household), [user?.household]);
+  const separateOwner = savingsSettings.separate_owner.trim();
 
   const { exchangeRates, refreshRates } = usePreferenceStore();
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
@@ -147,10 +154,14 @@ export default function SavingsClient() {
     return null;
   };
 
-  const personalSavings = savings.filter((s) => s.owner !== 'Little Loom');
-  const wifeSavings = savings.filter((s) => s.owner === 'Little Loom');
-  const personalInvestments = (investments as Investment[]).filter((i) => i.owner !== 'Little Loom');
-  const wifeInvestments = (investments as Investment[]).filter((i) => i.owner === 'Little Loom');
+  const personalSavings = separateOwner ? savings.filter((s) => s.owner !== separateOwner) : savings;
+  const wifeSavings = separateOwner ? savings.filter((s) => s.owner === separateOwner) : [];
+  const personalInvestments = separateOwner
+    ? (investments as Investment[]).filter((i) => i.owner !== separateOwner)
+    : (investments as Investment[]);
+  const wifeInvestments = separateOwner
+    ? (investments as Investment[]).filter((i) => i.owner === separateOwner)
+    : [];
 
   const sumPersonalInvestments = personalInvestments
     .filter((i) => i.countInSavings !== false)
@@ -171,7 +182,7 @@ export default function SavingsClient() {
 
   const savingsMetrics: MetricItem[] = [
     {
-      label: 'Saját + Közös',
+      label: separateOwner ? 'Saját + Közös' : 'Megtakarítások',
       value: formatHUF(sumPersonal),
       info: HELP.savings.personal,
       hint: `${personalSavings.length} számla · ${personalInvestments.length} papír`,
@@ -179,14 +190,18 @@ export default function SavingsClient() {
       tone: 'primary',
       emphasis: true,
     },
-    {
-      label: 'Little Loom',
-      value: formatHUF(sumWife),
-      info: HELP.savings.wife,
-      hint: `${wifeSavings.length} számla · ${wifeInvestments.length} papír`,
-      icon: PiggyBank,
-      tone: 'info',
-    },
+    ...(separateOwner
+      ? [
+          {
+            label: separateOwner,
+            value: formatHUF(sumWife),
+            info: HELP.savings.wife,
+            hint: `${wifeSavings.length} számla · ${wifeInvestments.length} papír`,
+            icon: PiggyBank,
+            tone: 'info' as const,
+          },
+        ]
+      : []),
     {
       label: 'Teljes vagyon',
       value: formatHUF(sumPersonal + sumWife),
@@ -389,8 +404,8 @@ export default function SavingsClient() {
               >
                 OK
               </Button>
-              <Button variant="ghost" size="xs" onClick={() => setEditingInvId(null)}>
-                ✕
+              <Button variant="ghost" size="xs" onClick={() => setEditingInvId(null)} aria-label="Mégse">
+                <X size={14} />
               </Button>
             </div>
           ) : (
@@ -531,8 +546,8 @@ export default function SavingsClient() {
         )}
       </Section>
 
-      {wifeSavings.length > 0 && (
-        <Section title="Little Loom számlák" description={`${wifeSavings.length} aktív számla`}>
+      {separateOwner && wifeSavings.length > 0 && (
+        <Section title={`${separateOwner} számlák`} description={`${wifeSavings.length} aktív számla`}>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {wifeSavings.map((acc) => (
               <SavingsAccountCard key={acc.id} acc={acc} accent="rose" />
