@@ -1,4 +1,5 @@
 import type { UtilitySplitRule } from '@/types';
+export { splitRuleLabel } from '@/lib/utilityViewer';
 
 export type UtilityTemplate = {
   type: string;
@@ -32,10 +33,4 @@ export function resolveUtilityTemplates(household?: HouseholdLike | null): Utili
       };
     })
     .filter((t): t is UtilityTemplate => t !== null);
-}
-
-export function splitRuleLabel(rule: UtilitySplitRule, isAdmin: boolean): string {
-  if (rule === 'shared') return 'Közös 50/50';
-  if (rule === 'dani-private') return isAdmin ? 'Saját (te)' : 'Partner magán';
-  return isAdmin ? 'Partner magán' : 'Saját (te)';
 }

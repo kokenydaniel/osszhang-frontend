@@ -134,6 +134,7 @@ export function ModuleFeatureCard({
   icon,
   iconClassName,
   children,
+  footer,
 }: {
   title: string;
   description: string;
@@ -142,38 +143,80 @@ export function ModuleFeatureCard({
   icon: React.ReactNode;
   iconClassName?: string;
   children?: React.ReactNode;
+  footer?: React.ReactNode;
 }) {
   return (
-    <div
+    <article
       className={cn(
-        'flex flex-col rounded-2xl border transition-all duration-200',
+        'flex flex-col rounded-xl border transition-all duration-200 overflow-hidden',
         enabled
-          ? 'border-primary/25 bg-card shadow-md ring-1 ring-primary/10'
-          : 'border-border bg-muted/15 hover:border-border/80 hover:bg-muted/25',
+          ? 'border-primary/30 bg-card shadow-sm ring-1 ring-primary/10'
+          : 'border-border bg-muted/10',
       )}
     >
-      <div className="flex gap-3 p-5">
+      <div className="flex gap-4 p-5 sm:p-6">
         <div
           className={cn(
-            'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm',
-            iconClassName ?? 'bg-muted text-muted-foreground',
+            'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm',
+            enabled
+              ? iconClassName ?? 'bg-primary/10 text-primary border border-primary/20'
+              : 'bg-muted text-muted-foreground border border-border',
           )}
         >
           {icon}
         </div>
         <div className="min-w-0 flex-1">
-          <h4 className="text-[0.95rem] font-semibold text-foreground leading-snug">{title}</h4>
-          <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">{description}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-base font-semibold text-foreground leading-snug">{title}</h4>
+            <span
+              className={cn(
+                'text-[0.6rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border',
+                enabled
+                  ? 'border-primary/30 bg-primary/10 text-primary'
+                  : 'border-border bg-muted text-muted-foreground',
+              )}
+            >
+              {enabled ? 'Be' : 'Ki'}
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground mt-2 leading-relaxed max-w-prose">{description}</p>
+          {!enabled && (
+            <p className="text-xs text-muted-foreground/80 mt-2 italic">
+              Ki van kapcsolva — nem jelenik meg a menüben és a kapcsolódó beállítások rejtve maradnak.
+            </p>
+          )}
         </div>
-        <div className="flex h-11 shrink-0 items-center">
-          <Switch checked={enabled} onCheckedChange={() => onToggle()} />
+        <div className="flex h-12 shrink-0 items-start pt-0.5">
+          <Switch checked={enabled} onCheckedChange={() => onToggle()} aria-label={`${title} ${enabled ? 'kikapcsolása' : 'bekapcsolása'}`} />
         </div>
       </div>
       {enabled && children ? (
-        <div className="border-t border-border px-5 pb-5 pt-4 space-y-3 bg-muted/10">{children}</div>
+        <div className="border-t border-border bg-muted/20 px-5 pb-5 pt-4 sm:px-6 sm:pb-6 space-y-4">
+          {children}
+        </div>
       ) : null}
-    </div>
+      {footer ? (
+        <div className="border-t border-border bg-muted/10 px-5 py-4 sm:px-6 flex flex-wrap justify-end gap-2">
+          {footer}
+        </div>
+      ) : null}
+    </article>
   );
+}
+
+export function SettingsDivider({ label }: { label?: string }) {
+  if (label) {
+    return (
+      <div className="flex items-center gap-4 py-2">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">
+          {label}
+        </span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+    );
+  }
+  return <div className="h-px bg-border my-2" />;
 }
 
 export function PermissionChip({

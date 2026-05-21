@@ -6,10 +6,10 @@ export type BusinessSettings = {
 };
 
 export const DEFAULT_BUSINESS_SETTINGS: BusinessSettings = {
-  channels: ['Meskán', 'Privát rendelés', 'Webshop (Shopify)', 'Hello Piac'],
-  payment_methods: ['Kártya', 'Utalás', 'Utánvét', 'Készpénz'],
-  providers: ['Shopify payments', 'Barion', 'SumUp', 'DPD', 'GLS', 'Foxpost', 'Nincs'],
-  destinations: ['Szolgáltatónál parkol', 'Privát számla', 'Készpénz'],
+  channels: [],
+  payment_methods: [],
+  providers: [],
+  destinations: [],
 };
 
 type HouseholdLike = {
@@ -17,20 +17,23 @@ type HouseholdLike = {
   businessSettings?: BusinessSettings;
 };
 
+function pickList(list: string[] | undefined, fallback: string[]): string[] {
+  if (list === undefined) {
+    return [...fallback];
+  }
+  const clean = (list ?? []).map((s) => s.trim()).filter(Boolean);
+  return [...new Set(clean)];
+}
+
 export function resolveBusinessSettings(household?: HouseholdLike | null): BusinessSettings {
   const raw = household?.business_settings ?? household?.businessSettings;
   if (!raw) return { ...DEFAULT_BUSINESS_SETTINGS };
 
-  const pick = (list: string[] | undefined, fallback: string[]) => {
-    const clean = (list ?? []).map((s) => s.trim()).filter(Boolean);
-    return clean.length > 0 ? [...new Set(clean)] : fallback;
-  };
-
   return {
-    channels: pick(raw.channels, DEFAULT_BUSINESS_SETTINGS.channels),
-    payment_methods: pick(raw.payment_methods, DEFAULT_BUSINESS_SETTINGS.payment_methods),
-    providers: pick(raw.providers, DEFAULT_BUSINESS_SETTINGS.providers),
-    destinations: pick(raw.destinations, DEFAULT_BUSINESS_SETTINGS.destinations),
+    channels: pickList(raw.channels, DEFAULT_BUSINESS_SETTINGS.channels),
+    payment_methods: pickList(raw.payment_methods, DEFAULT_BUSINESS_SETTINGS.payment_methods),
+    providers: pickList(raw.providers, DEFAULT_BUSINESS_SETTINGS.providers),
+    destinations: pickList(raw.destinations, DEFAULT_BUSINESS_SETTINGS.destinations),
   };
 }
 
@@ -38,12 +41,12 @@ export function pickDefaultChannel(settings: BusinessSettings): string {
   return (
     settings.channels.find((c) => /shopify|webshop/i.test(c)) ??
     settings.channels[0] ??
-    'Webshop (Shopify)'
+    ''
   );
 }
 
 export function pickDefaultPayment(settings: BusinessSettings): string {
-  return settings.payment_methods[0] ?? 'Kártya';
+  return settings.payment_methods[0] ?? '';
 }
 
 export function pickDefaultProvider(settings: BusinessSettings): string {
@@ -51,10 +54,10 @@ export function pickDefaultProvider(settings: BusinessSettings): string {
     settings.providers.find((p) => /shopify/i.test(p)) ??
     settings.providers.find((p) => /nincs/i.test(p)) ??
     settings.providers[0] ??
-    'Nincs'
+    ''
   );
 }
 
 export function pickDefaultDestination(settings: BusinessSettings): string {
-  return settings.destinations[0] ?? 'Szolgáltatónál parkol';
+  return settings.destinations[0] ?? '';
 }

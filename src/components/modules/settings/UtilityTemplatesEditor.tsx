@@ -4,7 +4,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { UtilityTemplate } from '@/lib/utilityTemplates';
-import { splitRuleLabel } from '@/lib/utilityTemplates';
+import { splitRuleLabel } from '@/lib/utilityViewer';
 import type { UtilitySplitRule } from '@/types';
 
 const SPLIT_RULES: UtilitySplitRule[] = ['shared', 'dani-private', 'ildi-private'];
@@ -83,7 +83,7 @@ export function UtilityTemplatesEditor({
                 >
                   {SPLIT_RULES.map((rule) => (
                     <option key={rule} value={rule}>
-                      {splitRuleLabel(rule, isAdmin)}
+                      {splitRuleLabel(rule, true)}
                     </option>
                   ))}
                 </select>

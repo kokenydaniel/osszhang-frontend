@@ -57,16 +57,15 @@ export function BusinessOptionsEditor({
   };
 
   const removeItem = (key: ListKey, label: string) => {
-    if (value[key].length <= 1) return;
     onChange({ ...value, [key]: value[key].filter((x) => x !== label) });
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
       {GROUPS.map((group) => (
         <div
           key={group.key}
-          className="rounded-xl border border-border bg-muted/15 p-4 space-y-3"
+          className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm"
         >
           <div>
             <h4 className="text-sm font-semibold text-foreground">{group.title}</h4>

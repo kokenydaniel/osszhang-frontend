@@ -22,37 +22,48 @@ import {
   Lock,
   TrendingDown,
   AlertTriangle,
-  Handshake,
+  PiggyBank,
+  LayoutGrid,
+  TrendingUp,
 } from 'lucide-react';
-import { SiShopify } from 'react-icons/si';
 import { BusinessOptionsEditor } from '@/components/modules/settings/BusinessOptionsEditor';
+import { DebtsSettingsEditor } from '@/components/modules/settings/DebtsSettingsEditor';
+import { MetersSettingsEditor } from '@/components/modules/settings/MetersSettingsEditor';
+import { SavingsSettingsEditor } from '@/components/modules/settings/SavingsSettingsEditor';
 import { UtilityTemplatesEditor } from '@/components/modules/settings/UtilityTemplatesEditor';
 import { resolveUtilityTemplates, type UtilityTemplate } from '@/lib/utilityTemplates';
 import {
   resolveBusinessSettings,
   type BusinessSettings,
 } from '@/lib/businessSettings';
+import { resolveDebtsSettings, type DebtsSettings } from '@/lib/debtsSettings';
+import { resolveMetersSettings, type MetersSettings } from '@/lib/metersSettings';
+import { resolveSavingsSettings, type SavingsSettings } from '@/lib/savingsSettings';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/FieldLabel';
 import { FormField } from '@/components/ui/FormField';
 import { Modal } from '@/components/ui/Modal';
 import { HELP } from '@/lib/helpTexts';
+import { formatDisplayInitials, formatDisplayName } from '@/lib/personName';
+import { type ModuleId } from '@/lib/moduleAccess';
 import { motion, AnimatePresence } from 'motion/react';
-import { PageHeader, SectionPanel, InsightBanner, StatusPill } from '@/components/design';
+import { PageHeader, InsightBanner, StatusPill } from '@/components/design';
 import {
   SettingsTopTabs,
   SettingsSectionHeading,
   SettingsBlock,
   ModuleFeatureCard,
+  SettingsDivider,
   PermissionChip,
   MemberCard,
   DangerZonePanel,
   CategoryTag,
 } from '@/components/modules/settings/settings-ui';
 
-type TabId = 'profile' | 'household' | 'categories';
+type TabId = 'profile' | 'household' | 'modules';
 
 export default function SettingsClient() {
   const [activeTab, setActiveTab] = useState<TabId>('profile');
@@ -80,8 +91,16 @@ export default function SettingsClient() {
   const [isPasswordSaving, setIsPasswordSaving] = useState(false);
 
   const [householdName, setHouseholdName] = useState(user?.household?.name || '');
+  const [budgetEnabled, setBudgetEnabled] = useState(user?.household?.budgetEnabled ?? user?.household?.budget_enabled ?? false);
+  const [savingsEnabled, setSavingsEnabled] = useState(user?.household?.savingsEnabled ?? user?.household?.savings_enabled ?? false);
+  const [debtsEnabled, setDebtsEnabled] = useState(user?.household?.debtsEnabled ?? user?.household?.debts_enabled ?? false);
+  const [utilitiesEnabled, setUtilitiesEnabled] = useState(user?.household?.utilitiesEnabled ?? user?.household?.utilities_enabled ?? false);
+  const [metersEnabled, setMetersEnabled] = useState(user?.household?.metersEnabled ?? user?.household?.meters_enabled ?? false);
   const [businessEnabled, setBusinessEnabled] = useState(user?.household?.businessEnabled ?? user?.household?.business_enabled ?? false);
   const [businessName, setBusinessName] = useState(user?.household?.businessName ?? user?.household?.business_name ?? '');
+  const [shopifyImportEnabled, setShopifyImportEnabled] = useState(
+    user?.household?.shopifyImportEnabled ?? user?.household?.shopify_import_enabled ?? false,
+  );
   const [shopifyShopUrl, setShopifyShopUrl] = useState(user?.household?.shopifyShopUrl ?? user?.household?.shopify_shop_url ?? '');
   const [shopifyAccessToken, setShopifyAccessToken] = useState('');
   const hasShopifyToken = user?.household?.hasShopifyToken ?? user?.household?.has_shopify_token ?? false;
@@ -95,7 +114,16 @@ export default function SettingsClient() {
   const [utilityTemplates, setUtilityTemplates] = useState<UtilityTemplate[]>(() =>
     resolveUtilityTemplates(user?.household),
   );
-  const [isHouseholdSaving, setIsHouseholdSaving] = useState(false);
+  const [savingsSettings, setSavingsSettings] = useState<SavingsSettings>(() => resolveSavingsSettings(user?.household));
+  const [debtsSettings, setDebtsSettings] = useState<DebtsSettings>(() => resolveDebtsSettings(user?.household));
+  const [metersSettings, setMetersSettings] = useState<MetersSettings>(() => resolveMetersSettings(user?.household));
+  const [isNameSaving, setIsNameSaving] = useState(false);
+  const [isBudgetSaving, setIsBudgetSaving] = useState(false);
+  const [isSavingsSaving, setIsSavingsSaving] = useState(false);
+  const [isDebtsSaving, setIsDebtsSaving] = useState(false);
+  const [isUtilitiesSaving, setIsUtilitiesSaving] = useState(false);
+  const [isMetersSaving, setIsMetersSaving] = useState(false);
+  const [isBusinessSaving, setIsBusinessSaving] = useState(false);
 
   const [newMemberData, setNewMemberData] = useState({
     firstName: '',
@@ -117,26 +145,48 @@ export default function SettingsClient() {
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
 
   const MODULES = [
-    { id: 'budget', label: 'Költségvetés', icon: Wallet, description: '/budget — bevételek, kiadások' },
-    { id: 'savings', label: 'Megtakarítások', icon: Shield, description: '/savings — Széf, állampapírok' },
-    { id: 'debts', label: 'Tartozások', icon: TrendingDown, description: '/debts — hitelek, kölcsönök' },
-    { id: 'utilities', label: 'Rezsi', icon: Droplets, description: '/utilities — közüzemi számlák' },
-    { id: 'meters', label: 'Mérőórák', icon: Gauge, description: '/meters — fogyasztás' },
-    { id: 'business', label: businessEnabled ? businessName : 'Vállalkozás', icon: ShoppingBag, description: '/business — webshop' },
+    { id: 'budget' as ModuleId, label: 'Költségvetés', icon: Wallet, description: '/budget — bevételek, kiadások' },
+    { id: 'savings' as ModuleId, label: 'Megtakarítások', icon: PiggyBank, description: '/savings — Széf, állampapírok' },
+    { id: 'debts' as ModuleId, label: 'Tartozások', icon: TrendingDown, description: '/debts — hitelek, kölcsönök' },
+    { id: 'utilities' as ModuleId, label: 'Rezsi', icon: Droplets, description: '/utilities — közüzemi számlák' },
+    { id: 'meters' as ModuleId, label: 'Közműórák', icon: Gauge, description: '/meters — fogyasztás' },
+    { id: 'business' as ModuleId, label: businessEnabled ? businessName : 'Vállalkozás', icon: ShoppingBag, description: '/business — webshop' },
   ];
+
+  const moduleEnabledState: Record<ModuleId, boolean> = {
+    budget: budgetEnabled,
+    savings: savingsEnabled,
+    debts: debtsEnabled,
+    utilities: utilitiesEnabled,
+    meters: metersEnabled,
+    business: businessEnabled,
+  };
+
+  const activeMemberModules = MODULES.filter((mod) => moduleEnabledState[mod.id]);
 
   useEffect(() => {
     setLocalProfile({ firstName: user?.firstName || '', lastName: user?.lastName || '' });
     if (user?.household) {
       setHouseholdName(user.household.name || '');
+      setBudgetEnabled(user.household.budgetEnabled ?? user.household.budget_enabled ?? false);
+      setSavingsEnabled(user.household.savingsEnabled ?? user.household.savings_enabled ?? false);
+      setDebtsEnabled(user.household.debtsEnabled ?? user.household.debts_enabled ?? false);
+      setUtilitiesEnabled(user.household.utilitiesEnabled ?? user.household.utilities_enabled ?? false);
+      setMetersEnabled(user.household.metersEnabled ?? user.household.meters_enabled ?? false);
       setBusinessEnabled(user.household.businessEnabled ?? user.household.business_enabled ?? false);
       setBusinessName(user.household.businessName ?? user.household.business_name ?? '');
+      setShopifyImportEnabled(
+        user.household.shopifyImportEnabled ?? user.household.shopify_import_enabled ?? false,
+      );
       setShopifyShopUrl(user.household.shopifyShopUrl ?? user.household.shopify_shop_url ?? '');
       setShopifyAccessToken('');
       setUtilitySplitEnabled(user.household.utilitySplitEnabled ?? user.household.utility_split_enabled ?? false);
       setUtilitySplitPartnerId(user.household.utilitySplitPartnerId ?? user.household.utility_split_partner_id ?? null);
       setBusinessSettings(resolveBusinessSettings(user.household));
       setUtilityTemplates(resolveUtilityTemplates(user.household));
+      setSavingsSettings(resolveSavingsSettings(user.household));
+      setDebtsSettings(resolveDebtsSettings(user.household));
+      setMetersSettings(resolveMetersSettings(user.household));
     }
   }, [user]);
 
@@ -181,58 +231,147 @@ export default function SettingsClient() {
     }
   };
 
-  const handleHouseholdSave = async (e: React.FormEvent) => {
+  const utilityPartners = user?.household?.users?.filter((u) => u.id !== user.id) || [];
+
+  const handleHouseholdNameSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsHouseholdSaving(true);
+    setIsNameSaving(true);
+    try {
+      await updateHouseholdSettings({ name: householdName });
+      addNotification('Háztartás neve mentve.', 'success');
+    } catch {
+      addNotification('A név mentése nem sikerült.', 'error');
+    } finally {
+      setIsNameSaving(false);
+    }
+  };
+
+  const handleModuleSave = async (
+    key: `${ModuleId}_enabled`,
+    enabled: boolean,
+    setSaving: (v: boolean) => void,
+    label: string,
+  ) => {
+    setSaving(true);
+    try {
+      await updateHouseholdSettings({ [key]: enabled });
+      addNotification(`${label} modul mentve.`, 'success');
+    } catch {
+      addNotification('A mentés nem sikerült.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBusinessSave = async () => {
     if (businessEnabled) {
       if (!businessName.trim()) {
         addNotification('A vállalkozás nevét kötelező megadni, ha a modul be van kapcsolva!', 'error');
-        setIsHouseholdSaving(false);
         return;
       }
-      if (!shopifyShopUrl.trim()) {
-        addNotification('A Shopify bolt URL-jét kötelező megadni!', 'error');
-        setIsHouseholdSaving(false);
-        return;
-      }
-      if (!hasShopifyToken && !shopifyAccessToken.trim()) {
-        addNotification('Az Admin API tokent kötelező megadni az első mentésnél!', 'error');
-        setIsHouseholdSaving(false);
-        return;
-      }
-      if (shopifyAccessToken.trim() && !/^shpat_|^shpua_/i.test(shopifyAccessToken.trim())) {
-        addNotification('A Shopify token shpat_ vagy shpua_ előtaggal kell kezdődjön.', 'error');
-        setIsHouseholdSaving(false);
-        return;
+      if (shopifyImportEnabled) {
+        if (!shopifyShopUrl.trim()) {
+          addNotification('A Shopify bolt URL-jét kötelező megadni, ha az import be van kapcsolva!', 'error');
+          return;
+        }
+        if (!hasShopifyToken && !shopifyAccessToken.trim()) {
+          addNotification('Az Admin API tokent kötelező megadni az első mentésnél!', 'error');
+          return;
+        }
+        if (shopifyAccessToken.trim() && !/^shpat_|^shpua_/i.test(shopifyAccessToken.trim())) {
+          addNotification('A Shopify token shpat_ vagy shpua_ előtaggal kell kezdődjön.', 'error');
+          return;
+        }
       }
     }
-    if (utilitySplitEnabled && utilityPartners.length > 0 && !utilitySplitPartnerId) {
-      addNotification('Válassz elszámolási partnert a rezsi megosztáshoz!', 'error');
-      setIsHouseholdSaving(false);
-      return;
-    }
+    setIsBusinessSaving(true);
     try {
       const payload: Parameters<typeof updateHouseholdSettings>[0] = {
-        name: householdName,
         business_enabled: businessEnabled,
         business_name: businessName,
-        shopify_shop_url: businessEnabled ? shopifyShopUrl : '',
-        utility_split_enabled: utilitySplitEnabled,
-        utility_split_partner_id: utilitySplitEnabled ? utilitySplitPartnerId : null,
+        shopify_import_enabled: businessEnabled ? shopifyImportEnabled : false,
         business_settings: businessSettings,
-        utility_templates: utilityTemplates.filter((t) => t.type.trim()),
       };
+      if (businessEnabled && shopifyImportEnabled) {
+        payload.shopify_shop_url = shopifyShopUrl;
+      }
       if (shopifyAccessToken.trim()) {
         payload.shopify_access_token = shopifyAccessToken.trim();
       }
       await updateHouseholdSettings(payload);
-      setUtilityTemplates(resolveUtilityTemplates(useAuthStore.getState().user?.household));
       setShopifyAccessToken('');
-      addNotification('Háztartás beállítások mentve!', 'success');
+      addNotification('Vállalkozás modul mentve.', 'success');
     } catch {
-      addNotification('Nem sikerült elmenteni a beállításokat.', 'error');
+      addNotification('A vállalkozás mentése nem sikerült.', 'error');
     } finally {
-      setIsHouseholdSaving(false);
+      setIsBusinessSaving(false);
+    }
+  };
+
+  const handleSavingsSave = async () => {
+    setIsSavingsSaving(true);
+    try {
+      await updateHouseholdSettings({
+        savings_enabled: savingsEnabled,
+        savings_settings: savingsSettings,
+      });
+      addNotification('Megtakarítás modul mentve.', 'success');
+    } catch {
+      addNotification('A megtakarítás mentése nem sikerült.', 'error');
+    } finally {
+      setIsSavingsSaving(false);
+    }
+  };
+
+  const handleDebtsSave = async () => {
+    setIsDebtsSaving(true);
+    try {
+      await updateHouseholdSettings({
+        debts_enabled: debtsEnabled,
+        debts_settings: debtsSettings,
+      });
+      addNotification('Tartozások modul mentve.', 'success');
+    } catch {
+      addNotification('A tartozások mentése nem sikerült.', 'error');
+    } finally {
+      setIsDebtsSaving(false);
+    }
+  };
+
+  const handleMetersSave = async () => {
+    setIsMetersSaving(true);
+    try {
+      await updateHouseholdSettings({
+        meters_enabled: metersEnabled,
+        meters_settings: metersSettings,
+      });
+      addNotification('Közműórák modul mentve.', 'success');
+    } catch {
+      addNotification('A közműórák mentése nem sikerült.', 'error');
+    } finally {
+      setIsMetersSaving(false);
+    }
+  };
+
+  const handleUtilitiesSave = async () => {
+    if (utilitiesEnabled && utilitySplitEnabled && utilityPartners.length > 0 && !utilitySplitPartnerId) {
+      addNotification('Válassz elszámolási partnert a rezsi megosztáshoz!', 'error');
+      return;
+    }
+    setIsUtilitiesSaving(true);
+    try {
+      await updateHouseholdSettings({
+        utilities_enabled: utilitiesEnabled,
+        utility_split_enabled: utilitiesEnabled ? utilitySplitEnabled : false,
+        utility_split_partner_id: utilitiesEnabled && utilitySplitEnabled ? utilitySplitPartnerId : null,
+        utility_templates: utilityTemplates.filter((t) => t.type.trim()),
+      });
+      setUtilityTemplates(resolveUtilityTemplates(useAuthStore.getState().user?.household));
+      addNotification('Rezsi modul mentve.', 'success');
+    } catch {
+      addNotification('A rezsi modul mentése nem sikerült.', 'error');
+    } finally {
+      setIsUtilitiesSaving(false);
     }
   };
 
@@ -272,23 +411,21 @@ export default function SettingsClient() {
       ? currentPermissions.filter((p) => p !== moduleId)
       : [...currentPermissions, moduleId];
     patchMemberLocally(memberId, { permissions: newPermissions });
-    void updateMember(memberId, { permissions: newPermissions }, { silent: true });
+    void updateMember(memberId, { permissions: newPermissions });
   };
 
   const settingsTabs = [
     { id: 'profile', label: 'Profilom', icon: User, hint: 'Személyes adatok, jelszó, fiók törlése' },
-    { id: 'household', label: 'Háztartás', icon: Home, hint: 'Családtagok, modulok, integrációk' },
-    { id: 'categories', label: 'Kategóriák', icon: FolderTree, hint: 'Költségvetés címkéi' },
+    { id: 'household', label: 'Háztartás', icon: Home, hint: 'Név, családtagok, jogosultságok' },
+    { id: 'modules', label: 'Modulok', icon: LayoutGrid, hint: 'Bekapcsolható funkciók és beállításaik' },
   ];
-
-  const utilityPartners = user?.household?.users?.filter((u) => u.id !== user.id) || [];
 
   return (
     <div className="flex flex-col gap-7 w-full max-w-[1500px] mx-auto">
       <PageHeader
         breadcrumbs={[{ label: 'Rendszer' }, { label: 'Beállítások' }]}
         title="Beállítások"
-        description="Profil, háztartás és kategóriák — minden egy helyen."
+        description="Profil, háztartás és modulok — minden egy helyen."
       />
 
       <SettingsTopTabs tabs={settingsTabs} active={activeTab} onChange={setActiveTab} />
@@ -323,16 +460,16 @@ export default function SettingsClient() {
               >
                 <form id="profile-form" onSubmit={handleProfileSave} className="flex flex-col gap-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <FormField label="Keresztnév" info={HELP.settings.firstName}>
-                      <Input
-                        value={localProfile.firstName}
-                        onChange={(e) => setLocalProfile({ ...localProfile, firstName: e.target.value })}
-                      />
-                    </FormField>
                     <FormField label="Vezetéknév" info={HELP.settings.lastName}>
                       <Input
                         value={localProfile.lastName}
                         onChange={(e) => setLocalProfile({ ...localProfile, lastName: e.target.value })}
+                      />
+                    </FormField>
+                    <FormField label="Keresztnév" info={HELP.settings.firstName}>
+                      <Input
+                        value={localProfile.firstName}
+                        onChange={(e) => setLocalProfile({ ...localProfile, firstName: e.target.value })}
                       />
                     </FormField>
                   </div>
@@ -407,7 +544,7 @@ export default function SettingsClient() {
             <>
               <SettingsSectionHeading
                 title="Háztartás"
-                description="Családtagok, jogosultságok és opcionális bővítések a PenzPilot-hoz."
+                description="Háztartás neve, családtagok és modul jogosultságok."
                 badge={
                   <StatusPill status="neutral" size="xs">
                     {user?.household?.users?.length || 0} tag
@@ -422,153 +559,36 @@ export default function SettingsClient() {
               )}
 
               {isAdmin && (
-                <form onSubmit={handleHouseholdSave} className="flex flex-col gap-6">
+                <div className="flex flex-col gap-8">
                   <SettingsBlock
-                    title="Háztartás"
-                    description="A háztartás megjelenő neve az egész család számára."
+                    title="Háztartás neve"
+                    description="Ez a megjelenő név az egész család számára."
                     icon={Home}
                     toneClassName="bg-primary/10 text-primary"
-                  >
-                    <FormField label="Háztartás neve" info={HELP.settings.householdName}>
-                      <Input
-                        value={householdName}
-                        onChange={(e) => setHouseholdName(e.target.value)}
-                        required
-                        placeholder="Pl. Kovács Család"
-                      />
-                    </FormField>
-                  </SettingsBlock>
-
-                  <SettingsBlock
-                    title="Modulok és integrációk"
-                    description="Kapcsold be a szükséges funkciókat és állítsd be az integrációkat."
-                    icon={ShoppingBag}
-                    toneClassName="bg-violet-500/10 text-violet-600"
                     footer={
-                      <Button type="submit" disabled={isHouseholdSaving}>
+                      <Button type="submit" form="household-name-form" disabled={isNameSaving}>
                         <Save size={13} />
-                        {isHouseholdSaving ? 'Mentés…' : 'Mentés'}
+                        {isNameSaving ? 'Mentés…' : 'Név mentése'}
                       </Button>
                     }
                   >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
-                    <ModuleFeatureCard
-                      title="Vállalkozás"
-                      description="Shopify rendelések importja, webshop követés a Vállalkozás oldalon."
-                      enabled={businessEnabled}
-                      onToggle={() => setBusinessEnabled((v) => !v)}
-                      icon={<SiShopify size={22} className="text-[#95BF47]" aria-hidden />}
-                      iconClassName="bg-[#95BF47]/15 border border-[#95BF47]/25"
-                    >
-                      <div className="grid grid-cols-1 gap-3">
-                        <FormField label="Megjelenő név" info={HELP.settings.businessName}>
-                          <Input
-                            value={businessName}
-                            onChange={(e) => setBusinessName(e.target.value)}
-                            placeholder="Pl. Little Loom"
-                          />
-                        </FormField>
-                        <FormField label="Shopify bolt URL" info={HELP.settings.shopifyUrl}>
-                          <Input
-                            value={shopifyShopUrl}
-                            onChange={(e) => setShopifyShopUrl(e.target.value)}
-                            placeholder="bolt-neve.myshopify.com"
-                          />
-                        </FormField>
-                        <FormField
-                          label="Admin API token"
-                          info={HELP.settings.shopifyToken}
-                          hint={
-                            hasShopifyToken
-                              ? 'Mentett token van — hagyd üresen, ha nem cseréled. Új token: shpat_ előtaggal.'
-                              : 'Kötelező az első mentésnél. A token shpat_ karakterekkel kezdődik.'
-                          }
-                        >
-                          <div className="relative">
-                            <Lock
-                              size={14}
-                              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-                            />
-                            <Input
-                              type="password"
-                              className="pl-8 font-mono text-sm"
-                              value={shopifyAccessToken}
-                              onChange={(e) => setShopifyAccessToken(e.target.value)}
-                              placeholder={
-                                hasShopifyToken
-                                  ? 'Üresen hagyva: megtartjuk a mentett tokent'
-                                  : 'shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
-                              }
-                              autoComplete="new-password"
-                              spellCheck={false}
-                            />
-                          </div>
-                        </FormField>
-                      </div>
-                    </ModuleFeatureCard>
-
-                    <ModuleFeatureCard
-                      title="Rezsi megosztás"
-                      description="Közös számlák elszámolása: ki fizette, mennyi a partner tartozása."
-                      enabled={utilitySplitEnabled}
-                      onToggle={() => setUtilitySplitEnabled((v) => !v)}
-                      icon={<Handshake size={22} strokeWidth={2} />}
-                      iconClassName="bg-sky-500/12 text-sky-600 border border-sky-500/20"
-                    >
-                      <FormField label="Elszámolási partner" info={HELP.settings.splitPartner}>
-                        {utilityPartners.length === 0 ? (
-                          <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2.5">
-                            Nincs más tag. Először hozz létre egy családtagot lent.
-                          </p>
-                        ) : (
-                          <select
-                            className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
-                            value={utilitySplitPartnerId || ''}
-                            onChange={(e) => setUtilitySplitPartnerId(e.target.value ? Number(e.target.value) : null)}
-                          >
-                            <option value="">Válassz partnert…</option>
-                            {utilityPartners.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.firstName} {p.lastName}
-                              </option>
-                            ))}
-                          </select>
-                        )}
+                    <form id="household-name-form" onSubmit={handleHouseholdNameSave}>
+                      <FormField label="Megnevezés" info={HELP.settings.householdName}>
+                        <Input
+                          value={householdName}
+                          onChange={(e) => setHouseholdName(e.target.value)}
+                          required
+                          placeholder="Pl. Kovács Család"
+                        />
                       </FormField>
-                    </ModuleFeatureCard>
-                    </div>
-
-                    <div className="mt-6 space-y-3">
-                      <div>
-                        <h4 className="text-sm font-semibold text-foreground">Rezsi sablon tételek</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Új hónap indításához — minden háztartás saját listát állíthat be. Üres lista esetén a Rezsi oldalon a
-                          múlt havi másolás vagy kézi rögzítés használható.
-                        </p>
-                      </div>
-                      <UtilityTemplatesEditor
-                        value={utilityTemplates}
-                        onChange={setUtilityTemplates}
-                        isAdmin={isAdmin}
-                      />
-                    </div>
-
-                    {businessEnabled && (
-                      <div className="mt-6 space-y-3">
-                        <div>
-                          <h4 className="text-sm font-semibold text-foreground">Vállalkozás mezői</h4>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Ezek a listák jelennek meg a rendelés rögzítésénél — minden háztartás sajátot állíthat be.
-                          </p>
-                        </div>
-                        <BusinessOptionsEditor value={businessSettings} onChange={setBusinessSettings} />
-                      </div>
-                    )}
+                    </form>
                   </SettingsBlock>
-                </form>
+                </div>
               )}
 
-              <div className="flex flex-col gap-4">
+              <SettingsDivider label="Család" />
+
+              <div className="flex flex-col gap-5">
                 <SettingsSectionHeading
                   title="Családtagok"
                   description={
@@ -581,12 +601,12 @@ export default function SettingsClient() {
                   {user?.household?.users?.map((member) => {
                     const memberPermissions = member.permissions || [];
                     const isMemberAdmin = member.role === 'admin';
-                    const initials = `${(member.firstName || '?')[0]}${(member.lastName || '?')[0]}`.toUpperCase();
+                    const initials = formatDisplayInitials(member.firstName, member.lastName);
                     return (
                       <MemberCard
                         key={member.id}
                         initials={initials}
-                        name={`${member.firstName} ${member.lastName}`}
+                        name={formatDisplayName(member.firstName, member.lastName)}
                         username={member.username}
                         badges={
                           <>
@@ -606,7 +626,7 @@ export default function SettingsClient() {
                                 onChange={(e) => {
                                   const role = e.target.value as 'admin' | 'editor' | 'reader';
                                   patchMemberLocally(member.id, { role });
-                                  void updateMember(member.id, { role }, { silent: true });
+                                  void updateMember(member.id, { role });
                                 }}
                                 className="h-8 rounded-lg border border-border bg-input px-2.5 text-xs font-medium appearance-none focus:border-ring outline-none"
                               >
@@ -621,7 +641,7 @@ export default function SettingsClient() {
                                 onClick={() =>
                                   requestDelete({
                                     title: 'Tag törlése',
-                                    message: `Biztosan törlöd ${member.firstName} ${member.lastName} fiókját? A művelet visszavonhatatlan.`,
+                                    message: `Biztosan törlöd ${formatDisplayName(member.firstName, member.lastName)} fiókját? A művelet visszavonhatatlan.`,
                                     confirmText: 'Törlés',
                                     onConfirm: () => removeMember(member.id),
                                   })
@@ -632,7 +652,7 @@ export default function SettingsClient() {
                             </>
                           ) : undefined
                         }
-                        permissions={MODULES.map((mod) => {
+                        permissions={activeMemberModules.map((mod) => {
                           const hasAccess = isMemberAdmin || memberPermissions.includes(mod.id);
                           const Icon = mod.icon;
                           const disabled = !isAdmin || member.id === user?.id || isMemberAdmin;
@@ -668,19 +688,19 @@ export default function SettingsClient() {
                 >
                   <form id="new-member-form" onSubmit={handleAddMember} className="flex flex-col gap-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <FormField label="Keresztnév" info={HELP.settings.firstName}>
-                        <Input
-                          placeholder="Ildi"
-                          value={newMemberData.firstName}
-                          onChange={(e) => setNewMemberData({ ...newMemberData, firstName: e.target.value })}
-                          required
-                        />
-                      </FormField>
                       <FormField label="Vezetéknév" info={HELP.settings.lastName}>
                         <Input
                           placeholder="Kovács"
                           value={newMemberData.lastName}
                           onChange={(e) => setNewMemberData({ ...newMemberData, lastName: e.target.value })}
+                          required
+                        />
+                      </FormField>
+                      <FormField label="Keresztnév" info={HELP.settings.firstName}>
+                        <Input
+                          placeholder="Ildi"
+                          value={newMemberData.firstName}
+                          onChange={(e) => setNewMemberData({ ...newMemberData, firstName: e.target.value })}
                           required
                         />
                       </FormField>
@@ -732,7 +752,7 @@ export default function SettingsClient() {
                     <div className="space-y-2 pt-2 border-t border-border">
                       <FieldLabel info={HELP.settings.invitePermissions}>Alapértelmezett modul jogosultságok</FieldLabel>
                       <div className="flex flex-wrap gap-1.5">
-                        {MODULES.map((mod) => {
+                        {activeMemberModules.map((mod) => {
                           const Icon = mod.icon;
                           const active = newMemberData.permissions.includes(mod.id);
                           return (
@@ -760,67 +780,300 @@ export default function SettingsClient() {
             </>
           )}
 
-          {activeTab === 'categories' && (
+          {activeTab === 'modules' && (
             <>
               <SettingsSectionHeading
-                title="Kategóriák"
-                description="A költségvetésben használt címkék — strukturálják a kiadásokat és bevételeket."
-                badge={
-                  <StatusPill status="neutral" size="xs">
-                    {categories.length} db
-                  </StatusPill>
-                }
+                title="Modulok"
+                description="Kapcsold be, amit használsz. Ki kapcsolva a modul rejtve marad a menüben, az oldal nem elérhető, a vezérlőpult sem mutat hozzá kapcsolódó adatot."
               />
-              <SectionPanel title="Kategória lista" icon={FolderTree} tone="primary">
-                <div className="flex flex-col gap-5">
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (newCat.trim()) {
-                        addCategory(newCat.trim());
-                        setNewCat('');
-                      }
-                    }}
-                    className="flex flex-col gap-2 sm:flex-row sm:items-end rounded-xl border border-dashed border-border bg-muted/20 p-4"
+
+              {!isAdmin && (
+                <InsightBanner tone="info" icon={ShieldAlert} title="Csak megtekintés">
+                  A modulokat csak az adminisztrátor kapcsolhatja ki vagy be, és szerkesztheti a beállításaikat.
+                </InsightBanner>
+              )}
+
+              {isAdmin && (
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
+                  <ModuleFeatureCard
+                    title="Költségvetés"
+                    description="Havi bevételek, kiadások és kategóriák — a pénzügyi alapmodul."
+                    enabled={budgetEnabled}
+                    onToggle={() => setBudgetEnabled((v) => !v)}
+                    icon={<Wallet size={22} strokeWidth={2} />}
+                    iconClassName="bg-emerald-500/12 text-emerald-600 border border-emerald-500/20"
+                    footer={
+                      <Button type="button" onClick={() => void handleModuleSave('budget_enabled', budgetEnabled, setIsBudgetSaving, 'Költségvetés')} loading={isBudgetSaving} disabled={isBudgetSaving}>
+                        <Save size={13} />
+                        {isBudgetSaving ? 'Mentés…' : 'Költségvetés mentése'}
+                      </Button>
+                    }
                   >
-                    <div className="flex-1">
-                      <FormField label="Új kategória" info={HELP.settings.categoryName}>
+                    <SettingsDivider />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h5 className="text-sm font-semibold text-foreground">Kategóriák</h5>
+                      <StatusPill status="neutral" size="xs">
+                        {categories.length} db
+                      </StatusPill>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      A költségvetésben használt címkék — strukturálják a kiadásokat és bevételeket.
+                    </p>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (newCat.trim()) {
+                          addCategory(newCat.trim());
+                          setNewCat('');
+                        }
+                      }}
+                      className="flex flex-col gap-2 sm:flex-row sm:items-end rounded-xl border border-dashed border-border bg-muted/20 p-4"
+                    >
+                      <div className="flex-1">
+                        <FormField label="Új kategória" info={HELP.settings.categoryName}>
+                          <Input
+                            value={newCat}
+                            onChange={(e) => setNewCat(e.target.value)}
+                            placeholder="pl. Élelmiszer, Rezsi, Autó…"
+                            className="w-full bg-card"
+                          />
+                        </FormField>
+                      </div>
+                      <Button type="submit" className="shrink-0 sm:mb-0.5" disabled={!newCat.trim()}>
+                        <Plus size={13} /> Hozzáadás
+                      </Button>
+                    </form>
+                    {categories.length === 0 ? (
+                      <InsightBanner tone="info" icon={FolderTree} title="Még nincs kategória">
+                        Adj hozzá kategóriákat a költségvetésed strukturálásához — pl. Élelmiszer, Rezsi, Szórakozás.
+                      </InsightBanner>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {categories.map((cat) => (
+                          <CategoryTag
+                            key={cat}
+                            name={cat}
+                            onDelete={() =>
+                              requestDelete({
+                                title: 'Kategória törlése',
+                                message: `Biztosan törlöd a „${cat}" kategóriát? A meglévő tételek nem törlődnek.`,
+                                onConfirm: () => deleteCategory(cat),
+                              })
+                            }
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </ModuleFeatureCard>
+
+                  <ModuleFeatureCard
+                    title="Megtakarítás"
+                    description="Széf, bankszámlák és befektetések külön modulban."
+                    enabled={savingsEnabled}
+                    onToggle={() => setSavingsEnabled((v) => !v)}
+                    icon={<PiggyBank size={22} strokeWidth={2} />}
+                    iconClassName="bg-violet-500/12 text-violet-600 border border-violet-500/20"
+                    footer={
+                      <Button type="button" onClick={() => void handleSavingsSave()} loading={isSavingsSaving} disabled={isSavingsSaving}>
+                        <Save size={13} />
+                        {isSavingsSaving ? 'Mentés…' : 'Megtakarítás mentése'}
+                      </Button>
+                    }
+                  >
+                    <SavingsSettingsEditor value={savingsSettings} onChange={setSavingsSettings} />
+                  </ModuleFeatureCard>
+
+                  <ModuleFeatureCard
+                    title="Tartozások"
+                    description="Hitelek, kölcsönök és visszafizetési tervek."
+                    enabled={debtsEnabled}
+                    onToggle={() => setDebtsEnabled((v) => !v)}
+                    icon={<TrendingDown size={22} strokeWidth={2} />}
+                    iconClassName="bg-rose-500/12 text-rose-600 border border-rose-500/20"
+                    footer={
+                      <Button type="button" onClick={() => void handleDebtsSave()} loading={isDebtsSaving} disabled={isDebtsSaving}>
+                        <Save size={13} />
+                        {isDebtsSaving ? 'Mentés…' : 'Tartozások mentése'}
+                      </Button>
+                    }
+                  >
+                    <DebtsSettingsEditor value={debtsSettings} onChange={setDebtsSettings} />
+                  </ModuleFeatureCard>
+
+                  <ModuleFeatureCard
+                    title="Rezsi"
+                    description="Közüzemi számlák, megosztás és havi sablon tételek."
+                    enabled={utilitiesEnabled}
+                    onToggle={() => setUtilitiesEnabled((v) => !v)}
+                    icon={<Droplets size={22} strokeWidth={2} />}
+                    iconClassName="bg-sky-500/12 text-sky-600 border border-sky-500/20"
+                    footer={
+                      <Button type="button" onClick={() => void handleUtilitiesSave()} loading={isUtilitiesSaving} disabled={isUtilitiesSaving}>
+                        <Save size={13} />
+                        {isUtilitiesSaving ? 'Mentés…' : 'Rezsi mentése'}
+                      </Button>
+                    }
+                  >
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Rezsi megosztás</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">Közös számlák elszámolása partnerekkel.</p>
+                        </div>
+                        <Switch checked={utilitySplitEnabled} onCheckedChange={setUtilitySplitEnabled} aria-label="Rezsi megosztás" />
+                      </div>
+                      {utilitySplitEnabled && (
+                        <FormField label="Elszámolási partner" info={HELP.settings.splitPartner}>
+                          {utilityPartners.length === 0 ? (
+                            <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2.5">
+                              Nincs más tag. Először hozz létre egy családtagot a Háztartás fülön.
+                            </p>
+                          ) : (
+                            <select
+                              className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
+                              value={utilitySplitPartnerId || ''}
+                              onChange={(e) => setUtilitySplitPartnerId(e.target.value ? Number(e.target.value) : null)}
+                            >
+                              <option value="">Válassz partnert…</option>
+                              {utilityPartners.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {formatDisplayName(p.firstName, p.lastName)}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </FormField>
+                      )}
+                    </div>
+
+                    <SettingsDivider />
+
+                    <div>
+                      <h5 className="text-sm font-semibold text-foreground">Rezsi sablon tételek</h5>
+                      <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                        Rendszeres rezsi sorok — a Rezsi oldalon egy kattintással betölthetők.
+                      </p>
+                    </div>
+                    <UtilityTemplatesEditor
+                      value={utilityTemplates}
+                      onChange={setUtilityTemplates}
+                      isAdmin={isAdmin}
+                    />
+                  </ModuleFeatureCard>
+
+                  <ModuleFeatureCard
+                    title="Közműórák"
+                    description="Villany, gáz, víz fogyasztás és mérőállások."
+                    enabled={metersEnabled}
+                    onToggle={() => setMetersEnabled((v) => !v)}
+                    icon={<Gauge size={22} strokeWidth={2} />}
+                    iconClassName="bg-amber-500/12 text-amber-600 border border-amber-500/20"
+                    footer={
+                      <Button type="button" onClick={() => void handleMetersSave()} loading={isMetersSaving} disabled={isMetersSaving}>
+                        <Save size={13} />
+                        {isMetersSaving ? 'Mentés…' : 'Közműórák mentése'}
+                      </Button>
+                    }
+                  >
+                    <MetersSettingsEditor value={metersSettings} onChange={setMetersSettings} />
+                  </ModuleFeatureCard>
+
+                  <ModuleFeatureCard
+                    title="Vállalkozás"
+                    description="Rendelések nyilvántartása, csatornák és fizetési módok — Shopify import opcionálisan."
+                    enabled={businessEnabled}
+                    onToggle={() => setBusinessEnabled((v) => !v)}
+                    icon={<TrendingUp size={22} strokeWidth={2} />}
+                    iconClassName="bg-emerald-500/12 text-emerald-600 border border-emerald-500/20"
+                    footer={
+                      <Button type="button" onClick={() => void handleBusinessSave()} loading={isBusinessSaving} disabled={isBusinessSaving}>
+                        <Save size={13} />
+                        {isBusinessSaving ? 'Mentés…' : 'Vállalkozás mentése'}
+                      </Button>
+                    }
+                  >
+                    <div className="grid grid-cols-1 gap-4">
+                      <FormField label="Megjelenő név" info={HELP.settings.businessName}>
                         <Input
-                          value={newCat}
-                          onChange={(e) => setNewCat(e.target.value)}
-                          placeholder="pl. Élelmiszer, Rezsi, Autó…"
-                          className="w-full bg-card"
+                          value={businessName}
+                          onChange={(e) => setBusinessName(e.target.value)}
+                          placeholder="Pl. vállalkozás vagy webshop neve"
                         />
                       </FormField>
                     </div>
-                    <Button type="submit" className="shrink-0 sm:mb-0.5" disabled={!newCat.trim()}>
-                      <Plus size={13} /> Hozzáadás
-                    </Button>
-                  </form>
 
-                  {categories.length === 0 ? (
-                    <InsightBanner tone="info" icon={FolderTree} title="Még nincs kategória">
-                      Adj hozzá kategóriákat a költségvetésed strukturálásához — pl. Élelmiszer, Rezsi, Szórakozás.
-                    </InsightBanner>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {categories.map((cat) => (
-                        <CategoryTag
-                          key={cat}
-                          name={cat}
-                          onDelete={() =>
-                            requestDelete({
-                              title: 'Kategória törlése',
-                              message: `Biztosan törlöd a „${cat}" kategóriát? A meglévő tételek nem törlődnek.`,
-                              onConfirm: () => deleteCategory(cat),
-                            })
-                          }
+                    <SettingsDivider />
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h5 className="text-sm font-semibold text-foreground">Shopify import</h5>
+                          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                            Ha Shopify webshopod van, automatikusan importálhatod a rendeléseket. Kikapcsolva manuálisan rögzítheted őket.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={shopifyImportEnabled}
+                          onCheckedChange={setShopifyImportEnabled}
+                          disabled={!businessEnabled}
+                          aria-label="Shopify import"
                         />
-                      ))}
+                      </div>
+
+                      {shopifyImportEnabled && (
+                        <div className="grid grid-cols-1 gap-4 rounded-xl border border-border bg-muted/20 p-4">
+                          <FormField label="Shopify bolt URL" info={HELP.settings.shopifyUrl}>
+                            <Input
+                              value={shopifyShopUrl}
+                              onChange={(e) => setShopifyShopUrl(e.target.value)}
+                              placeholder="bolt-neve.myshopify.com"
+                            />
+                          </FormField>
+                          <FormField
+                            label="Admin API token"
+                            info={HELP.settings.shopifyToken}
+                            hint={
+                              hasShopifyToken
+                                ? 'Mentett token van — hagyd üresen, ha nem cseréled. Új token: shpat_ előtaggal.'
+                                : 'Kötelező az első mentésnél. A token shpat_ karakterekkel kezdődik.'
+                            }
+                          >
+                            <div className="relative">
+                              <Lock
+                                size={14}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                              />
+                              <Input
+                                type="password"
+                                className="pl-8 font-mono text-sm"
+                                value={shopifyAccessToken}
+                                onChange={(e) => setShopifyAccessToken(e.target.value)}
+                                placeholder={
+                                  hasShopifyToken
+                                    ? 'Üresen hagyva: megtartjuk a mentett tokent'
+                                    : 'shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+                                }
+                                autoComplete="new-password"
+                                spellCheck={false}
+                              />
+                            </div>
+                          </FormField>
+                        </div>
+                      )}
                     </div>
-                  )}
+
+                    <SettingsDivider />
+
+                    <div>
+                      <h5 className="text-sm font-semibold text-foreground">Vállalkozás mezői</h5>
+                      <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                        Csatornák, fizetési módok és szolgáltatók — ezek jelennek meg rendelés rögzítésénél.
+                      </p>
+                    </div>
+                    <BusinessOptionsEditor value={businessSettings} onChange={setBusinessSettings} />
+                  </ModuleFeatureCard>
                 </div>
-              </SectionPanel>
+              )}
             </>
           )}
         </motion.div>
