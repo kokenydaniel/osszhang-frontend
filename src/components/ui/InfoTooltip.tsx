@@ -30,9 +30,9 @@ export function InfoTooltip({
           type="button"
           className={cn(
             'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full',
-            'text-muted-foreground/70 hover:text-foreground hover:bg-muted/50 transition-colors',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-            open && 'bg-muted text-foreground',
+            'text-muted-foreground/75 hover:text-primary hover:bg-primary/8 transition-colors',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+            open && 'bg-primary/10 text-primary ring-1 ring-primary/15',
             className,
           )}
           aria-label={label}
@@ -48,14 +48,13 @@ export function InfoTooltip({
       </TooltipTrigger>
       <TooltipContent
         side={side}
-        sideOffset={6}
-        className={cn(
-          'z-[450] max-w-[min(20rem,calc(100vw-2rem))] text-left leading-relaxed font-normal whitespace-normal',
-          'pointer-events-auto',
-        )}
+        sideOffset={10}
+        className="z-[450] text-left whitespace-normal pointer-events-auto"
         onPointerDownOutside={() => setOpen(false)}
       >
-        {content}
+        <span className="block text-[13px] leading-[1.5] text-foreground/88">
+          {content}
+        </span>
       </TooltipContent>
     </Tooltip>
   );
