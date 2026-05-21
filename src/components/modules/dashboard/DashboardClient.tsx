@@ -9,8 +9,10 @@ import { useBusinessStore } from '@/stores/useBusinessStore';
 import { useDebtsStore } from '@/stores/useDebtsStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { formatHUF } from '@/utils';
+import { formatDisplayInitials, formatDisplayName, formatGivenName } from '@/lib/personName';
 import { isLegacySettlementBill } from '@/lib/utilityBills';
 import { computeUtilityNetBalance } from '@/lib/utilityBalance';
+import { ourUtilityPortion, resolveUtilitySplitLabels } from '@/lib/utilityViewer';
 import { LedgerEntry } from '@/types';
 import Link from 'next/link';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -18,6 +20,7 @@ import { ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, AreaChart, A
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { HELP } from '@/lib/helpTexts';
+import { canAccessModule } from '@/lib/moduleAccess';
 import {
   PageHeader,
   MetricStrip,
@@ -68,23 +71,16 @@ type Investment = {
 export default function DashboardClient() {
   const { user, aiDashboardAdvice, lastAiFingerprint, setAiDashboardAdvice } = useAuthStore();
   const isAdmin = user?.role === 'admin';
-  const userPermissions = user?.permissions || [];
-  const hasPermission = (mod: string) => isAdmin || userPermissions.includes(mod);
+  const canUse = (mod: string) => canAccessModule(user, mod as Parameters<typeof canAccessModule>[1]);
 
-  const businessEnabled =
-    (user?.household?.businessEnabled ?? user?.household?.business_enabled ?? false) && hasPermission('business');
+  const businessEnabled = canUse('business');
   const businessName = user?.household?.businessName ?? user?.household?.business_name ?? 'Vállalkozás';
   const utilitySplitEnabled =
-    (user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? false) &&
-    hasPermission('utilities');
+    canUse('utilities') &&
+    (user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? false);
 
-  const partnerId = user?.household?.utilitySplitPartnerId ?? user?.household?.utility_split_partner_id;
-  const partnerUser =
-    user?.id && partnerId && Number(user.id) === Number(partnerId)
-      ? user?.household?.users?.find((hu) => Number(hu.id) !== Number(user.id))
-      : user?.household?.users?.find((hu) => Number(hu.id) === Number(partnerId)) ||
-        user?.household?.users?.find((hu) => Number(hu.id) !== Number(user.id));
-  const partnerName = partnerUser?.firstName || 'Családtag';
+  const utilityLabels = useMemo(() => resolveUtilitySplitLabels(user), [user]);
+  const { onHouseholdSide, partnerId, counterpartyLabel } = utilityLabels;
 
   const householdName = user?.household?.name || 'Otthon';
   const householdMembers = user?.household?.users || [];
@@ -144,18 +140,15 @@ export default function DashboardClient() {
     }, 0) +
     monthBills
       .filter((b) => !!b.paidDate)
-      .reduce((sum, b) => {
-        const isOurPrivate = isAdmin ? b.splitRule === 'dani-private' : b.splitRule === 'ildi-private';
-        const ourPortion = b.splitRule === 'shared' ? b.total / 2 : isOurPrivate ? b.total : 0;
-        return sum + ourPortion;
-      }, 0);
+      .reduce((sum, b) => sum + ourUtilityPortion(b, onHouseholdSide, utilitySplitEnabled), 0);
 
   const monthlyBalance = incomeReceived - actualSpent;
   const isOverspentThisMonth = monthlyBalance < 0;
 
   const { netBalance: rawRezsiBalance } = computeUtilityNetBalance(
     monthBills,
-    isAdmin,
+    user?.id,
+    partnerId,
     utilitySplitEnabled,
   );
   const rezsiBalance = monthSettlement ? 0 : rawRezsiBalance;
@@ -259,7 +252,7 @@ export default function DashboardClient() {
   const manualBalance = user?.household?.manualBalance ?? user?.household?.manual_balance ?? 0;
 
   const unpaidExpensesTotal =
-    (hasPermission('budget')
+    (canUse('budget')
       ? monthExpenses
           .filter((t) => !t.paidDate)
           .reduce((s, t) => {
@@ -270,16 +263,13 @@ export default function DashboardClient() {
             return s + t.amount;
           }, 0)
       : 0) +
-    (hasPermission('utilities')
-      ? monthBills.filter((b) => !b.paidDate).reduce((s, b) => {
-          const isOurPrivate = isAdmin ? b.splitRule === 'dani-private' : b.splitRule === 'ildi-private';
-          return s + (b.splitRule === 'shared' ? b.total / 2 : isOurPrivate ? b.total : 0);
-        }, 0)
+    (canUse('utilities')
+      ? monthBills.filter((b) => !b.paidDate).reduce((s, b) => s + ourUtilityPortion(b, onHouseholdSide, utilitySplitEnabled), 0)
       : 0);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const overdueExpensesTotal =
-    (hasPermission('budget')
+    (canUse('budget')
       ? monthExpenses
           .filter((t) => !t.paidDate && t.dueDate < todayStr)
           .reduce((s, t) => {
@@ -290,19 +280,16 @@ export default function DashboardClient() {
             return s + t.amount;
           }, 0)
       : 0) +
-    (hasPermission('utilities')
+    (canUse('utilities')
       ? monthBills
           .filter((b) => !b.paidDate && b.dueDate < todayStr)
-          .reduce((s, b) => {
-            const isOurPrivate = isAdmin ? b.splitRule === 'dani-private' : b.splitRule === 'ildi-private';
-            return s + (b.splitRule === 'shared' ? b.total / 2 : isOurPrivate ? b.total : 0);
-          }, 0)
+          .reduce((s, b) => s + ourUtilityPortion(b, onHouseholdSide, utilitySplitEnabled), 0)
       : 0);
 
   const maradt = Number(manualBalance) - unpaidExpensesTotal;
 
   const unpaidItemsList = [
-    ...(hasPermission('budget')
+    ...(canUse('budget')
       ? monthExpenses.filter((t) => !t.paidDate).map((t) => ({
           id: t.id as number,
           type: 'expense' as const,
@@ -315,10 +302,9 @@ export default function DashboardClient() {
           category: t.category,
         }))
       : []),
-    ...(hasPermission('utilities')
+    ...(canUse('utilities')
       ? monthBills.filter((b) => !b.paidDate).map((b) => {
-          const isOurPrivate = isAdmin ? b.splitRule === 'dani-private' : b.splitRule === 'ildi-private';
-          const ourPortion = b.splitRule === 'shared' ? b.total / 2 : isOurPrivate ? b.total : 0;
+          const ourPortion = ourUtilityPortion(b, onHouseholdSide, utilitySplitEnabled);
           return { id: b.id as number, type: 'bill' as const, description: `${b.type} számla`, amount: ourPortion, dueDate: b.dueDate, category: 'Rezsi' };
         })
       : []),
@@ -342,10 +328,10 @@ export default function DashboardClient() {
       setIsAiLoading(true);
       try {
         const promises = [];
-        if (hasPermission('budget')) promises.push(fetchAiWeeklyBriefing());
-        if (hasPermission('utilities')) promises.push(fetchAiUtilityAnomalies(selectedYear, selectedMonth));
+        if (canUse('budget')) promises.push(fetchAiWeeklyBriefing());
+        if (canUse('utilities')) promises.push(fetchAiUtilityAnomalies(selectedYear, selectedMonth));
         await Promise.all(promises);
-        if (hasPermission('budget') && aiWeeklyBriefing?.briefing_text) {
+        if (canUse('budget') && aiWeeklyBriefing?.briefing_text) {
           setAiDashboardAdvice(aiWeeklyBriefing.briefing_text, currentFingerprint);
         } else {
           setAiDashboardAdvice('A havi egyenleg stabil.', currentFingerprint);
@@ -374,14 +360,11 @@ export default function DashboardClient() {
         .reduce((s, t) => s + t.amount, 0);
       const billTotal = bills
         .filter((b) => b.dueDate.startsWith(prefix) && b.paidDate)
-        .reduce((s, b) => {
-          const isOurPrivate = isAdmin ? b.splitRule === 'dani-private' : b.splitRule === 'ildi-private';
-          return s + (b.splitRule === 'shared' ? b.total / 2 : isOurPrivate ? b.total : 0);
-        }, 0);
+        .reduce((s, b) => s + ourUtilityPortion(b, onHouseholdSide, utilitySplitEnabled), 0);
       result.push(txTotal + billTotal);
     }
     return result;
-  }, [transactions, bills, isAdmin]);
+  }, [transactions, bills, onHouseholdSide, utilitySplitEnabled]);
 
   const last6MonthsIncome = useMemo(() => {
     const result: number[] = [];
@@ -413,7 +396,7 @@ export default function DashboardClient() {
   }, [orders]);
 
   const primaryMetrics: MetricItem[] = [];
-  if (hasPermission('budget')) {
+  if (canUse('budget')) {
     primaryMetrics.push(
       {
         label: 'Egyenleg',
@@ -454,7 +437,7 @@ export default function DashboardClient() {
   }
 
   const secondaryMetrics: MetricItem[] = [];
-  if (hasPermission('savings')) {
+  if (canUse('savings')) {
     secondaryMetrics.push({
       label: 'Vagyon',
       value: formatHUF(totalSavings),
@@ -476,14 +459,14 @@ export default function DashboardClient() {
       sparkline: businessSparkline.length > 1 ? businessSparkline : undefined,
     });
   }
-  if (hasPermission('utilities')) {
+  if (canUse('utilities')) {
     secondaryMetrics.push({
       label: utilitySplitEnabled ? 'Rezsi mérleg' : 'Havi rezsi',
       value: utilitySplitEnabled ? `${rezsiBalance >= 0 ? '+' : ''}${formatHUF(rezsiBalance)}` : formatHUF(totalBillsThisMonth),
       info: HELP.dashboard.utilities,
       hint: utilitySplitEnabled
         ? rezsiBalance > 0
-          ? `${partnerName} tartozik`
+          ? `${counterpartyLabel} tartozik`
           : rezsiBalance < 0
             ? 'Te tartozol'
             : 'Rendezve'
@@ -492,7 +475,7 @@ export default function DashboardClient() {
       tone: utilitySplitEnabled ? (rezsiBalance < 0 ? 'danger' : rezsiBalance > 0 ? 'success' : 'default') : 'default',
     });
   }
-  if (hasPermission('debts')) {
+  if (canUse('debts')) {
     secondaryMetrics.push({
       label: 'Tartozások',
       value: formatHUF(externalDebts),
@@ -533,7 +516,7 @@ export default function DashboardClient() {
     <div className="flex flex-col gap-7 w-full max-w-[1500px] mx-auto">
       <PageHeader
         breadcrumbs={[{ label: 'Háztartás' }, { label: householdName }]}
-        title={`${greeting}, ${user?.firstName || 'Gazda'}`}
+        title={`${greeting}, ${formatGivenName(user?.firstName) || 'Gazda'}`}
         description={
           <span className="inline-flex items-center gap-2">
             <GreetingIcon size={14} className="text-primary" />
@@ -548,11 +531,11 @@ export default function DashboardClient() {
               <span className="text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground">Család</span>
               <div className="flex -space-x-1.5">
                 {householdMembers.slice(0, 5).map((member: { id: number; firstName?: string; lastName?: string }) => {
-                  const mi = ((member.firstName || '?')[0] + (member.lastName || '?')[0]).toUpperCase();
+                  const mi = formatDisplayInitials(member.firstName, member.lastName);
                   return (
                     <div
                       key={member.id}
-                      title={`${member.firstName || ''} ${member.lastName || ''}`.trim()}
+                      title={formatDisplayName(member.firstName, member.lastName)}
                       className="h-6 w-6 rounded-full bg-muted text-[0.6rem] font-semibold text-foreground flex items-center justify-center ring-2 ring-background"
                     >
                       {mi}
@@ -566,18 +549,18 @@ export default function DashboardClient() {
       />
 
       {/* Alert banners */}
-      {(unpaidBills.length > 0 && hasPermission('utilities')) || (utilitySplitEnabled && rezsiBalance !== 0 && hasPermission('utilities')) ? (
+      {(unpaidBills.length > 0 && canUse('utilities')) || (utilitySplitEnabled && rezsiBalance !== 0 && canUse('utilities')) ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {unpaidBills.length > 0 && hasPermission('utilities') && (
+          {unpaidBills.length > 0 && canUse('utilities') && (
             <AccentPanel tone="danger" icon={AlertCircle} title="Lejárt rezsi várakozik" description={`${unpaidBills.length} kifizetetlen rezsi-tétel`}>
               Kattints a tételre a kifizetés rögzítéséhez lent.
             </AccentPanel>
           )}
-          {utilitySplitEnabled && rezsiBalance !== 0 && hasPermission('utilities') && (
+          {utilitySplitEnabled && rezsiBalance !== 0 && canUse('utilities') && (
             <AccentPanel
               tone={rezsiBalance < 0 ? 'warning' : 'success'}
               icon={Users}
-              title={rezsiBalance < 0 ? `Tartozásod van ${partnerName}-nek` : `${partnerName} tartozik neked`}
+              title={rezsiBalance < 0 ? `Tartozásod van — ${counterpartyLabel}` : `${counterpartyLabel} tartozik neked`}
               description={`Aktuális rezsi-egyenleg: ${formatHUF(Math.abs(rezsiBalance))}`}
               action={
                 <Link href="/utilities" className="text-xs font-medium text-primary hover:underline shrink-0 inline-flex items-center gap-0.5">
@@ -607,11 +590,11 @@ export default function DashboardClient() {
       <div
         className={cn(
           'grid grid-cols-1 gap-6',
-          hasPermission('budget') ? 'lg:grid-cols-5' : 'lg:grid-cols-2',
+          canUse('budget') ? 'lg:grid-cols-5' : 'lg:grid-cols-2',
         )}
       >
         {/* Upcoming payments */}
-        {hasPermission('budget') && (
+        {canUse('budget') && (
           <div className="lg:col-span-3">
             <Section
               title="Közelgő befizetések"
@@ -711,7 +694,7 @@ export default function DashboardClient() {
         )}
 
         {/* Utility bills snapshot (visible to utilities users w/o budget) */}
-        {!hasPermission('budget') && hasPermission('utilities') && (
+        {!canUse('budget') && canUse('utilities') && (
           <Section
             title="Aktuális rezsi"
             description={`${monthBills.length} számla ebben a hónapban`}
@@ -776,8 +759,8 @@ export default function DashboardClient() {
         )}
 
         {/* Side column */}
-        <div className={cn('flex flex-col gap-6', hasPermission('budget') ? 'lg:col-span-2' : '')}>
-          {hasPermission('meters') && consumptionData.length > 0 && (
+        <div className={cn('flex flex-col gap-6', canUse('budget') ? 'lg:col-span-2' : '')}>
+          {canUse('meters') && consumptionData.length > 0 && (
             <Section
               title="Közműfogyasztás"
               description="Aktuális havi értékek"
@@ -842,7 +825,7 @@ export default function DashboardClient() {
             </Section>
           )}
 
-          {hasPermission('savings') && (
+          {canUse('savings') && (
             <Section
               title="Állampapír kifizetések"
               description="Soron következő kamatok"
@@ -937,7 +920,7 @@ export default function DashboardClient() {
       )}
 
       {/* Footer AI advice (subtle) */}
-      {aiDashboardAdvice && hasPermission('budget') && (
+      {aiDashboardAdvice && canUse('budget') && (
         <AccentPanel
           tone="ai"
           icon={Sparkles}

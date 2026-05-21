@@ -17,6 +17,13 @@ import { FormChoiceCard } from '@/components/ui/FormChoiceCard';
 import { HELP } from '@/lib/helpTexts';
 import { resolveUtilityTemplates } from '@/lib/utilityTemplates';
 import { computeUtilityNetBalance } from '@/lib/utilityBalance';
+import {
+  otherPrivateRule,
+  payerSideLabel,
+  privateRuleOwnerLabel,
+  resolveUtilitySplitLabels,
+  viewerPrivateRule,
+} from '@/lib/utilityViewer';
 import { useBudgetStore } from '@/stores/useBudgetStore';
 import { cn } from '@/lib/utils';
 import { ClickableSelect } from '@/components/ui/clickable-select';
@@ -55,7 +62,72 @@ import {
   Copy,
   LayoutTemplate,
   Undo2,
+  ArrowRight,
 } from 'lucide-react';
+
+const settlementActionClass =
+  'w-full lg:w-auto h-9 lg:h-8 min-h-9 lg:min-h-8 px-4 lg:px-3 gap-2 lg:gap-1.5 rounded-lg text-xs font-semibold shadow-sm justify-center lg:justify-start';
+
+function metricDebtHint(label: string, amount: number) {
+  return (
+    <span className="inline-flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+      <span>{label}</span>
+      <span className="whitespace-nowrap font-medium tabular-nums text-foreground/75">{formatHUF(amount)}</span>
+    </span>
+  );
+}
+
+function SettleDebtButton({
+  loading,
+  onClick,
+}: {
+  loading: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      loading={loading}
+      onClick={onClick}
+      className={cn(
+        settlementActionClass,
+        'border-emerald-300/90 bg-gradient-to-b from-emerald-50 to-white text-emerald-800',
+        'hover:border-emerald-400 hover:from-emerald-100/90 hover:to-emerald-50/50 hover:text-emerald-900',
+        'active:scale-[0.98] shadow-emerald-500/10',
+      )}
+    >
+      {!loading && <UserCheck size={14} strokeWidth={2.4} className="shrink-0 text-emerald-600" />}
+      <span className="truncate">{loading ? 'Elszámolás…' : 'Tartozás rendezése'}</span>
+      {!loading ? <ArrowRight size={12} strokeWidth={2.5} className="hidden lg:block shrink-0 opacity-70" /> : null}
+    </Button>
+  );
+}
+
+function UnsettleDebtButton({
+  loading,
+  onClick,
+}: {
+  loading: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      loading={loading}
+      onClick={onClick}
+      className={cn(
+        settlementActionClass,
+        'border-border/80 bg-background/90 text-muted-foreground font-medium',
+        'hover:bg-muted/40 hover:text-foreground',
+      )}
+    >
+      {!loading && <Undo2 size={12} strokeWidth={2.3} />}
+      Visszavonás
+    </Button>
+  );
+}
 
 export default function UtilitiesClient() {
   const {
@@ -85,18 +157,21 @@ export default function UtilitiesClient() {
   const { pending: cloning, run: runClone } = useAsyncAction();
   const { pending: templating, run: runTemplates } = useAsyncAction();
   const { wrap: wrapBillPending, isPending: isBillPending } = usePendingIds();
-  const myName = user?.firstName || 'Mi';
-  const partnerId = user?.household?.utilitySplitPartnerId ?? user?.household?.utility_split_partner_id;
-  const partnerUser =
-    user?.id && partnerId && Number(user.id) === Number(partnerId)
-      ? user?.household?.users?.find((hu) => Number(hu.id) !== Number(user.id))
-      : user?.household?.users?.find((hu) => Number(hu.id) === Number(partnerId)) ||
-        user?.household?.users?.find((hu) => Number(hu.id) !== Number(user.id));
-  const partnerName = partnerUser?.firstName || 'Családtag';
+  const utilityLabels = useMemo(() => resolveUtilitySplitLabels(user), [user]);
+  const {
+    onHouseholdSide,
+    partnerId,
+    counterpartyLabel,
+    householdPayerLabel,
+    partnerPayerLabel,
+    householdSideLabel,
+    partnerSideLabel,
+    splitPartnerUser,
+  } = utilityLabels;
   const utilityTemplates = resolveUtilityTemplates(user?.household);
 
-  const ourSplitRule: UtilitySplitRule = isAdmin ? 'dani-private' : 'ildi-private';
-  const partnerSplitRule: UtilitySplitRule = isAdmin ? 'ildi-private' : 'dani-private';
+  const ourSplitRule = viewerPrivateRule(onHouseholdSide);
+  const partnerSplitRule = otherPrivateRule(onHouseholdSide);
 
   const settlementOptions = useMemo(
     () =>
@@ -110,20 +185,20 @@ export default function UtilitiesClient() {
         },
         {
           id: ourSplitRule,
-          title: `${myName} fizeti egyedül`,
+          title: `${onHouseholdSide ? 'Te (háztartás)' : 'Te'} fizeti egyedül`,
           description: HELP.utilities.settlementMine,
           example: 'Pl. saját előfizetés, csak te használod',
           icon: User,
         },
         {
           id: partnerSplitRule,
-          title: `${partnerName} fizeti egyedül`,
+          title: `${onHouseholdSide ? partnerSideLabel : householdSideLabel} fizeti egyedül`,
           description: HELP.utilities.settlementPartner,
           example: 'Pl. a partner saját költsége — nálad csak nyilvántartás',
           icon: User,
         },
       ] as const,
-    [myName, partnerName, ourSplitRule, partnerSplitRule],
+    [onHouseholdSide, partnerSideLabel, householdSideLabel, ourSplitRule, partnerSplitRule],
   );
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -134,8 +209,10 @@ export default function UtilitiesClient() {
   const [splitRule, setSplitRule] = useState<UtilitySplitRule>('shared');
 
   useEffect(() => {
-    fetchBills();
-  }, [fetchBills]);
+    if (bills.length === 0 && settlements.length === 0) {
+      fetchBills();
+    }
+  }, [bills.length, settlements.length, fetchBills]);
 
   useEffect(() => {
     fetchAiUtilityAnomalies(selectedYear, selectedMonth);
@@ -202,7 +279,7 @@ export default function UtilitiesClient() {
     wePaidGrandTotal,
     partnerPaidGrandTotal,
     netBalance: rawNetBalance,
-  } = computeUtilityNetBalance(filteredBills, isAdmin, utilitySplitEnabled);
+  } = computeUtilityNetBalance(filteredBills, user?.id, partnerId, utilitySplitEnabled);
 
   const netBalance = monthSettlement ? 0 : rawNetBalance;
 
@@ -244,10 +321,9 @@ export default function UtilitiesClient() {
         </StatusPill>
       );
     }
-    const isOurPrivate = isAdmin ? rule === 'dani-private' : rule === 'ildi-private';
     return (
       <StatusPill status="neutral" size="xs">
-        <User size={9} strokeWidth={2.4} /> {isOurPrivate ? 'Te' : partnerName}
+        <User size={9} strokeWidth={2.4} /> {privateRuleOwnerLabel(rule, utilityLabels)}
       </StatusPill>
     );
   };
@@ -264,7 +340,7 @@ export default function UtilitiesClient() {
             : rawNetBalance === 0
               ? 'Nincs tartozás'
               : rawNetBalance > 0
-                ? `${partnerName} tartozik`
+                ? `${counterpartyLabel} tartozik`
                 : 'Te tartozol',
           value: monthSettlement
             ? 'Rendezve'
@@ -282,40 +358,24 @@ export default function UtilitiesClient() {
           emphasis: true,
           action:
             monthSettlement && isAdmin ? (
-              <Button
-                variant="ghost"
-                size="xs"
-                loading={unsettling}
-                onClick={handleUnsettle}
-                className="text-[0.7rem] -mr-1"
-              >
-                {!unsettling && <Undo2 size={11} />} Visszavonás
-              </Button>
+              <UnsettleDebtButton loading={unsettling} onClick={handleUnsettle} />
             ) : !monthSettlement && rawNetBalance !== 0 && isAdmin ? (
-              <Button
-                variant="ghost"
-                size="xs"
-                loading={settling}
-                onClick={handleSettlement}
-                className="text-[0.7rem] -mr-1"
-              >
-                {!settling && <UserCheck size={11} />} {settling ? 'Elszámolás…' : 'Tartozás rendezése'}
-              </Button>
+              <SettleDebtButton loading={settling} onClick={handleSettlement} />
             ) : undefined,
         },
         {
           label: `Te fizettél`,
           value: formatHUF(wePaidGrandTotal),
           info: HELP.utilities.wePaid,
-          hint: `${partnerName} tartozása: ${formatHUF(partnerOwesUsTotal)}`,
+          hint: metricDebtHint(`${counterpartyLabel} tartozása:`, partnerOwesUsTotal),
           icon: Receipt,
           tone: 'primary',
         },
         {
-          label: `${partnerName} fizetett`,
+          label: `${counterpartyLabel} fizetett`,
           value: formatHUF(partnerPaidGrandTotal),
           info: HELP.utilities.partnerPaid,
-          hint: `Te tartozol: ${formatHUF(weOwePartnerTotal)}`,
+          hint: metricDebtHint('Te tartozol:', weOwePartnerTotal),
           icon: Receipt,
           tone: 'info',
         },
@@ -444,7 +504,7 @@ export default function UtilitiesClient() {
               tone={row.paidBy ? 'success' : 'warning'}
               title={
                 row.paidBy
-                  ? `${isAdmin ? (row.paidBy === 'Mi' ? 'Te' : partnerName) : row.paidBy === 'Mi' ? partnerName : 'Te'} fizette — kattints a módosításhoz`
+                  ? `${payerSideLabel(row.paidBy, utilityLabels)} fizette — kattints a módosításhoz`
                   : 'Ki fizette? Válassz a legördülőből'
               }
               disabled={isReader || isBillPending(row.id)}
@@ -460,8 +520,8 @@ export default function UtilitiesClient() {
               }}
               options={[
                 { value: 'Fizetendő', label: 'Függőben' },
-                { value: 'Mi', label: isAdmin ? 'Te' : partnerName },
-                { value: 'Ildi', label: isAdmin ? partnerName : 'Te' },
+                { value: 'Mi', label: householdPayerLabel },
+                { value: 'Ildi', label: partnerPayerLabel },
               ]}
             />
           );
@@ -582,9 +642,7 @@ export default function UtilitiesClient() {
           description={monthSettlement.summary}
           action={
             isAdmin ? (
-              <Button variant="ghost" size="xs" loading={unsettling} onClick={handleUnsettle}>
-                {!unsettling && <Undo2 size={11} />} Visszavonás
-              </Button>
+              <UnsettleDebtButton loading={unsettling} onClick={handleUnsettle} />
             ) : undefined
           }
         >
@@ -611,7 +669,7 @@ export default function UtilitiesClient() {
         </AccentPanel>
       )}
 
-      {utilitySplitEnabled && !partnerUser && (
+      {utilitySplitEnabled && !splitPartnerUser && (
         <InsightBanner tone="warning" icon={AlertTriangle} title="A rezsimegosztás be van kapcsolva">
           Nincs másik tag regisztrálva. Hívj meg egy családtagot a Beállítások oldalon. A felület most a fallback{' '}
           <i>&quot;Családtag&quot;</i> nevet használja.
@@ -708,7 +766,7 @@ export default function UtilitiesClient() {
             <div className="space-y-2">
               <p className="text-xs font-medium text-foreground">Ki fizeti ezt a számlát?</p>
               <FieldHint className="-mt-1">
-                A választás alapján számolódik a havi rezsi-mérleg ({myName} ↔ {partnerName}).
+                A választás alapján számolódik a havi rezsi-mérleg ({householdSideLabel} ↔ {partnerSideLabel}).
               </FieldHint>
               <div className="grid gap-2" role="radiogroup" aria-label="Elszámolás módja">
                 {settlementOptions.map((opt) => {

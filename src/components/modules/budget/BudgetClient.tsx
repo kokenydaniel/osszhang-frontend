@@ -18,6 +18,7 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { FieldHint } from '@/components/ui/FieldHint';
 import { FormChoiceCard } from '@/components/ui/FormChoiceCard';
 import { HELP } from '@/lib/helpTexts';
+import { isUtilityHouseholdSide, ourUtilityPortion } from '@/lib/utilityViewer';
 import { cn } from '@/lib/utils';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import { useAsyncAction, usePendingIds } from '@/hooks/useAsyncAction';
@@ -76,10 +77,9 @@ export default function BudgetClient() {
   const { bills } = useUtilitiesStore();
   const { user, updateManualBalance } = useAuthStore();
   const utilitySplitEnabled = user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? false;
-  const getBillPortion = (b: UtilityBill) => {
-    if (!utilitySplitEnabled) return b.total;
-    return b.splitRule === 'shared' ? b.total / 2 : b.splitRule === 'dani-private' ? b.total : 0;
-  };
+  const partnerId = user?.household?.utilitySplitPartnerId ?? user?.household?.utility_split_partner_id;
+  const onHouseholdSide = isUtilityHouseholdSide(user?.id, partnerId);
+  const getBillPortion = (b: UtilityBill) => ourUtilityPortion(b, onHouseholdSide, utilitySplitEnabled);
   const { selectedMonth, selectedYear } = usePreferenceStore();
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
   const { pending: cloning, run: runClone } = useAsyncAction();
