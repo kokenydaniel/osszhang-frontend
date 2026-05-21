@@ -2,13 +2,17 @@ import { create } from 'zustand';
 import { SavingsAccount, AiSavingsPlan, LedgerEntry, Investment } from '@/types';
 import { savingsClient, investmentsClient, aiFinanceClient } from '@/api';
 
+interface SavingsFetchOptions {
+  silent?: boolean;
+}
+
 interface SavingsState {
   savings: SavingsAccount[];
   investments: Investment[];
   aiSavingsPlan: AiSavingsPlan | null;
   isLoading: boolean;
 
-  fetchSavings: () => Promise<void>;
+  fetchSavings: (options?: SavingsFetchOptions) => Promise<void>;
   addSavingsAccount: (s: Omit<SavingsAccount, 'id' | 'ledger'>) => Promise<void>;
   updateSavingsAccount: (id: number, s: Partial<Omit<SavingsAccount, 'id' | 'ledger'>>) => Promise<void>;
   deleteSavingsAccount: (id: number) => Promise<void>;
@@ -17,7 +21,7 @@ interface SavingsState {
   updateLedgerEntry: (savingsId: number, entryId: number, entry: Partial<Omit<LedgerEntry, 'id'>>) => Promise<void>;
   deleteLedgerEntry: (savingsId: number, entryId: number) => Promise<void>;
   
-  fetchInvestments: () => Promise<void>;
+  fetchInvestments: (options?: SavingsFetchOptions) => Promise<void>;
   addInvestment: (i: Omit<Investment, 'id'>) => Promise<void>;
   updateInvestment: (id: number, i: Partial<Omit<Investment, 'id'>>) => Promise<void>;
   deleteInvestment: (id: number) => Promise<void>;
@@ -34,10 +38,10 @@ export const useSavingsStore = create<SavingsState>((set, get) => ({
   aiSavingsPlan: null,
   isLoading: false,
 
-  fetchSavings: async () => {
+  fetchSavings: async (options) => {
     set({ isLoading: true });
     try {
-      const res = await savingsClient.getAll();
+      const res = await savingsClient.getAll({ silent: options?.silent });
       set({ savings: res.data });
     } catch (e) {
       console.error('Failed to fetch savings', e);
@@ -93,10 +97,10 @@ export const useSavingsStore = create<SavingsState>((set, get) => ({
     });
   },
 
-  fetchInvestments: async () => {
+  fetchInvestments: async (options) => {
     set({ isLoading: true });
     try {
-      const res = await investmentsClient.getAll();
+      const res = await investmentsClient.getAll({ silent: options?.silent });
       set({ investments: res.data });
     } catch (e) {
       console.error('Failed to fetch investments', e);

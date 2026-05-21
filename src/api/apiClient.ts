@@ -1,6 +1,12 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    silent?: boolean;
+  }
+}
+
 /**
  * PénzPilot Central API Client (Axios Instance)
  * Unified endpoint routing with token injects and standard response interceptors.
@@ -35,7 +41,9 @@ apiClient.interceptors.response.use(
     const { addNotification } = useNotificationStore.getState();
     
     if (!error.response) {
-      addNotification('Hálózati hiba! Ellenőrizd az internetkapcsolatot.', 'error');
+      if (!error.config?.silent) {
+        addNotification('Hálózati hiba! Ellenőrizd az internetkapcsolatot.', 'error');
+      }
       return Promise.reject(error);
     }
 

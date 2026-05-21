@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { UserProfile, RawApiUser } from '@/types';
 import { authClient, householdClient } from '@/api';
+import { resetRouteDataCache } from '@/lib/loadRouteData';
 import { useNotificationStore } from './useNotificationStore';
 import { mapHouseholdFromApi } from '@/lib/mapHousehold';
 import { mapUserFromApi } from '@/lib/mapUser';
@@ -30,7 +31,7 @@ interface AuthState {
   updateMember: (
     userId: number,
     data: { role?: string; permissions?: string[] },
-    options?: { silent?: boolean },
+    options?: { successMessage?: string; errorMessage?: string },
   ) => Promise<void>;
   removeMember: (userId: number) => Promise<void>;
   addInvitation: (inv: Omit<{ id: number; email: string; permissions: string[]; status: string }, 'id'>) => Promise<void>;
@@ -41,8 +42,18 @@ interface AuthState {
   updateHouseholdSettings: (data: {
     name?: string;
     manual_balance?: number;
+    budget_enabled?: boolean;
+    savings_enabled?: boolean;
+    debts_enabled?: boolean;
+    utilities_enabled?: boolean;
+    meters_enabled?: boolean;
+    savings_settings?: import('@/lib/savingsSettings').SavingsSettings;
+    debts_settings?: import('@/lib/debtsSettings').DebtsSettings;
+    meters_settings?: import('@/lib/metersSettings').MetersSettings;
+    onboarding_completed?: boolean;
     business_enabled?: boolean;
     business_name?: string;
+    shopify_import_enabled?: boolean;
     shopify_shop_url?: string;
     shopify_access_token?: string;
     has_shopify_token?: boolean;
@@ -177,11 +188,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   updateMember: async (userId, data, options) => {
     const { addNotification } = useNotificationStore.getState();
-    const silent = options?.silent ?? false;
+    const successMessage =
+      options?.successMessage ??
+      (data.role !== undefined ? 'Szerepkör mentve.' : 'Jogosultság mentve.');
+    const errorMessage = options?.errorMessage ?? 'A mentés nem sikerült.';
     const previousUsers = get().user?.household?.users;
     try {
       await householdClient.updateMember(userId, data);
-      if (!silent) addNotification('Tag adatai frissítve!', 'success');
+      addNotification(successMessage, 'success');
     } catch {
       const currentUser = get().user;
       if (currentUser?.household && previousUsers) {
@@ -193,7 +207,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
       }
       await get().fetchMe();
-      if (!silent) addNotification('Hiba történt a mentés során.', 'error');
+      addNotification(errorMessage, 'error');
     }
   },
 
@@ -270,6 +284,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (e) {
       console.error('Logout API failed', e);
     } finally {
+      resetRouteDataCache();
       if (typeof window !== 'undefined') {
         localStorage.removeItem('auth_token');
         window.location.href = '/login';
