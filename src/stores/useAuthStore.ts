@@ -208,7 +208,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           },
         });
       }
-      addNotification('Tag eltávolítva a háztartásból.', 'success');
+      addNotification('Tag fiókja törölve.', 'success');
     } catch (e) {
       addNotification('Hiba történt az eltávolítás során.', 'error');
     }

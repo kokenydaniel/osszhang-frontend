@@ -621,9 +621,9 @@ export default function SettingsClient() {
                                 className="text-muted-foreground hover:text-destructive"
                                 onClick={() =>
                                   requestDelete({
-                                    title: 'Tag eltávolítása',
-                                    message: `Biztosan eltávolítod ${member.firstName} ${member.lastName} fiókját a háztartásból?`,
-                                    confirmText: 'Eltávolítás',
+                                    title: 'Tag törlése',
+                                    message: `Biztosan törlöd ${member.firstName} ${member.lastName} fiókját? A művelet visszavonhatatlan.`,
+                                    confirmText: 'Törlés',
                                     onConfirm: () => removeMember(member.id),
                                   })
                                 }
