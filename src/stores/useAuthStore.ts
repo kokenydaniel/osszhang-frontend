@@ -4,6 +4,7 @@ import { authClient, householdClient } from '@/api';
 import { useNotificationStore } from './useNotificationStore';
 import { mapHouseholdFromApi } from '@/lib/mapHousehold';
 import { mapUserFromApi } from '@/lib/mapUser';
+import { unwrapApiData } from '@/lib/unwrapApiData';
 
 interface AuthState {
   user: UserProfile | null;
@@ -129,20 +130,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { addNotification } = useNotificationStore.getState();
     try {
       const res = await householdClient.createMember(data);
-      const rawUser = res.data as unknown as RawApiUser;
+      const rawUser = unwrapApiData<RawApiUser>(res.data);
+      const newMember = mapUserFromApi({
+        ...rawUser,
+        first_name: rawUser.first_name || data.first_name || data.firstName,
+        last_name: rawUser.last_name || data.last_name || data.lastName,
+        username: rawUser.username || data.username,
+      });
       const currentUser = get().user;
-      if (currentUser && currentUser.household?.users) {
-        const newMember = mapUserFromApi(rawUser);
-        const updatedUsers = [...currentUser.household.users, newMember];
+      if (currentUser?.household) {
+        const users = currentUser.household.users ?? [];
         set({
           user: {
             ...currentUser,
-            household: { ...currentUser.household, users: updatedUsers },
+            household: { ...currentUser.household, users: [...users, newMember] },
           },
         });
       }
-      addNotification('Új családtag sikeresen regisztrálva!', 'success');
-    } catch (e) {
+      addNotification('Új családtag sikeresen létrehozva!', 'success');
+    } catch {
       addNotification('Hiba történt a regisztráció során.', 'error');
     }
   },
@@ -172,23 +178,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updateMember: async (userId, data, options) => {
     const { addNotification } = useNotificationStore.getState();
     const silent = options?.silent ?? false;
+    const previousUsers = get().user?.household?.users;
     try {
-      const res = await householdClient.updateMember(userId, data);
+      await householdClient.updateMember(userId, data);
+      if (!silent) addNotification('Tag adatai frissítve!', 'success');
+    } catch {
       const currentUser = get().user;
-      if (currentUser && currentUser.household?.users) {
-        const updatedUsers = currentUser.household.users.map((u) =>
-          u.id === userId ? mapUserFromApi(res.data as unknown as RawApiUser) : u,
-        );
-
+      if (currentUser?.household && previousUsers) {
         set({
           user: {
             ...currentUser,
-            household: { ...currentUser.household, users: updatedUsers },
+            household: { ...currentUser.household, users: previousUsers },
           },
         });
       }
-      if (!silent) addNotification('Tag adatai frissítve!', 'success');
-    } catch {
       await get().fetchMe();
       if (!silent) addNotification('Hiba történt a mentés során.', 'error');
     }

@@ -251,7 +251,6 @@ export default function SettingsClient() {
       permissions: newMemberData.permissions,
     });
     setNewMemberData({ firstName: '', lastName: '', username: '', password: '', role: 'editor', permissions: ['budget', 'utilities'] });
-    addNotification('Új tag létrehozva!', 'success');
   };
 
   const handleDeleteHousehold = async () => {
