@@ -83,7 +83,7 @@ export const usePreferenceStore = create<PreferenceState>()(
       },
     }),
     {
-      name: 'penzpilot-preferences',
+      name: 'osszhang-preferences',
       partialize: (state) => ({
         userPreferences: state.userPreferences,
       }),

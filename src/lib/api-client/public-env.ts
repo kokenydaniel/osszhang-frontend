@@ -1,4 +1,4 @@
-const PRODUCTION_API_URL = 'https://penzpilot-backend.fly.dev/api';
+const PRODUCTION_API_URL = 'https://osszhang-backend.fly.dev/api';
 
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
