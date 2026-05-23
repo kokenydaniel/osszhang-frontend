@@ -11,7 +11,7 @@ This repo is the **frontend**. The API lives in the [backend repo](https://githu
 
 | | Link |
 |---|---|
-| **App** | [osszhang-frontend.vercel.app](https://osszhang-frontend.vercel.app) |
+| **App** | [osszhang.vercel.app](https://osszhang.vercel.app) |
 | **API** | [osszhang-backend.fly.dev/api](https://osszhang-backend.fly.dev/api) |
 
 ### Try the demo
@@ -93,7 +93,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api
 
 If you skip this file, dev mode uses `http://localhost:8000/api`.
 
-In **production** (Vercel), the app uses `https://osszhang-backend.fly.dev/api` when `NEXT_PUBLIC_API_URL` is not set.
+In **production** (Vercel), the app always uses `https://osszhang-backend.fly.dev/api`, unless `NEXT_PUBLIC_API_URL` points at the same Fly host.
 
 ### 3. Start the dev server
 
@@ -149,7 +149,7 @@ Main files:
 
 3. Deploy. Vercel runs `npm run build` automatically.
 
-If you use the default Fly backend, you can leave `NEXT_PUBLIC_API_URL` empty in production.
+If you use the default Fly backend, you can leave `NEXT_PUBLIC_API_URL` empty on Vercel. A stale value (for example an old backend hostname) is ignored in production.
 
 ---
 
