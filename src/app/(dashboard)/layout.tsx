@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usePathname, redirect } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -61,6 +61,7 @@ function DashboardSkeleton() {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -134,12 +135,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isAllowed = hasPermissionForRoute();
   const showOnboarding = needsHouseholdOnboarding(user);
 
+  useEffect(() => {
+    if (!isStoreLoading(status) && !user) {
+      router.replace('/login');
+    }
+  }, [router, status, user]);
+
   if (isStoreLoading(status)) {
     return <DashboardSkeleton />;
   }
 
   if (!user) {
-    redirect('/login');
+    return <DashboardSkeleton />;
   }
 
   return (

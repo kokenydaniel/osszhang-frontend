@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { redirect } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import {
   Mail,
@@ -22,6 +22,7 @@ import { HELP } from '@/lib/helpTexts';
 import { motion } from 'motion/react';
 
 export default function RegisterPage() {
+  const router = useRouter();
   const { user, register } = useAuthStore();
   const [formData, setFormData] = useState({
     firstName: '',
@@ -33,6 +34,12 @@ export default function RegisterPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      router.replace('/');
+    }
+  }, [router, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +63,8 @@ export default function RegisterPage() {
       });
 
       if (registeredUser) {
-        redirect('/');
+        router.replace('/');
+        return;
       }
 
       setError('Hiba történt a regisztráció során.');
@@ -69,7 +77,7 @@ export default function RegisterPage() {
   };
 
   if (user) {
-    redirect('/');
+    return null;
   }
 
   return (

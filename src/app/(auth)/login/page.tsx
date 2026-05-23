@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Mail, Lock, Loader2, ArrowRight, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,11 +14,18 @@ import { HELP } from '@/lib/helpTexts';
 import { motion } from 'motion/react';
 
 export default function LoginPage() {
+  const router = useRouter();
   const { user, login } = useAuthStore();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      router.replace('/');
+    }
+  }, [router, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +37,8 @@ export default function LoginPage() {
         password,
       });
       if (loggedInUser) {
-        redirect('/');
+        router.replace('/');
+        return;
       }
       setError('Hibás felhasználónév vagy jelszó.');
     } catch {
@@ -41,7 +49,7 @@ export default function LoginPage() {
   };
 
   if (user) {
-    redirect('/');
+    return null;
   }
 
   return (

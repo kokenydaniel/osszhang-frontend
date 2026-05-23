@@ -149,11 +149,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await authClient.login(credentials);
       const token = res.data.access_token;
       get().setAuthToken(token);
-      set({ loginStatus: LoadableStatus.Loaded });
-      const user = await get().fetchMe();
-      if (user) {
-        syncBudgetCategories(user);
-      }
+      const user = mapUserFromApi(res.data.user);
+      set({ user, loginStatus: LoadableStatus.Loaded, status: LoadableStatus.Loaded });
+      syncBudgetCategories(user);
       return user;
     } catch (e) {
       console.error('Login failed', e);
@@ -181,11 +179,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await authClient.register(data);
       const token = res.data.access_token;
       get().setAuthToken(token);
-      set({ loginStatus: LoadableStatus.Loaded });
-      const user = await get().fetchMe();
-      if (user) {
-        syncBudgetCategories(user);
-      }
+      const user = mapUserFromApi(res.data.user);
+      set({ user, loginStatus: LoadableStatus.Loaded, status: LoadableStatus.Loaded });
+      syncBudgetCategories(user);
       return user;
     } catch (e) {
       console.error('Registration failed', e);
