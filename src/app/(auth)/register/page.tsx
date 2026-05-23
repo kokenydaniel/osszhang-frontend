@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { authClient } from '@/lib/api-client';
+import { redirect } from 'next/navigation';
+import { useAuthStore } from '@/stores/useAuthStore';
 import {
   Mail,
   Lock,
@@ -22,7 +22,7 @@ import { HELP } from '@/lib/helpTexts';
 import { motion } from 'motion/react';
 
 export default function RegisterPage() {
-  const router = useRouter();
+  const { user, register } = useAuthStore();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -46,7 +46,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const res = await authClient.register({
+      const registeredUser = await register({
         first_name: formData.firstName,
         last_name: formData.lastName,
         username: formData.username.trim().toLowerCase(),
@@ -55,10 +55,11 @@ export default function RegisterPage() {
         household_name: formData.householdName,
       });
 
-      if (res.data.access_token) {
-        localStorage.setItem('auth_token', res.data.access_token);
-        router.push('/');
+      if (registeredUser) {
+        redirect('/');
       }
+
+      setError('Hiba történt a regisztráció során.');
     } catch (err) {
       const apiErr = err as { response?: { data?: { message?: string } } };
       setError(apiErr.response?.data?.message || 'Hiba történt a regisztráció során.');
@@ -67,9 +68,12 @@ export default function RegisterPage() {
     }
   };
 
+  if (user) {
+    redirect('/');
+  }
+
   return (
     <div className="min-h-screen w-full bg-background relative overflow-hidden">
-      {/* Background mesh */}
       <div
         className="absolute inset-0 -z-10"
         style={{

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, redirect } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
-import { useInitStore } from '@/stores/useInit';
+import { isStoreLoading } from '@/lib/loadableStatus';
 import { getCurrentMonth, getCurrentYear } from '@/utils';
 import { Lock } from 'lucide-react';
 import Link from 'next/link';
@@ -64,16 +64,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const { user } = useAuthStore();
+  const { user, status } = useAuthStore();
   const { selectedMonth, selectedYear, setSelectedMonth, setSelectedYear } = usePreferenceStore();
-  const { initialize, isInitialized } = useInitStore();
-
-  useEffect(() => { initialize(); }, [initialize]);
 
   useEffect(() => {
-    if (!isInitialized || !user) return;
+    if (isStoreLoading(status) || !user) return;
     void loadRouteData(pathname, user);
-  }, [pathname, isInitialized, user]);
+  }, [pathname, status, user]);
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-collapsed');
@@ -137,6 +134,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isAllowed = hasPermissionForRoute();
   const showOnboarding = needsHouseholdOnboarding(user);
 
+  if (isStoreLoading(status)) {
+    return <DashboardSkeleton />;
+  }
+
+  if (!user) {
+    redirect('/login');
+  }
+
   return (
     <div className={classNames('flex min-h-screen bg-background', showOnboarding && 'overflow-hidden')}>
       <ChangePasswordModal />
@@ -176,9 +181,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 Vissza a Vezérlőpultra
               </Link>
             </div>
-          ) : !isInitialized ? (
-            <DashboardSkeleton />
-          ) : children}
+          ) : (
+            children
+          )}
         </main>
       </div>
       </div>

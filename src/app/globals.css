@@ -1,4 +1,3 @@
-/* PénzPilot – Modern light, élettel teli */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -45,7 +44,6 @@
 }
 
 :root {
-    /* Cool, near-white but not pure */
     --background: oklch(0.985 0.003 250);
     --foreground: oklch(0.20 0.02 265);
 
@@ -55,7 +53,6 @@
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.20 0.02 265);
 
-    /* Vivid violet accent */
     --primary: oklch(0.56 0.24 275);
     --primary-foreground: oklch(0.99 0.002 250);
 
@@ -91,7 +88,6 @@
     --sidebar-border: oklch(0.91 0.005 255);
     --sidebar-ring: oklch(0.56 0.24 275);
 
-    /* Modern shadow set – layered, soft, vivid */
     --shadow-sm: 0 1px 2px oklch(0.20 0.02 265 / 0.04), 0 1px 2px oklch(0.20 0.02 265 / 0.03);
     --shadow-md: 0 4px 12px -4px oklch(0.20 0.02 265 / 0.06), 0 2px 4px -2px oklch(0.20 0.02 265 / 0.04);
     --shadow-lg: 0 16px 32px -8px oklch(0.20 0.02 265 / 0.12), 0 4px 8px -2px oklch(0.20 0.02 265 / 0.04);
@@ -104,7 +100,6 @@
         @apply text-foreground antialiased;
         font-family: var(--font-sans);
         font-feature-settings: 'cv11', 'ss01', 'ss03';
-        /* Subtle dot grid + soft mesh gradient — modern but barely there */
         background-color: var(--background);
         background-image:
             radial-gradient(at 92% 0%, oklch(0.56 0.24 275 / 0.06) 0%, transparent 45%),
@@ -123,9 +118,6 @@
     .tabular-nums { font-variant-numeric: tabular-nums; }
 }
 
-/* ============================== */
-/* Sidebar navigation              */
-/* ============================== */
 .nav-item {
     position: relative;
     display: flex;
@@ -163,9 +155,6 @@
     color: var(--primary);
 }
 
-/* ============================== */
-/* Modern surfaces                 */
-/* ============================== */
 .surface-card, .metric-card, .card-premium {
     background: var(--card);
     border: 1px solid var(--border);
@@ -199,7 +188,6 @@
     border-bottom: 1px solid var(--border);
 }
 
-/* Gradient borders for accent panels — modern visual cue */
 .accent-border {
     position: relative;
 }
@@ -217,7 +205,6 @@
     opacity: 0.55;
 }
 
-/* Text gradient — inline-block kötelező, különben élesben látható gradient csík */
 .text-gradient {
     display: inline-block;
     width: fit-content;
@@ -227,14 +214,10 @@
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
-    /* Ha a clip nem működik, legalább ne legyen széles blokk: */
     background-size: 100% 100%;
     background-repeat: no-repeat;
 }
 
-/* ============================== */
-/* Legacy / brand aliases          */
-/* ============================== */
 .bg-brand-primary { background-color: var(--primary); }
 .hover\:bg-brand-light:hover { background-color: oklch(0.51 0.24 275); }
 .text-brand-primary { color: var(--primary); }
@@ -262,9 +245,6 @@
         var(--card);
 }
 
-/* ============================== */
-/* Modern table                    */
-/* ============================== */
 .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .data-table thead th {
     font-size: 0.7rem;
@@ -297,15 +277,11 @@
 .data-table thead th:last-child,
 .data-table tbody td:last-child { padding-right: 1.25rem; }
 
-/* Scrollbar – minimal */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: oklch(0.88 0.008 260); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
 
-/* ============================== */
-/* Motion                          */
-/* ============================== */
 @keyframes fade-up {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
@@ -333,7 +309,6 @@
 .shadow-elev { box-shadow: var(--shadow-lg); }
 .shadow-glow { box-shadow: var(--shadow-glow); }
 
-/* Kattintható elemek — egyértelmű kurzor */
 button:not(:disabled),
 [role="button"]:not([aria-disabled="true"]),
 [role="radio"]:not([aria-disabled="true"]),

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/Toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { AppProviders } from '@/components/providers/AppProviders';
 import { APP_DESCRIPTION, APP_META_TITLE } from '@/lib/branding';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
@@ -29,8 +30,10 @@ export default function RootLayout({
     <html lang="hu" className={classNames(GeistSans.variable, GeistMono.variable)}>
       <body className="bg-background text-foreground antialiased font-sans">
         <TooltipProvider delayDuration={200}>
-          <Toaster />
-          {children}
+          <AppProviders>
+            <Toaster />
+            {children}
+          </AppProviders>
         </TooltipProvider>
       </body>
     </html>

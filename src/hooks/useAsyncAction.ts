@@ -2,7 +2,6 @@
 
 import { useCallback, useState } from 'react';
 
-/** Egy async művelet — loading állapot gombokhoz / visszajelzéshez. */
 export function useAsyncAction() {
   const [pending, setPending] = useState(false);
 
@@ -18,7 +17,6 @@ export function useAsyncAction() {
   return { pending, run };
 }
 
-/** Több párhuzamos művelet (pl. soronkénti státusz) — id alapú pending. */
 export function usePendingIds() {
   const [ids, setIds] = useState<Set<number>>(() => new Set());
 

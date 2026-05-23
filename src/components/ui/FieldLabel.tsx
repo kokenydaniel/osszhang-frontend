@@ -7,9 +7,7 @@ import { FieldHint } from '@/components/ui/FieldHint';
 import classNames from 'classnames';
 
 interface FieldLabelProps extends React.ComponentProps<typeof Label> {
-  /** Részletes tooltip (asztali hover + mobil érintés) */
   info?: React.ReactNode;
-  /** Mindig látható rövid magyarázat — mobilon kötelező érthetőséghez */
   hint?: React.ReactNode;
   required?: boolean;
 }

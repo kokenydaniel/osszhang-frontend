@@ -11,7 +11,6 @@ export interface SwitchProps {
   className?: string;
 }
 
-/** Natív checkbox + peer — stabil kinézet, nem csúszik ki a gomb */
 export function Switch({ checked, onCheckedChange, disabled, id, className }: SwitchProps) {
   return (
     <label

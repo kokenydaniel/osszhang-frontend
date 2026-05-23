@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { authClient } from '@/lib/api-client';
+import { redirect } from 'next/navigation';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { Mail, Lock, Loader2, ArrowRight, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ import { HELP } from '@/lib/helpTexts';
 import { motion } from 'motion/react';
 
 export default function LoginPage() {
-  const router = useRouter();
+  const { user, login } = useAuthStore();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,22 +25,24 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await authClient.login({ username: username.trim().toLowerCase(), password });
-      if (res.data.access_token) {
-        localStorage.setItem('auth_token', res.data.access_token);
-        router.push('/');
+      const loggedInUser = await login({
+        username: username.trim().toLowerCase(),
+        password,
+      });
+      if (loggedInUser) {
+        redirect('/');
       }
-    } catch (err) {
-      const apiErr = err as { response?: { status?: number } };
-      setError(
-        apiErr.response?.status === 401 || apiErr.response?.status === 422
-          ? 'Hibás felhasználónév vagy jelszó.'
-          : 'Hiba történt a bejelentkezés során.',
-      );
+      setError('Hibás felhasználónév vagy jelszó.');
+    } catch {
+      setError('Hiba történt a bejelentkezés során.');
     } finally {
       setLoading(false);
     }
   };
+
+  if (user) {
+    redirect('/');
+  }
 
   return (
     <div className="min-h-screen grid lg:grid-cols-[minmax(0,1.15fr)_460px] xl:grid-cols-[minmax(0,1.2fr)_480px] 2xl:grid-cols-[minmax(0,1.25fr)_500px] bg-background">

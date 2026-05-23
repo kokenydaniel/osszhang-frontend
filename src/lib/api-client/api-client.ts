@@ -1,4 +1,5 @@
 import { useNotificationStore } from '@/stores/useNotificationStore';
+import { getAuthToken, removeAuthToken } from '@/lib/authToken';
 import { API_URL } from './public-env';
 import type { ApiResponse, RequestOptions } from './response';
 
@@ -26,7 +27,7 @@ export class ApiClient {
       Accept: 'application/json',
     };
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const token = getAuthToken();
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
@@ -68,7 +69,7 @@ export class ApiClient {
       switch (status) {
         case 401:
           if (typeof window !== 'undefined') {
-            localStorage.removeItem('auth_token');
+            removeAuthToken();
             addNotification('A munkamenet lejárt. Kérjük, jelentkezz be újra.', 'error');
             if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
               window.location.href = '/login';

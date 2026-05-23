@@ -1,4 +1,3 @@
-/** Laravel JsonResource válasz: { data: T } vagy közvetlen T */
 export function unwrapApiResource<T>(payload: T | { data: T }): T {
   if (
     payload &&

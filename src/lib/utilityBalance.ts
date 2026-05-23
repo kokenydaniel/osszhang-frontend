@@ -21,10 +21,6 @@ const emptyBalance: UtilityBalanceResult = {
   netBalance: 0,
 };
 
-/**
- * Absolute ledger (household ↔ rezsi partner), then mapped to the viewer's side.
- * Split rules are fixed: dani-private = háztartás magán, ildi-private = partner magán.
- */
 function computeAbsoluteUtilityLedger(bills: UtilityBill[]): {
   householdReceivable: number;
   householdPayable: number;

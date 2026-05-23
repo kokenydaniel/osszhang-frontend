@@ -85,7 +85,6 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           mobileOpen ? 'w-[220px] translate-x-0' : 'w-[220px] -translate-x-full md:translate-x-0',
         )}
       >
-        {/* Brand */}
         <div
           className={classNames(
             'flex h-14 shrink-0 items-center border-b border-border px-4',

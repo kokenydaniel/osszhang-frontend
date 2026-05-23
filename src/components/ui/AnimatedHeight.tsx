@@ -6,7 +6,6 @@ import classNames from 'classnames';
 
 interface AnimatedHeightProps {
   children: ReactNode;
-  /** Tartalomváltáskor újramérés (pl. aktív fül). */
   contentKey?: string | number;
   className?: string;
 }

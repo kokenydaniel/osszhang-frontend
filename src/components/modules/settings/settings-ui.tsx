@@ -12,7 +12,6 @@ export interface SettingsTabItem {
   hint?: string;
 }
 
-/** Kompakt felső fül sáv — teljes szélesség */
 export function SettingsTopTabs<T extends string>({
   tabs,
   active,
@@ -125,7 +124,6 @@ export function SettingsBlock({
   );
 }
 
-/** Modul / integráció kártya — egységes fejléc: ikon + szöveg balra, kapcsoló jobbra */
 export function ModuleFeatureCard({
   title,
   description,

@@ -15,7 +15,6 @@ export interface FormChoiceCardProps {
   className?: string;
 }
 
-/** Mobilbarát választókártya — a magyarázat mindig látható, nem csak tooltipben. */
 export function FormChoiceCard({
   selected,
   onSelect,

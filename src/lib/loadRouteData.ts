@@ -17,7 +17,6 @@ const ROUTE_MODULES: Record<string, ModuleId[]> = {
   '/business': ['business'],
 };
 
-/** Dashboard: core widgets first; rest loads in background without blocking UI. */
 const DASHBOARD_PRIORITY: ModuleId[] = ['budget', 'utilities'];
 const DASHBOARD_DEFERRED: ModuleId[] = ['debts', 'savings', 'meters', 'business'];
 

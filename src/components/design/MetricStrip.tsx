@@ -10,7 +10,6 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip';
 export interface MetricItem {
   label: string;
   value: React.ReactNode;
-  /** Tooltip a kártya címke mellett — mit jelent ez a mutató */
   info?: React.ReactNode;
   hint?: React.ReactNode;
   trend?: 'up' | 'down' | 'flat';

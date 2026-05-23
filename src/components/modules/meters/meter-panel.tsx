@@ -203,7 +203,6 @@ export function MeterPanel({
     >
       <div className={classNames('w-[3px] shrink-0', bar)} />
       <div className="flex-1 min-w-0">
-        {/* Header */}
         <header className={classNames('flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 bg-gradient-to-br to-transparent', surface)}>
           <div className="flex items-center gap-3 min-w-0">
             <div className={classNames('h-11 w-11 shrink-0 rounded-lg flex items-center justify-center shadow-sm', iconBg)}>
@@ -235,7 +234,6 @@ export function MeterPanel({
           )}
         </header>
 
-      {/* KPI row */}
       <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
         <div className="px-5 py-3">
           <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">Idei összes</p>
@@ -274,7 +272,6 @@ export function MeterPanel({
         </div>
       </div>
 
-      {/* Quick capture calculator */}
       {latestReading && !isReader && (
         <div className="border-b border-border px-5 py-3 bg-muted/20">
           <form onSubmit={handleSaveCalc} className="flex flex-wrap items-center gap-3">
@@ -309,7 +306,6 @@ export function MeterPanel({
         </div>
       )}
 
-      {/* Chart */}
       <div className="border-b border-border px-2 py-3">
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={chartData} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
@@ -346,7 +342,6 @@ export function MeterPanel({
         </ResponsiveContainer>
       </div>
 
-      {/* Readings toggle */}
       <button
         type="button"
         onClick={() => toggleHistory(meter.id)}

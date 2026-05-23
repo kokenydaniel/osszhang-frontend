@@ -105,7 +105,6 @@ export function DataRow({
 interface DataListSectionProps {
   title?: React.ReactNode;
   description?: React.ReactNode;
-  /** Tooltip a szekció cím mellett */
   info?: React.ReactNode;
   action?: React.ReactNode;
   children: React.ReactNode;

@@ -1,20 +1,37 @@
 import { create } from 'zustand';
 import { UserProfile, RawApiUser } from '@/types';
 import { authClient, householdClient } from '@/lib/api-client';
+import { getAuthToken, removeAuthToken, setAuthToken as persistAuthToken } from '@/lib/authToken';
+import { LoadableStatus } from '@/lib/loadableStatus';
 import { resetRouteDataCache } from '@/lib/loadRouteData';
+import { syncBudgetCategories } from '@/lib/sessionBootstrap';
 import { useNotificationStore } from './useNotificationStore';
-import { mapHouseholdFromApi } from '@/lib/mapHousehold';
 import { mapUserFromApi } from '@/lib/mapUser';
 import { unwrapApiData } from '@/lib/unwrapApiData';
 
+let fetchUserPromise: Promise<UserProfile | null> | null = null;
+
 interface AuthState {
+  status: LoadableStatus;
+  loginStatus: LoadableStatus;
+  authToken: string | null;
   user: UserProfile | null;
-  isInitialized: boolean;
   invitations: { id: number; email: string; permissions: string[]; status: string }[];
   aiDashboardAdvice: string | null;
   lastAiFingerprint: string | null;
-  
-  fetchMe: () => Promise<UserProfile | null>;
+
+  setAuthToken: (token: string | null) => void;
+  setStatus: (status: LoadableStatus) => void;
+  fetchMe: () => Promise<UserProfile | null> | null;
+  login: (credentials: { username: string; password?: string }) => Promise<UserProfile | null>;
+  register: (data: {
+    username: string;
+    password?: string;
+    password_confirmation?: string;
+    first_name?: string;
+    last_name?: string;
+    household_name?: string;
+  }) => Promise<UserProfile | null>;
   updateUser: (u: Partial<UserProfile>) => Promise<void>;
   updateHouseholdCode: (code: string) => Promise<void>;
   addMember: (data: {
@@ -63,28 +80,122 @@ interface AuthState {
     business_settings?: import('@/lib/businessSettings').BusinessSettings;
     utility_templates?: import('@/lib/utilityTemplates').UtilityTemplate[];
   }) => Promise<void>;
-  initializeAuth: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
+  status: LoadableStatus.Unloaded,
+  loginStatus: LoadableStatus.Unloaded,
+  authToken: null,
   user: null,
-  isInitialized: false,
   invitations: [],
   aiDashboardAdvice: null,
   lastAiFingerprint: null,
 
-  fetchMe: async () => {
-    try {
-      const res = await authClient.me();
-      const dbUser = res.data;
-      
-      const mappedUser = mapUserFromApi(dbUser);
+  setAuthToken: (token) => {
+    if (token) {
+      persistAuthToken(token);
+    } else {
+      removeAuthToken();
+    }
+    set({ authToken: token });
+  },
 
-      set({ user: mappedUser });
-      return mappedUser;
+  setStatus: (status) => set({ status }),
+
+  fetchMe: () => {
+    if (fetchUserPromise) {
+      return fetchUserPromise;
+    }
+
+    set({ status: LoadableStatus.Loading });
+
+    const token = get().authToken ?? getAuthToken();
+    if (!token) {
+      set({ user: null, status: LoadableStatus.Loaded });
+      return null;
+    }
+
+    fetchUserPromise = authClient
+      .me()
+      .then((res) => {
+        const mappedUser = mapUserFromApi(res.data);
+        set({ user: mappedUser, authToken: token, status: LoadableStatus.Loaded });
+        return mappedUser;
+      })
+      .catch((e) => {
+        console.error('Failed to fetch profile', e);
+        removeAuthToken();
+        set({ user: null, authToken: null, status: LoadableStatus.Error });
+        return null;
+      })
+      .finally(() => {
+        fetchUserPromise = null;
+      });
+
+    return fetchUserPromise;
+  },
+
+  login: async (credentials) => {
+    fetchUserPromise = null;
+    set({
+      loginStatus: LoadableStatus.Loading,
+      user: null,
+      authToken: null,
+      status: LoadableStatus.Loading,
+    });
+
+    try {
+      const res = await authClient.login(credentials);
+      const token = res.data.access_token;
+      get().setAuthToken(token);
+      set({ loginStatus: LoadableStatus.Loaded });
+      const user = await get().fetchMe();
+      if (user) {
+        syncBudgetCategories(user);
+      }
+      return user;
     } catch (e) {
-      console.error('Failed to fetch profile', e);
+      console.error('Login failed', e);
+      removeAuthToken();
+      set({
+        loginStatus: LoadableStatus.Error,
+        user: null,
+        authToken: null,
+        status: LoadableStatus.Loaded,
+      });
+      return null;
+    }
+  },
+
+  register: async (data) => {
+    fetchUserPromise = null;
+    set({
+      loginStatus: LoadableStatus.Loading,
+      user: null,
+      authToken: null,
+      status: LoadableStatus.Loading,
+    });
+
+    try {
+      const res = await authClient.register(data);
+      const token = res.data.access_token;
+      get().setAuthToken(token);
+      set({ loginStatus: LoadableStatus.Loaded });
+      const user = await get().fetchMe();
+      if (user) {
+        syncBudgetCategories(user);
+      }
+      return user;
+    } catch (e) {
+      console.error('Registration failed', e);
+      removeAuthToken();
+      set({
+        loginStatus: LoadableStatus.Error,
+        user: null,
+        authToken: null,
+        status: LoadableStatus.Loaded,
+      });
       return null;
     }
   },
@@ -248,11 +359,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   deleteHousehold: async (confirmName) => {
     await householdClient.destroy(confirmName);
+    fetchUserPromise = null;
+    removeAuthToken();
+    resetRouteDataCache();
+    set({ user: null, authToken: null, status: LoadableStatus.Loaded });
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
       window.location.href = '/login';
     }
-    set({ user: null });
   },
 
   updateHouseholdSettings: async (data) => {
@@ -260,36 +373,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await get().fetchMe();
   },
 
-  initializeAuth: async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    if (!token) {
-      if (
-        typeof window !== 'undefined' &&
-        !window.location.pathname.includes('/login') &&
-        !window.location.pathname.includes('/register')
-      ) {
-        window.location.href = '/login';
-      }
-      set({ isInitialized: true });
-      return;
-    }
-    
-    await get().fetchMe();
-    set({ isInitialized: true });
-  },
-
   logout: async () => {
+    fetchUserPromise = null;
     try {
       await authClient.logout();
     } catch (e) {
       console.error('Logout API failed', e);
     } finally {
+      removeAuthToken();
       resetRouteDataCache();
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('auth_token');
-        window.location.href = '/login';
-      }
-      set({ user: null });
+      set({
+        user: null,
+        authToken: null,
+        status: LoadableStatus.Loaded,
+        loginStatus: LoadableStatus.Unloaded,
+      });
     }
   },
 }));

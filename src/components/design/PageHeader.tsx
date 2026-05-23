@@ -26,7 +26,6 @@ export function PageHeader({ breadcrumbs, title, description, actions, meta, cla
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       className={classNames('relative flex flex-col gap-3 pb-5 mb-1 border-b border-border', className)}
     >
-      {/* Subtle accent decoration */}
       <span
         aria-hidden
         className="pointer-events-none absolute -top-2 -left-2 h-16 w-16 rounded-full bg-primary/8 blur-2xl"

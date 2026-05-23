@@ -45,7 +45,6 @@ export function ConfirmModal({
                   await onConfirm();
                   onClose();
                 } catch {
-                  // Dialógus nyitva marad; hibaüzenet máshol
                 }
               })();
             }}

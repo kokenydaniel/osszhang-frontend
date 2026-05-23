@@ -2,7 +2,6 @@
 
 import classNames from 'classnames';
 
-/** Mindig látható rövid magyarázat — mobilon is olvasható (tooltip helyett / mellett). */
 export function FieldHint({ children, className }: { children: React.ReactNode; className?: string }) {
   if (!children) return null;
   return (

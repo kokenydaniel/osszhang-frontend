@@ -15,7 +15,6 @@ export type PersonalizationQuestionId =
 export type PersonalizationAnswer = {
   yes: boolean | null;
   detail?: string;
-  /** Szolgáltató-választó kérdésnél: kiválasztott szolgáltató nevek (= kategória nevek) */
   selected?: string[];
 };
 
@@ -39,7 +38,6 @@ export type PersonalizationQuestion = {
     fallbackCategory?: string;
   };
   categoriesOnYes?: string[];
-  /** yesno_providers: ezek a nevek jelennek meg kategóriaként is */
   providerOptions?: string[];
   suggestModule?: OnboardingModuleId;
 };

@@ -9,7 +9,6 @@ interface InfoTooltipProps {
   content: React.ReactNode;
   className?: string;
   side?: 'top' | 'right' | 'bottom' | 'left';
-  /** Accessible label for screen readers */
   label?: string;
 }
 
@@ -60,7 +59,6 @@ export function InfoTooltip({
   );
 }
 
-/** Inline label text + optional info icon (for section titles, table headers) */
 export function LabelWithInfo({
   children,
   info,

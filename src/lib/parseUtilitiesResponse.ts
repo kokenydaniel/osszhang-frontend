@@ -1,6 +1,5 @@
 import type { UtilityBill, UtilitySettlement } from '@/types';
 
-/** GET /utilities és klón/elszámolás válasz — több lehetséges formátum. */
 export function parseUtilitiesIndexResponse(data: unknown): {
   bills: UtilityBill[];
   settlements: UtilitySettlement[];

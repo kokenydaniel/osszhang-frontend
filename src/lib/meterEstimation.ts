@@ -1,7 +1,6 @@
 import type { MeterReading } from '@/types';
 import { compareDates, d } from '@/lib/dates';
 
-/** Saját rögzítés (nem AI-becsült) — ezek határozzák meg a becslési szakaszt. */
 export function isAnchorReading(r: MeterReading): boolean {
   return !(r.isEstimated ?? r.is_estimated);
 }
@@ -20,7 +19,6 @@ export function targetDateForMonth(year: number, month: number): string {
   return `${year}-${String(month).padStart(2, '0')}-15`;
 }
 
-/** Megbízható leolvasások a cél dátum körül (interpolációhoz). */
 export function bracketAnchorReadings(
   sorted: MeterReading[],
   targetDate: string,
@@ -32,7 +30,6 @@ export function bracketAnchorReadings(
   return { previous, next };
 }
 
-/** Időarányos óraállás két ismert pont között. */
 export function interpolateMeterValue(
   prev: { date: string; value: number },
   next: { date: string; value: number },
@@ -79,7 +76,6 @@ export function parseAiConsumption(answer: string): number | null {
   return isNaN(n) ? null : n;
 }
 
-/** Kimaradt hónapok két horgony leolvasás között (év-hónap szerint). */
 export function listMissingMonthsInGap(
   prev: { year: number; month: number },
   next: { year: number; month: number },

@@ -1,28 +1,10 @@
-/**
- * Standard amortization helpers for personal loans.
- *
- * Notation:
- *   P    - remaining principal (Ft)
- *   APR  - annual interest rate (%, e.g. 7.5)
- *   M    - monthly installment (Ft)
- *
- * Monthly rate r = APR / 100 / 12
- * Months left  n = -ln(1 - (P * r) / M) / ln(1 + r)        (when r > 0, M > P*r)
- *               n = P / M                                    (when r == 0)
- */
-
 import { dayjs, d, today } from '@/lib/dates';
 
 export interface PayoffResult {
-  /** Months remaining (rounded up to whole months). `null` if not feasible. */
   months: number | null;
-  /** Estimated payoff date (ISO string YYYY-MM-DD). `null` if not feasible. */
   payoffDate: string | null;
-  /** Total interest paid over remaining term (Ft). `null` if not feasible. */
   totalInterest: number | null;
-  /** Suggested minimum installment to actually cover the interest (Ft). */
   minimumViablePayment: number;
-  /** True when the installment fails to cover interest (loan never finishes). */
   isUnderwater: boolean;
 }
 
@@ -73,10 +55,6 @@ export function computePayoff(
   };
 }
 
-/**
- * Compute the saving (months and interest) when overpaying the monthly installment
- * with a fixed extra amount.
- */
 export interface AccelerationResult {
   monthsSaved: number;
   interestSaved: number;
@@ -106,13 +84,11 @@ function monthsFromNow(months: number): string {
   return dayjs().add(months, 'month').format('YYYY-MM-DD');
 }
 
-/** Format a payoff date for display: 'YYYY. MMM' (e.g. '2042. nov.') */
 export function formatPayoffDate(iso: string | null | undefined): string {
   if (!iso) return '—';
   return d(iso).format('YYYY. MMM');
 }
 
-/** Format months as 'X év Y hó' (or 'Y hó' for less than 12). */
 export function formatTerm(months: number | null | undefined): string {
   if (!months || months <= 0) return '—';
   const years = Math.floor(months / 12);

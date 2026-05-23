@@ -7,9 +7,7 @@ import { formatDate, isPastDueDate } from '@/utils';
 interface DueDateCellProps {
   date: string;
   today?: string;
-  /** Ha megadva, felülírja az automatikus számítást. */
   overdue?: boolean;
-  /** Rendezett tétel — soha nem jelenik meg lejártként. */
   settled?: boolean;
   className?: string;
 }

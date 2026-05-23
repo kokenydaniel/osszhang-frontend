@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Settings, LogOut, ChevronDown, Menu, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatMonthYear } from '@/utils';
 import { APP_NAME } from '@/lib/branding';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { useLogout } from '@/hooks/useLogout';
 import { Separator } from '@/components/ui/separator';
 import classNames from 'classnames';
 
@@ -36,6 +36,7 @@ function getPageTitle(pathname: string) {
 
 export function Header({ pathname, month, year, onMonthChange, onYearChange, user, onMobileMenuToggle }: HeaderProps) {
   const router = useRouter();
+  const { logout } = useLogout();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -76,7 +77,6 @@ export function Header({ pathname, month, year, onMonthChange, onYearChange, use
 
       <div className="flex-1" />
 
-      {/* Month picker – ghost minimal */}
       <div className="flex items-center rounded-md border border-border bg-card">
         <button
           onClick={prevMonth}
@@ -136,7 +136,7 @@ export function Header({ pathname, month, year, onMonthChange, onYearChange, use
             </button>
             <button
               id="logout-btn"
-              onClick={() => useAuthStore.getState().logout()}
+              onClick={() => void logout()}
               className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
             >
               <LogOut size={14} />

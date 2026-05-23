@@ -1,7 +1,6 @@
 import type { UtilityBill } from '@/types';
 import { isPastDueDate, matchesMonthYear, hasSettlementDate, isDueOverdue } from '@/lib/dates';
 
-/** Régi „X kiegyenlítés” rezsi-sorok — nem jelennek meg a listában. */
 export function isLegacySettlementBill(bill: UtilityBill): boolean {
   return /kiegyenlít/i.test(bill.type);
 }

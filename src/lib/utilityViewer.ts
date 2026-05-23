@@ -1,7 +1,6 @@
 import type { UtilityBill, UtilitySplitRule, UserProfile } from '@/types';
 import { formatDisplayName } from '@/lib/personName';
 
-/** Household side (Mi) vs configured rezsi partner (Ildi) — not the same as admin role. */
 export function isUtilityPartnerSide(
   viewerId: number | string | undefined | null,
   partnerId: number | string | undefined | null,
@@ -21,15 +20,10 @@ export interface UtilitySplitLabels {
   onHouseholdSide: boolean;
   partnerId: number | null;
   splitPartnerUser: UserProfile | undefined;
-  /** Háztartás oldal neve (admin / háztartás neve) — nem más családtag. */
   householdSideLabel: string;
-  /** Rezsi partner teljes neve. */
   partnerSideLabel: string;
-  /** „Mi” fizető a legördülőben. */
   householdPayerLabel: string;
-  /** Partner fizető a legördülőben. */
   partnerPayerLabel: string;
-  /** A másik fél neve a néző szemszögéből (tartozás, fizetett). */
   counterpartyLabel: string;
 }
 
@@ -96,7 +90,6 @@ export function isPartnerPrivateRule(rule: UtilitySplitRule): boolean {
   return rule === 'ildi-private';
 }
 
-/** Portion attributed to the viewer's side for budget / cashflow summaries. */
 export function ourUtilityPortion(
   bill: Pick<UtilityBill, 'total' | 'splitRule'>,
   onHouseholdSide: boolean,

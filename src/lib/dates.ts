@@ -15,7 +15,6 @@ export const DISPLAY_FORMAT_LONG = 'YYYY. MM. DD.';
 
 export type DateInput = string | Date | Dayjs | null | undefined;
 
-/** Biztonságos dayjs példány — ISO/dátum string első 10 karaktere alapján. */
 export function d(value?: DateInput): Dayjs {
   if (value == null || value === '') return dayjs();
   if (dayjs.isDayjs(value)) return value;
@@ -27,7 +26,6 @@ export function today(): string {
   return dayjs().format(DATE_FORMAT);
 }
 
-/** @deprecated használd a today()-t */
 export const localDateIso = today;
 
 export function formatDate(dateStr: string): string {
@@ -55,14 +53,12 @@ export function isPastDueDate(dueDate: string, reference = today()): boolean {
   return due.isBefore(ref, 'day');
 }
 
-/** Érvényes kifizetés / rendezés dátum (pl. paidDate). */
 export function hasSettlementDate(settledOn?: string | null): boolean {
   if (!settledOn) return false;
   const part = datePart(settledOn);
   return part.length >= 10 && d(part).isValid();
 }
 
-/** Lejárt-e a tétel — csak ha még nincs rendezve (paidDate / split fizető). */
 export function isDueOverdue(
   item: { dueDate: string; paidDate?: string | null },
   reference = today(),

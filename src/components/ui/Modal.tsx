@@ -15,11 +15,8 @@ interface ModalProps {
   icon?: ReactNode;
   description?: string;
   size?: 'sm' | 'md' | 'lg';
-  /** Aktív fül / típus — sima magasságváltás tartalomcserénél. */
   contentKey?: string | number;
-  /** Alapból true: belső tartalom magassága animáltan változik. */
   animateContent?: boolean;
-  /** Ha false, nem zárható X-szel, Esc-cel vagy háttérkattintással. */
   dismissible?: boolean;
 }
 

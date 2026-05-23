@@ -1,7 +1,3 @@
-/**
- * Magyar súgószövegek — info ikonok tooltipjeihez.
- * Kártyák (metrikák), szekciók és űrlapmezők.
- */
 export const HELP = {
   auth: {
     username: 'Egyedi belépési név (kisbetű, szám, aláhúzás). Ezzel lépsz be — nincs e-mail.',

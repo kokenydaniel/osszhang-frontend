@@ -15,7 +15,6 @@ interface StatusToggleButtonProps {
   children: React.ReactNode;
 }
 
-/** Kattintható státusz — azonnali visszajelzéshez optimista store-frissítéssel párosítva. */
 export function StatusToggleButton({
   status,
   onClick,

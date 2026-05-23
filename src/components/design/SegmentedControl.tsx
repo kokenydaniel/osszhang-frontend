@@ -12,7 +12,6 @@ export interface SegmentOption<T extends string = string> {
   label: string;
   icon?: LucideIcon;
   count?: number;
-  /** Rövid magyarázat a „choice” változatnál. */
   description?: string;
   tone?: SegmentTone;
 }
@@ -25,7 +24,6 @@ interface SegmentedControlProps<T extends string = string> {
   className?: string;
   layoutId?: string;
   animated?: boolean;
-  /** compact = klasszikus csúszka; choice = nagy, színes, két opcióhoz ideális */
   variant?: 'compact' | 'choice';
 }
 
