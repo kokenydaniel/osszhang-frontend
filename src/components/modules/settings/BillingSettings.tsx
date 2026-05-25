@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertTriangle, Check, CreditCard, Download, ExternalLink, FlaskConical, Lock, Sparkles, Star } from 'lucide-react';
 import classNames from 'classnames';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import { d } from '@/lib/dates';
 import { getAuthToken } from '@/lib/authToken';
 import type { BillingInterval } from '@/lib/subscriptionPlans';
 import { redirectToStripeCheckout, redirectToStripePortal } from '@/lib/stripeCheckout';
+import { consumeBillingCheckoutReturn } from '@/lib/billingCheckoutReturn';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import type { UserProfile } from '@/types';
@@ -107,9 +108,11 @@ async function downloadInvoiceFile(invoice: BillingInvoice): Promise<boolean> {
 }
 
 export function BillingSettings({ user }: BillingSettingsProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { addNotification } = useNotificationStore();
+  const checkoutReturnHandledRef = useRef(false);
   const [billing, setBilling] = useState<BillingSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -160,19 +163,35 @@ export function BillingSettings({ user }: BillingSettingsProps) {
   }, [fetchMe, loadBilling]);
 
   useEffect(() => {
-    if (searchParams.get('success') === 'true') {
-      addNotification('Sikeres fizetés! Az előfizetésed hamarosan frissül.', 'success');
-      void fetchMe();
-      void loadBilling();
+    const isSuccess = searchParams.get('success') === 'true';
+    const isCanceled = searchParams.get('canceled') === 'true';
+
+    if (!isSuccess && !isCanceled) return;
+    if (checkoutReturnHandledRef.current) return;
+
+    const clearReturnParams = () => {
+      router.replace('/settings?tab=billing', { scroll: false });
+    };
+
+    checkoutReturnHandledRef.current = true;
+
+    if (isSuccess) {
+      if (consumeBillingCheckoutReturn('success')) {
+        addNotification('Sikeres fizetés! Az előfizetésed hamarosan frissül.', 'success');
+        void fetchMe();
+        void loadBilling();
+      }
+      clearReturnParams();
+      return;
     }
-    if (searchParams.get('canceled') === 'true') {
-      addNotification('A fizetés megszakítva.', 'info');
+
+    if (isCanceled) {
+      if (consumeBillingCheckoutReturn('canceled')) {
+        addNotification('A fizetés megszakítva.', 'info');
+      }
+      clearReturnParams();
     }
-    if (searchParams.get('tab') === 'billing') {
-      void loadBilling();
-      void fetchMe();
-    }
-  }, [addNotification, fetchMe, loadBilling, searchParams]);
+  }, [addNotification, fetchMe, loadBilling, router, searchParams]);
 
   const handleCheckout = async (priceId: string) => {
     setActionLoading(true);
@@ -374,21 +393,21 @@ export function BillingSettings({ user }: BillingSettingsProps) {
           ) : billing?.paymentMethod ? (
             <div
               className={classNames(
-                'relative overflow-hidden rounded-xl border border-border bg-gradient-to-br text-white p-5 max-w-sm shadow-md',
+                'relative mx-auto flex aspect-[1.586/1] w-full max-w-[320px] flex-col justify-between overflow-hidden rounded-2xl border border-border bg-gradient-to-br p-5 text-white shadow-md sm:mx-0',
                 cardBrandAccent(billing.paymentMethod.brand),
               )}
             >
-              <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/5" />
-              <div className="flex items-center justify-between gap-3">
+              <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/5" />
+              <div className="relative flex items-start justify-between gap-3">
                 <p className="text-[0.65rem] font-semibold uppercase tracking-widest text-white/70">
                   {cardBrandLabel(billing.paymentMethod.brand)}
                 </p>
-                <CreditCard size={18} className="text-white/50" />
+                <CreditCard size={18} className="shrink-0 text-white/50" />
               </div>
-              <p className="mt-6 font-mono text-lg tracking-[0.2em]">
+              <p className="relative mt-auto font-mono text-base tracking-[0.15em] sm:text-lg sm:tracking-[0.2em]">
                 •••• •••• •••• {billing.paymentMethod.last4}
               </p>
-              <p className="mt-4 text-xs text-white/75">
+              <p className="relative mt-3 text-xs text-white/75">
                 Lejár: {formatCardExpiry(billing.paymentMethod.expMonth, billing.paymentMethod.expYear)}
               </p>
             </div>
