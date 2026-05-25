@@ -34,7 +34,7 @@ export default function DashboardPage() {
           </span>
         }
         meta={
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
             <WalletSwitcher />
             {state.householdMembers.length > 0 ? (
               <div className="flex items-center gap-2">

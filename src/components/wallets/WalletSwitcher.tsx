@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Pencil, Plus, Trash2, Lock, Users } from 'lucide-react';
 import classNames from 'classnames';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -21,11 +22,36 @@ interface WalletSwitcherProps {
   compact?: boolean;
 }
 
+interface MenuPosition {
+  top: number;
+  left: number;
+  width: number;
+}
+
 function WalletTypeIcon({ isShared, size = 14 }: { isShared: boolean; size?: number }) {
   if (isShared) {
     return <Users size={size} className="shrink-0" aria-hidden />;
   }
   return <Lock size={size} className="shrink-0" aria-hidden />;
+}
+
+function computeMenuPosition(trigger: HTMLElement): MenuPosition {
+  const margin = 12;
+  const width = Math.min(300, window.innerWidth - margin * 2);
+  const rect = trigger.getBoundingClientRect();
+  let left = rect.left;
+
+  if (left + width > window.innerWidth - margin) {
+    left = window.innerWidth - margin - width;
+  }
+
+  left = Math.max(margin, left);
+
+  return {
+    top: rect.bottom + 6,
+    left,
+    width,
+  };
 }
 
 export function WalletSwitcher({ className, compact = false }: WalletSwitcherProps) {
@@ -36,24 +62,46 @@ export function WalletSwitcher({ className, compact = false }: WalletSwitcherPro
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
 
   const [open, setOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const [creating, setCreating] = useState(false);
   const [newWalletName, setNewWalletName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [deletingWalletId, setDeletingWalletId] = useState<number | null>(null);
   const [renamingWalletId, setRenamingWalletId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState('');
-  const ref = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const wallets = user?.wallets ?? [];
   const canEdit = canEditHousehold(user);
 
+  const updateMenuPosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    setMenuPosition(computeMenuPosition(trigger));
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+
+    updateMenuPosition();
+    window.addEventListener('resize', updateMenuPosition);
+    window.addEventListener('scroll', updateMenuPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition);
+      window.removeEventListener('scroll', updateMenuPosition, true);
+    };
+  }, [open, updateMenuPosition]);
+
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-        setCreating(false);
-        setRenamingWalletId(null);
-      }
+      const target = e.target as Node;
+      if (rootRef.current?.contains(target)) return;
+      if (triggerRef.current?.contains(target)) return;
+      setOpen(false);
+      setCreating(false);
+      setRenamingWalletId(null);
     };
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
@@ -159,42 +207,18 @@ export function WalletSwitcher({ className, compact = false }: WalletSwitcherPro
 
   const activeIsShared = activeWallet?.isShared ?? true;
 
-  return (
-    <div className={classNames('relative', className)} ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={classNames(
-          'inline-flex items-center gap-2 rounded-lg border text-sm font-medium text-foreground',
-          'hover:bg-muted/60 transition-colors shadow-sm',
-          activeIsShared
-            ? 'border-sky-500/25 bg-sky-500/5'
-            : 'border-violet-500/25 bg-violet-500/5',
-          compact ? 'h-8 px-2.5' : 'h-9 px-3',
-        )}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-      >
-        <span
-          className={classNames(
-            'flex h-6 w-6 items-center justify-center rounded-md shrink-0',
-            activeIsShared ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400' : 'bg-violet-500/15 text-violet-600 dark:text-violet-400',
-          )}
-        >
-          <WalletTypeIcon isShared={activeIsShared} size={13} />
-        </span>
-        {!compact && (
-          <span className="max-w-[140px] truncate">{activeWallet?.name ?? 'Kassza'}</span>
-        )}
-        <ChevronDown
-          size={14}
-          className={classNames('text-muted-foreground transition-transform shrink-0', open && 'rotate-180')}
-        />
-      </button>
-
-      {open && (
+  const menu = open && menuPosition && typeof document !== 'undefined'
+    ? createPortal(
         <div
-          className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[260px] max-w-[min(calc(100vw-2rem),300px)] rounded-xl border border-border bg-popover p-1.5 shadow-lg animate-in fade-in slide-in-from-top-1 duration-150"
+          ref={rootRef}
+          style={{
+            position: 'fixed',
+            top: menuPosition.top,
+            left: menuPosition.left,
+            width: menuPosition.width,
+            zIndex: 60,
+          }}
+          className="rounded-xl border border-border bg-popover p-1.5 shadow-lg animate-in fade-in slide-in-from-top-1 duration-150 max-h-[min(70vh,calc(100dvh-6rem))] overflow-y-auto overscroll-contain"
           role="listbox"
         >
           <p className="px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -250,7 +274,7 @@ export function WalletSwitcher({ className, compact = false }: WalletSwitcherPro
                   aria-selected={selected}
                   onClick={() => handleSelect(wallet.id)}
                   className={classNames(
-                    'flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors',
+                    'flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors touch-manipulation',
                     selected
                       ? isShared
                         ? 'bg-sky-500/10 text-sky-700 dark:text-sky-300'
@@ -327,14 +351,54 @@ export function WalletSwitcher({ className, compact = false }: WalletSwitcherPro
             <button
               type="button"
               onClick={handleCreateClick}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors touch-manipulation"
             >
               <Plus size={14} />
               Új privát kassza
             </button>
           ) : null}
-        </div>
-      )}
+        </div>,
+        document.body,
+      )
+    : null;
+
+  return (
+    <div className={classNames('relative w-full min-w-0 sm:w-auto', className)}>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={classNames(
+          'inline-flex w-full min-w-0 items-center gap-2 rounded-lg border text-sm font-medium text-foreground',
+          'hover:bg-muted/60 transition-colors shadow-sm touch-manipulation',
+          activeIsShared
+            ? 'border-sky-500/25 bg-sky-500/5'
+            : 'border-violet-500/25 bg-violet-500/5',
+          compact ? 'h-8 px-2.5 sm:w-auto' : 'h-9 px-3 sm:w-auto',
+        )}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        <span
+          className={classNames(
+            'flex h-6 w-6 items-center justify-center rounded-md shrink-0',
+            activeIsShared ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400' : 'bg-violet-500/15 text-violet-600 dark:text-violet-400',
+          )}
+        >
+          <WalletTypeIcon isShared={activeIsShared} size={13} />
+        </span>
+        {!compact && (
+          <span className="min-w-0 flex-1 truncate text-left sm:max-w-[140px] sm:flex-none">
+            {activeWallet?.name ?? 'Kassza'}
+          </span>
+        )}
+        <ChevronDown
+          size={14}
+          className={classNames('ml-auto text-muted-foreground transition-transform shrink-0 sm:ml-0', open && 'rotate-180')}
+        />
+      </button>
+
+      {menu}
       <ConfirmDeleteModal />
     </div>
   );

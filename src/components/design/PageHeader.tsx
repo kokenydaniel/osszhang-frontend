@@ -54,7 +54,7 @@ export function PageHeader({ breadcrumbs, title, description, actions, meta, cla
           )}
         </div>
         {(actions || meta) && (
-          <div className="flex flex-col items-start gap-2 sm:items-end shrink-0">
+          <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end shrink-0">
             {meta}
             {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
           </div>
