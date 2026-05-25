@@ -4,6 +4,7 @@ import { useBusinessUiStore } from '@/stores/useBusinessUiStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { resolveBusinessSettings } from '@/lib/businessSettings';
+import { businessDisplayName } from '@/lib/mapHousehold';
 import { formatHUF, compareDates } from '@/utils';
 import { HELP } from '@/lib/helpTexts';
 import { isHouseholdReader } from '@/lib/householdRole';
@@ -22,6 +23,7 @@ export function useBusinessPageState() {
   const { orders, deleteOrder } = useBusinessStore();
   const ui = useBusinessUiStore();
   const { user } = useAuthStore();
+  const businessName = businessDisplayName(user?.household);
   const isReader = isHouseholdReader(user);
   const shopifyImportEnabled =
     user?.household?.shopifyImportEnabled ?? user?.household?.shopify_import_enabled ?? false;
@@ -66,7 +68,7 @@ export function useBusinessPageState() {
 
   const handleRequestAiAdvice = () => {
     const { totalYTD, aov, topChannel, channelData } = businessStats;
-    const prompt = `Kérlek, elemezd az alábbi Little Loom (kisvállalkozás, kézműves webshop) rendelési és bevételi adataimat a(z) ${selectedYear}. évre vonatkozóan, és adj egy 3-4 mondatos barátságos, motiváló stratégiát és tanácsot, hogy hogyan tudnám növelni a bevételem.
+    const prompt = `Kérlek, elemezd az alábbi ${businessName} (kisvállalkozás, kézműves webshop) rendelési és bevételi adataimat a(z) ${selectedYear}. évre vonatkozóan, és adj egy 3-4 mondatos barátságos, motiváló stratégiát és tanácsot, hogy hogyan tudnám növelni a bevételem.
 
 Adataim:
 - Éves forgalom eddig (YTD): ${totalYTD} Ft
@@ -165,6 +167,7 @@ Adataim:
   ];
 
   return {
+    businessName,
     selectedMonth,
     selectedYear,
     activeTab: ui.activeTab,

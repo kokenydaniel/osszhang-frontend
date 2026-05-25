@@ -13,6 +13,7 @@ import type { BusinessPageState } from '@/components/modules/business/hooks/use-
 
 type BusinessSummaryTabProps = Pick<
   BusinessPageState,
+  | 'businessName'
   | 'selectedYear'
   | 'realAiAdvice'
   | 'isAiLoading'
@@ -26,6 +27,7 @@ type BusinessSummaryTabProps = Pick<
 const channelColors = ['oklch(0.55 0.22 275)', 'oklch(0.62 0.22 25)', 'oklch(0.72 0.16 60)', 'oklch(0.65 0.18 150)'];
 
 export function BusinessSummaryTab({
+  businessName,
   selectedYear,
   realAiAdvice,
   isAiLoading,
@@ -35,12 +37,14 @@ export function BusinessSummaryTab({
   channelData,
   totalYTD,
 }: BusinessSummaryTabProps) {
+  const aiTitle = `${businessName} AI stratéga`;
+
   return (
     <div className="flex flex-col gap-7">
       <TierGatedAiPanel
         featureLabel="AI stratéga"
         icon={Cpu}
-        title="Little Loom AI stratéga"
+        title={aiTitle}
         titleInfo={HELP.business.aiStrategist}
         description="Személyre szabott növekedési stratégia"
         glow
@@ -61,7 +65,7 @@ export function BusinessSummaryTab({
         <AccentPanel
           tone="ai"
           icon={Cpu}
-          title="Little Loom AI stratéga"
+          title={aiTitle}
           titleInfo={HELP.business.aiStrategist}
           description="Személyre szabott növekedési stratégia"
           glow

@@ -5,6 +5,13 @@ import { resolveMetersSettings, type MetersSettings } from '@/lib/metersSettings
 import { resolveSavingsSettings, type SavingsSettings } from '@/lib/savingsSettings';
 import { resolveUtilityTemplates, type UtilityTemplate } from '@/lib/utilityTemplates';
 
+type HouseholdLike = NonNullable<UserProfile['household']> | null | undefined;
+
+export function businessDisplayName(household: HouseholdLike): string {
+  const name = (household?.businessName ?? household?.business_name ?? '').trim();
+  return name || 'Vállalkozás';
+}
+
 export function mapHouseholdFromApi(h: NonNullable<RawApiUser['household']>): NonNullable<UserProfile['household']> {
   return {
     id: h.id,

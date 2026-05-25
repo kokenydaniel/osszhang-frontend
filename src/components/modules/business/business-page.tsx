@@ -1,10 +1,12 @@
 'use client';
 
+import { useEffect } from 'react';
 import {
   PageHeader,
   MetricStrip,
   SegmentedControl,
 } from '@/components/design';
+import { APP_NAME } from '@/lib/branding';
 import { List, BarChart3 } from 'lucide-react';
 import { useBusinessPageState } from '@/components/modules/business/hooks/use-business-page-state';
 import { BusinessMonthlyTab } from '@/components/modules/business/business-monthly-tab';
@@ -13,13 +15,17 @@ import { BusinessOrderModal } from '@/components/modules/business/business-order
 
 export default function BusinessPage() {
   const state = useBusinessPageState();
-  const { ConfirmDeleteModal } = state;
+  const { ConfirmDeleteModal, businessName } = state;
+
+  useEffect(() => {
+    document.title = `${businessName} | ${APP_NAME}`;
+  }, [businessName]);
 
   return (
     <div className="flex flex-col gap-7 w-full max-w-[1500px] mx-auto">
       <PageHeader
-        breadcrumbs={[{ label: 'Vállalkozás' }, { label: 'Little Loom' }]}
-        title="Little Loom CRM"
+        breadcrumbs={[{ label: 'Vállalkozás' }, { label: businessName }]}
+        title={`${businessName} CRM`}
         description={`${state.selectedYear}. ${String(state.selectedMonth).padStart(2, '0')}. havi rendelések, kintlévőségek és éves trendek`}
         actions={
           <SegmentedControl
