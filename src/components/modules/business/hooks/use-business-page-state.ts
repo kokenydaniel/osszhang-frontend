@@ -6,6 +6,7 @@ import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { resolveBusinessSettings } from '@/lib/businessSettings';
 import { formatHUF, compareDates } from '@/utils';
 import { HELP } from '@/lib/helpTexts';
+import { isHouseholdReader } from '@/lib/householdRole';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import {
   ShoppingBag,
@@ -21,6 +22,7 @@ export function useBusinessPageState() {
   const { orders, deleteOrder } = useBusinessStore();
   const ui = useBusinessUiStore();
   const { user } = useAuthStore();
+  const isReader = isHouseholdReader(user);
   const shopifyImportEnabled =
     user?.household?.shopifyImportEnabled ?? user?.household?.shopify_import_enabled ?? false;
   const { selectedMonth, selectedYear } = usePreferenceStore();
@@ -206,6 +208,7 @@ Adataim:
     chartData,
     channelData,
     totalYTD,
+    isReader,
     ConfirmDeleteModal,
   };
 }

@@ -10,6 +10,8 @@ import { BudgetCategorySummary } from '@/components/modules/budget/budget-catego
 import { BudgetTransactionFeed } from '@/components/modules/budget/budget-transaction-feed';
 import { BudgetTransactionModal } from '@/components/modules/budget/budget-transaction-modal';
 import { BudgetLedgerModal } from '@/components/modules/budget/budget-ledger-modal';
+import { BudgetPageGridSkeleton } from '@/components/modules/budget/budget-page-skeleton';
+import { WalletSwitcher } from '@/components/wallets/WalletSwitcher';
 
 export default function BudgetPage() {
   const state = useBudgetPageState();
@@ -21,19 +23,24 @@ export default function BudgetPage() {
         breadcrumbs={[{ label: 'Pénzügyek' }, { label: 'Költségvetés' }]}
         title="Cashflow"
         description="Bevételek, kiadások és tárgyhavi rezsi — egy nézetben."
+        meta={<WalletSwitcher />}
         actions={
           <>
-            <Button
-              size="sm"
-              variant="outline"
-              loading={state.cloning}
-              onClick={() => void state.runClone(() => state.clonePreviousMonth(state.selectedMonth, state.selectedYear))}
-            >
-              {!state.cloning && <Copy size={13} />} {state.cloning ? 'Másolás…' : 'Múlt havi'}
-            </Button>
-            <Button size="sm" onClick={() => state.openTxForm(null)}>
-              <Plus size={13} /> Új tétel
-            </Button>
+            {!state.isReader ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  loading={state.cloning}
+                  onClick={() => void state.runClone(() => state.clonePreviousMonth(state.selectedMonth, state.selectedYear))}
+                >
+                  {!state.cloning && <Copy size={13} />} {state.cloning ? 'Másolás…' : 'Múlt havi'}
+                </Button>
+                <Button size="sm" onClick={() => state.openTxForm(null)}>
+                  <Plus size={13} /> Új tétel
+                </Button>
+              </>
+            ) : null}
           </>
         }
       />
@@ -47,17 +54,21 @@ export default function BudgetPage() {
 
       <MetricStrip items={state.summaryMetrics} columns={4} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-        <BudgetCategorySummary categoryData={state.categoryData} totalProjectedExpense={state.totalProjectedExpense} />
+      {!state.gridLoading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+          <BudgetCategorySummary categoryData={state.categoryData} totalProjectedExpense={state.totalProjectedExpense} />
 
-        <div className="flex flex-col gap-7">
-          <BudgetTransactionFeed {...state} items={state.incomes} title="Bevételek" type="income" />
-          {state.reserves.length > 0 && (
-            <BudgetTransactionFeed {...state} items={state.reserves} title="Tartalékok" type="expense" />
-          )}
-          <BudgetTransactionFeed {...state} items={state.expenses} title="Kiadások" type="expense" includeBills />
+          <div className="flex flex-col gap-7">
+            <BudgetTransactionFeed {...state} items={state.incomes} title="Bevételek" type="income" />
+            {state.reserves.length > 0 && (
+              <BudgetTransactionFeed {...state} items={state.reserves} title="Tartalékok" type="expense" />
+            )}
+            <BudgetTransactionFeed {...state} items={state.expenses} title="Kiadások" type="expense" includeBills />
+          </div>
         </div>
-      </div>
+      ) : (
+        <BudgetPageGridSkeleton />
+      )}
 
       <BudgetTransactionModal {...state} />
       <BudgetLedgerModal {...state} />

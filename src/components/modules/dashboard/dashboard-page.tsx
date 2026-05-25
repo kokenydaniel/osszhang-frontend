@@ -4,6 +4,8 @@ import classNames from 'classnames';
 import { formatDisplayInitials, formatDisplayName, formatGivenName } from '@/lib/personName';
 import { HELP } from '@/lib/helpTexts';
 import { PageHeader, MetricStrip, AccentPanel } from '@/components/design';
+import { TierGatedAiPanel } from '@/components/subscription/TierGatedAiPanel';
+import { useTierFeature } from '@/components/subscription/TierFeatureGate';
 import { Sparkles } from 'lucide-react';
 import { useDashboardPageState } from '@/components/modules/dashboard/hooks/use-dashboard-page-state';
 import { DashboardAlertBanners } from '@/components/modules/dashboard/dashboard-alert-banners';
@@ -11,10 +13,12 @@ import { DashboardUnpaidSection } from '@/components/modules/dashboard/dashboard
 import { DashboardUtilitiesSnapshot } from '@/components/modules/dashboard/dashboard-utilities-snapshot';
 import { DashboardSideColumn } from '@/components/modules/dashboard/dashboard-side-column';
 import { DashboardBusinessChart } from '@/components/modules/dashboard/dashboard-business-chart';
+import { WalletSwitcher } from '@/components/wallets/WalletSwitcher';
 
 export default function DashboardPage() {
   const state = useDashboardPageState();
   const { GreetingIcon } = state;
+  const { allowed: canUseAi } = useTierFeature('ai');
 
   return (
     <div className="flex flex-col gap-7 w-full max-w-[1500px] mx-auto">
@@ -22,7 +26,7 @@ export default function DashboardPage() {
         breadcrumbs={[{ label: 'Háztartás' }, { label: state.householdName }]}
         title={`${state.greeting}, ${formatGivenName(state.user?.firstName) || 'Gazda'}`}
         description={
-          <span className="inline-flex items-center gap-2">
+          <span className="inline-flex items-center gap-2 flex-wrap">
             <GreetingIcon size={14} className="text-primary" />
             <span className="capitalize">{state.todayFormatted}</span>
             <span className="text-border">·</span>
@@ -30,25 +34,28 @@ export default function DashboardPage() {
           </span>
         }
         meta={
-          state.householdMembers.length > 0 ? (
-            <div className="flex items-center gap-2">
-              <span className="text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground">Család</span>
-              <div className="flex -space-x-1.5">
-                {state.householdMembers.slice(0, 5).map((member: { id: number; firstName?: string; lastName?: string }) => {
-                  const mi = formatDisplayInitials(member.firstName, member.lastName);
-                  return (
-                    <div
-                      key={member.id}
-                      title={formatDisplayName(member.firstName, member.lastName)}
-                      className="h-6 w-6 rounded-full bg-muted text-[0.6rem] font-semibold text-foreground flex items-center justify-center ring-2 ring-background"
-                    >
-                      {mi}
-                    </div>
-                  );
-                })}
+          <div className="flex flex-col items-end gap-2">
+            <WalletSwitcher />
+            {state.householdMembers.length > 0 ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground">Család</span>
+                <div className="flex -space-x-1.5">
+                  {state.householdMembers.slice(0, 5).map((member: { id: number; firstName?: string; lastName?: string }) => {
+                    const mi = formatDisplayInitials(member.firstName, member.lastName);
+                    return (
+                      <div
+                        key={member.id}
+                        title={formatDisplayName(member.firstName, member.lastName)}
+                        className="h-6 w-6 rounded-full bg-muted text-[0.6rem] font-semibold text-foreground flex items-center justify-center ring-2 ring-background"
+                      >
+                        {mi}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ) : null
+            ) : null}
+          </div>
         }
       />
 
@@ -81,6 +88,7 @@ export default function DashboardPage() {
             unpaidItemsList={state.unpaidItemsList}
             todayStr={state.todayStr}
             handlePayItem={state.handlePayItem}
+            isReader={state.isReader}
           />
         )}
 
@@ -103,17 +111,32 @@ export default function DashboardPage() {
 
       <DashboardBusinessChart businessEnabled={state.businessEnabled} chartData={state.chartData} />
 
-      {state.aiDashboardAdvice && state.canUse('budget') && (
-        <AccentPanel
-          tone="ai"
-          icon={Sparkles}
-          title="Heti AI tájékoztató"
-          titleInfo={HELP.dashboard.aiBriefing}
-          description="Az aktuális adatokra szabott összegzés"
-          glow
-        >
-          {state.aiDashboardAdvice}
-        </AccentPanel>
+      {state.canUse('budget') && (
+        canUseAi && state.aiDashboardAdvice ? (
+          <AccentPanel
+            tone="ai"
+            icon={Sparkles}
+            title="Heti AI tájékoztató"
+            titleInfo={HELP.dashboard.aiBriefing}
+            description="Az aktuális adatokra szabott összegzés"
+            glow
+          >
+            {state.aiDashboardAdvice}
+          </AccentPanel>
+        ) : (
+          !canUseAi && (
+            <TierGatedAiPanel
+              featureLabel="Heti AI tájékoztató"
+              icon={Sparkles}
+              title="Heti AI tájékoztató"
+              titleInfo={HELP.dashboard.aiBriefing}
+              description="Az aktuális adatokra szabott összegzés"
+              glow
+            >
+              {null}
+            </TierGatedAiPanel>
+          )
+        )
       )}
     </div>
   );

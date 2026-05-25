@@ -1,13 +1,17 @@
 import { useEffect, useMemo } from 'react';
+import { usePathname } from 'next/navigation';
 import { useSavingsStore } from '@/stores/useSavingsStore';
 import { useSavingsUiStore } from '@/stores/useSavingsUiStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useWalletStore } from '@/stores/useWalletStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { resolveSavingsSettings } from '@/lib/savingsSettings';
+import { savingsBalance } from '@/lib/mapSavings';
 import { formatHUF } from '@/utils';
 import { dayjs, d } from '@/lib/dates';
 import { Investment, LedgerEntry } from '@/types';
 import { HELP } from '@/lib/helpTexts';
+import { isHouseholdReader } from '@/lib/householdRole';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import { PiggyBank, Sparkles, TrendingUp, Wallet } from 'lucide-react';
 import type { MetricItem } from '@/components/design';
@@ -21,17 +25,31 @@ export function useSavingsPageState() {
     investments,
     updateInvestment,
     deleteInvestment,
+    fetchSavings,
+    loadedWalletId,
+    isLoading: walletLoading,
   } = useSavingsStore();
   const ui = useSavingsUiStore();
   const { user } = useAuthStore();
+  const activeWalletId = useWalletStore((s) => s.activeWalletId);
+  const isReader = isHouseholdReader(user);
   const savingsSettings = useMemo(() => resolveSavingsSettings(user?.household), [user?.household]);
   const separateOwner = savingsSettings.separate_owner.trim();
-  const { exchangeRates, refreshRates } = usePreferenceStore();
+  const { exchangeRates, refreshRates, selectedMonth, selectedYear } = usePreferenceStore();
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
+  const pathname = usePathname();
 
   useEffect(() => {
     refreshRates();
   }, [refreshRates]);
+
+  useEffect(() => {
+    if (activeWalletId === null || !pathname.startsWith('/savings')) return;
+    void fetchSavings(activeWalletId, { silent: true, forceReload: true });
+  }, [activeWalletId, fetchSavings, pathname]);
+
+  const walletDataReady =
+    activeWalletId !== null && !walletLoading && loadedWalletId === activeWalletId;
 
   const convertToHUF = (amount: number, currency: string) => (exchangeRates[currency] || 1) * amount;
 
@@ -80,8 +98,11 @@ export function useSavingsPageState() {
     });
   };
 
-  const personalSavings = separateOwner ? savings.filter((s) => s.owner !== separateOwner) : savings;
-  const wifeSavings = separateOwner ? savings.filter((s) => s.owner === separateOwner) : [];
+  const accounts = savings.filter((s) => s.type === 'account');
+  const goals = savings.filter((s) => s.type === 'goal');
+
+  const personalAccounts = separateOwner ? accounts.filter((s) => s.owner !== separateOwner) : accounts;
+  const wifeAccounts = separateOwner ? accounts.filter((s) => s.owner === separateOwner) : [];
   const personalInvestments = separateOwner ? investments.filter((i) => i.owner !== separateOwner) : investments;
   const wifeInvestments = separateOwner ? investments.filter((i) => i.owner === separateOwner) : [];
 
@@ -92,22 +113,20 @@ export function useSavingsPageState() {
     .filter((i) => i.countInSavings !== false)
     .reduce((sum, inv) => sum + getInvestmentValue(inv).totalValue, 0);
   const sumPersonal =
-    personalSavings
+    [...personalAccounts, ...goals.filter((g) => !separateOwner || g.owner !== separateOwner)]
       .filter((s) => s.count_in_savings !== false)
-      .reduce((sum, acc) => sum + convertToHUF(acc.ledger.reduce((s, l) => s + l.amount, 0), acc.currency), 0) +
-    sumPersonalInvestments;
+      .reduce((sum, acc) => sum + convertToHUF(savingsBalance(acc), acc.currency), 0) + sumPersonalInvestments;
   const sumWife =
-    wifeSavings
+    [...wifeAccounts, ...goals.filter((g) => separateOwner && g.owner === separateOwner)]
       .filter((s) => s.count_in_savings !== false)
-      .reduce((sum, acc) => sum + convertToHUF(acc.ledger.reduce((s, l) => s + l.amount, 0), acc.currency), 0) +
-    sumWifeInvestments;
+      .reduce((sum, acc) => sum + convertToHUF(savingsBalance(acc), acc.currency), 0) + sumWifeInvestments;
 
   const savingsMetrics: MetricItem[] = [
     {
       label: separateOwner ? 'Saját + Közös' : 'Megtakarítások',
       value: formatHUF(sumPersonal),
       info: HELP.savings.personal,
-      hint: `${personalSavings.length} számla · ${personalInvestments.length} papír`,
+      hint: `${personalAccounts.length} számla · ${goals.length} cél · ${personalInvestments.length} papír`,
       icon: Wallet,
       tone: 'primary',
       emphasis: true,
@@ -118,7 +137,7 @@ export function useSavingsPageState() {
             label: separateOwner,
             value: formatHUF(sumWife),
             info: HELP.savings.wife,
-            hint: `${wifeSavings.length} számla · ${wifeInvestments.length} papír`,
+            hint: `${wifeAccounts.length} számla · ${wifeInvestments.length} papír`,
             icon: PiggyBank,
             tone: 'info' as const,
           },
@@ -156,8 +175,10 @@ export function useSavingsPageState() {
     separateOwner,
     convertToHUF,
     formatCurrencyAmount,
-    personalSavings,
-    wifeSavings,
+    goals,
+    accounts,
+    personalAccounts,
+    wifeAccounts,
     personalInvestments,
     wifeInvestments,
     sumPersonalInvestments,
@@ -206,6 +227,10 @@ export function useSavingsPageState() {
     saveInvestmentValue: ui.saveInvestmentValue,
     cancelEditInvestmentValue: ui.cancelEditInvestmentValue,
     saveInvestmentPayout: ui.saveInvestmentPayout,
+    isReader,
+    walletDataReady,
+    selectedMonth,
+    selectedYear,
     ConfirmDeleteModal,
   };
 }

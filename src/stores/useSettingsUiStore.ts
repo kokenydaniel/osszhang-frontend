@@ -3,14 +3,14 @@ import { resolveUtilityTemplates, type UtilityTemplate } from '@/lib/utilityTemp
 import { resolveBusinessSettings, type BusinessSettings } from '@/lib/businessSettings';
 import { resolveDebtsSettings, type DebtsSettings } from '@/lib/debtsSettings';
 import { resolveMetersSettings, type MetersSettings } from '@/lib/metersSettings';
-import { resolveSavingsSettings, type SavingsSettings } from '@/lib/savingsSettings';
+import { resolveSavingsSettings, savingsSettingsForApi, type SavingsSettings } from '@/lib/savingsSettings';
 import { type ModuleId } from '@/lib/moduleAccess';
 import { useAuthStore } from './useAuthStore';
 import { useBudgetStore } from './useBudgetStore';
 import { useNotificationStore } from './useNotificationStore';
 import type { UserProfile } from '@/types';
 
-export type SettingsTabId = 'profile' | 'household' | 'modules';
+export type SettingsTabId = 'profile' | 'household' | 'modules' | 'billing' | 'platform';
 
 interface SettingsUiState {
   activeTab: SettingsTabId;
@@ -346,7 +346,10 @@ export const useSettingsUiStore = create<SettingsUiState>((set, get) => ({
     const { addNotification } = useNotificationStore.getState();
     set({ isSavingsSaving: true });
     try {
-      await updateHouseholdSettings({ savings_enabled: savingsEnabled, savings_settings: savingsSettings });
+      await updateHouseholdSettings({
+        savings_enabled: savingsEnabled,
+        savings_settings: savingsSettingsForApi(savingsSettings),
+      });
       addNotification('Megtakarítás modul mentve.', 'success');
     } catch {
       addNotification('A megtakarítás mentése nem sikerült.', 'error');

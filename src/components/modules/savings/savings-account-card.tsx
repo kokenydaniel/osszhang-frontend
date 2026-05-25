@@ -15,6 +15,7 @@ type SavingsAccountCardProps = Pick<
   | 'deleteSavingsAccount'
   | 'requestDelete'
   | 'openLedgerModal'
+  | 'isReader'
 > & {
   acc: SavingsPageState['savings'][number];
   accent: 'primary' | 'rose';
@@ -29,6 +30,7 @@ export function SavingsAccountCard({
   deleteSavingsAccount,
   requestDelete,
   openLedgerModal,
+  isReader,
 }: SavingsAccountCardProps) {
   const balance = acc.ledger.reduce((s, l) => s + l.amount, 0);
   const inactive = acc.count_in_savings === false;
@@ -44,12 +46,15 @@ export function SavingsAccountCard({
       title={acc.institution}
       subtitle={`${acc.owner} · ${acc.currency}`}
       inactive={inactive}
-      onDelete={() =>
-        requestDelete({
-          title: 'Számla törlése',
-          message: `Biztosan törlöd a „${acc.institution}" számlát és az összes mozgást? Ez a művelet nem vonható vissza.`,
-          onConfirm: () => deleteSavingsAccount(acc.id),
-        })
+      onDelete={
+        isReader
+          ? undefined
+          : () =>
+              requestDelete({
+                title: 'Számla törlése',
+                message: `Biztosan törlöd a „${acc.institution}" számlát és az összes mozgást? Ez a művelet nem vonható vissza.`,
+                onConfirm: () => deleteSavingsAccount(acc.id),
+              })
       }
       value={
         <>
@@ -76,6 +81,7 @@ export function SavingsAccountCard({
             onChange={(checked) => updateSavingsAccount(acc.id, { count_in_savings: checked })}
             label="Vagyonba"
             title="Beleszámít a fő vagyon összegébe a Széf nézetben"
+            disabled={isReader}
           />
           <Button variant="ghost" size="xs" onClick={() => openLedgerModal(acc.id)}>
             <History size={12} /> Történet

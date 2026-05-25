@@ -25,6 +25,7 @@ import { FormField } from '@/components/ui/FormField';
 import { HELP } from '@/lib/helpTexts';
 import { formatDisplayName } from '@/lib/personName';
 import { InsightBanner, StatusPill } from '@/components/design';
+import { TierFeatureGate, useTierFeature } from '@/components/subscription/TierFeatureGate';
 import {
   CategoryTag,
   ModuleFeatureCard,
@@ -149,6 +150,10 @@ export function SettingsModulesTab({
   newCat,
   setNewCat,
 }: SettingsModulesTabProps) {
+  const { allowed: utilitySplitAllowed, promptUpgrade: promptUtilitySplitUpgrade } =
+    useTierFeature('utility_split');
+  const { allowed: shopifyAllowed, promptUpgrade: promptShopifyUpgrade } = useTierFeature('shopify_import');
+
   return (
     <>
       <SettingsSectionHeading
@@ -284,35 +289,48 @@ export function SettingsModulesTab({
             }
           >
             <div className="space-y-4">
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Rezsi megosztás</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Közös számlák elszámolása partnerekkel.</p>
+              <TierFeatureGate feature="utility_split" featureLabel="Rezsi megosztás">
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Rezsi megosztás</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Közös számlák elszámolása partnerekkel.</p>
+                  </div>
+                  <Switch
+                    checked={utilitySplitEnabled}
+                    onCheckedChange={(v) => {
+                      if (!utilitySplitAllowed) {
+                        promptUtilitySplitUpgrade('Rezsi megosztás');
+                        return;
+                      }
+                      setUtilitySplitEnabled(v);
+                    }}
+                    aria-label="Rezsi megosztás"
+                  />
                 </div>
-                <Switch checked={utilitySplitEnabled} onCheckedChange={setUtilitySplitEnabled} aria-label="Rezsi megosztás" />
-              </div>
-              {utilitySplitEnabled && (
-                <FormField label="Elszámolási partner" info={HELP.settings.splitPartner}>
-                  {utilityPartners.length === 0 ? (
-                    <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2.5">
-                      Nincs más tag. Először hozz létre egy családtagot a Háztartás fülön.
-                    </p>
-                  ) : (
-                    <select
-                      className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
-                      value={utilitySplitPartnerId || ''}
-                      onChange={(e) => setUtilitySplitPartnerId(e.target.value ? Number(e.target.value) : null)}
-                    >
-                      <option value="">Válassz partnert…</option>
-                      {utilityPartners.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {formatDisplayName(p.firstName, p.lastName)}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </FormField>
-              )}
+                {utilitySplitEnabled && (
+                  <FormField label="Elszámolási partner" info={HELP.settings.splitPartner}>
+                    {utilityPartners.length === 0 ? (
+                      <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2.5">
+                        Nincs más tag. Először hozz létre egy családtagot a Háztartás fülön.
+                      </p>
+                    ) : (
+                      <select
+                        className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
+                        value={utilitySplitPartnerId || ''}
+                        onChange={(e) => setUtilitySplitPartnerId(e.target.value ? Number(e.target.value) : null)}
+                        disabled={!utilitySplitAllowed}
+                      >
+                        <option value="">Válassz partnert…</option>
+                        {utilityPartners.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {formatDisplayName(p.firstName, p.lastName)}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </FormField>
+                )}
+              </TierFeatureGate>
             </div>
 
             <SettingsDivider />
@@ -373,63 +391,73 @@ export function SettingsModulesTab({
 
             <SettingsDivider />
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h5 className="text-sm font-semibold text-foreground">Shopify import</h5>
-                  <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-                    Ha Shopify webshopod van, automatikusan importálhatod a rendeléseket. Kikapcsolva manuálisan rögzítheted őket.
-                  </p>
+            <TierFeatureGate feature="shopify_import" featureLabel="Shopify import">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h5 className="text-sm font-semibold text-foreground">Shopify import</h5>
+                    <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                      Ha Shopify webshopod van, automatikusan importálhatod a rendeléseket. Kikapcsolva manuálisan rögzítheted őket.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={shopifyImportEnabled}
+                    onCheckedChange={(v) => {
+                      if (!shopifyAllowed) {
+                        promptShopifyUpgrade('Shopify import');
+                        return;
+                      }
+                      setShopifyImportEnabled(v);
+                    }}
+                    disabled={!businessEnabled}
+                    aria-label="Shopify import"
+                  />
                 </div>
-                <Switch
-                  checked={shopifyImportEnabled}
-                  onCheckedChange={setShopifyImportEnabled}
-                  disabled={!businessEnabled}
-                  aria-label="Shopify import"
-                />
-              </div>
 
-              {shopifyImportEnabled && (
-                <div className="grid grid-cols-1 gap-4 rounded-xl border border-border bg-muted/20 p-4">
-                  <FormField label="Shopify bolt URL" info={HELP.settings.shopifyUrl}>
-                    <Input
-                      value={shopifyShopUrl}
-                      onChange={(e) => setShopifyShopUrl(e.target.value)}
-                      placeholder="bolt-neve.myshopify.com"
-                    />
-                  </FormField>
-                  <FormField
-                    label="Admin API token"
-                    info={HELP.settings.shopifyToken}
-                    hint={
-                      hasShopifyToken
-                        ? 'Mentett token van — hagyd üresen, ha nem cseréled. Új token: shpat_ előtaggal.'
-                        : 'Kötelező az első mentésnél. A token shpat_ karakterekkel kezdődik.'
-                    }
-                  >
-                    <div className="relative">
-                      <Lock
-                        size={14}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-                      />
+                {shopifyImportEnabled && (
+                  <div className="grid grid-cols-1 gap-4 rounded-xl border border-border bg-muted/20 p-4">
+                    <FormField label="Shopify bolt URL" info={HELP.settings.shopifyUrl}>
                       <Input
-                        type="password"
-                        className="pl-8 font-mono text-sm"
-                        value={shopifyAccessToken}
-                        onChange={(e) => setShopifyAccessToken(e.target.value)}
-                        placeholder={
-                          hasShopifyToken
-                            ? 'Üresen hagyva: megtartjuk a mentett tokent'
-                            : 'shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
-                        }
-                        autoComplete="new-password"
-                        spellCheck={false}
+                        value={shopifyShopUrl}
+                        onChange={(e) => setShopifyShopUrl(e.target.value)}
+                        placeholder="bolt-neve.myshopify.com"
+                        disabled={!shopifyAllowed}
                       />
-                    </div>
-                  </FormField>
-                </div>
-              )}
-            </div>
+                    </FormField>
+                    <FormField
+                      label="Admin API token"
+                      info={HELP.settings.shopifyToken}
+                      hint={
+                        hasShopifyToken
+                          ? 'Mentett token van — hagyd üresen, ha nem cseréled. Új token: shpat_ előtaggal.'
+                          : 'Kötelező az első mentésnél. A token shpat_ karakterekkel kezdődik.'
+                      }
+                    >
+                      <div className="relative">
+                        <Lock
+                          size={14}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                        />
+                        <Input
+                          type="password"
+                          className="pl-8 font-mono text-sm"
+                          value={shopifyAccessToken}
+                          onChange={(e) => setShopifyAccessToken(e.target.value)}
+                          placeholder={
+                            hasShopifyToken
+                              ? 'Üresen hagyva: megtartjuk a mentett tokent'
+                              : 'shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+                          }
+                          autoComplete="new-password"
+                          spellCheck={false}
+                          disabled={!shopifyAllowed}
+                        />
+                      </div>
+                    </FormField>
+                  </div>
+                )}
+              </div>
+            </TierFeatureGate>
 
             <SettingsDivider />
 

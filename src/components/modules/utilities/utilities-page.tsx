@@ -24,6 +24,8 @@ import {
   SettleDebtButton,
   UnsettleDebtButton,
 } from '@/components/modules/utilities/utilities-settlement-buttons';
+import { TierGatedAiPanel } from '@/components/subscription/TierGatedAiPanel';
+import { TierGatedButton } from '@/components/subscription/TierGatedButton';
 import { UtilitiesBillsTable } from '@/components/modules/utilities/utilities-bills-table';
 import { UtilitiesBillModal } from '@/components/modules/utilities/utilities-bill-modal';
 
@@ -125,7 +127,7 @@ export default function UtilitiesPage() {
 
       <MetricStrip items={metrics} columns={4} variant="separated" />
 
-      {state.aiUtilityAnomalies?.anomalies && state.aiUtilityAnomalies.anomalies.length > 0 && (
+      {state.canUseAi && state.aiUtilityAnomalies?.anomalies && state.aiUtilityAnomalies.anomalies.length > 0 ? (
         <AccentPanel
           tone="ai"
           icon={Sparkles}
@@ -154,7 +156,22 @@ export default function UtilitiesPage() {
             )}
           </ul>
         </AccentPanel>
-      )}
+      ) : !state.canUseAi ? (
+        <TierGatedAiPanel
+          featureLabel="AI anomáliafigyelés"
+          icon={Sparkles}
+          title="AI anomáliafigyelés"
+          titleInfo={HELP.utilities.aiAnomaly}
+          description="A modell szokatlan rezsiértékeket keres a havi adatokban"
+          action={
+            <TierGatedButton feature="ai" featureLabel="AI anomáliafigyelés" variant="ghost" size="xs" showBadge={false}>
+              Premium csomag
+            </TierGatedButton>
+          }
+        >
+          {null}
+        </TierGatedAiPanel>
+      ) : null}
 
       <UtilitiesBillsTable {...state} />
       <UtilitiesBillModal {...state} />

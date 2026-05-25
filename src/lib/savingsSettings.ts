@@ -47,3 +47,32 @@ export function resolveSavingsSettings(household?: HouseholdLike | null): Saving
     default_count_in_savings: raw.default_count_in_savings ?? DEFAULT_SAVINGS_SETTINGS.default_count_in_savings,
   };
 }
+
+/** Ensures API-safe savings settings (non-empty default_owner when owners exist). */
+export function savingsSettingsForApi(settings: SavingsSettings): SavingsSettings {
+  const owners = pickList(settings.owners, DEFAULT_SAVINGS_SETTINGS.owners);
+  const defaultOwner =
+    settings.default_owner.trim() || owners[0] || DEFAULT_SAVINGS_SETTINGS.default_owner || 'Közös';
+
+  return {
+    ...settings,
+    owners,
+    default_owner: defaultOwner,
+    separate_owner: settings.separate_owner.trim(),
+  };
+}
+
+export function buildOnboardingSavingsSettings(separateGroupName?: string): SavingsSettings {
+  const separateOwner = separateGroupName?.trim() ?? '';
+  const owners = ['Közös'];
+  if (separateOwner && !owners.includes(separateOwner)) {
+    owners.push(separateOwner);
+  }
+
+  return savingsSettingsForApi({
+    ...DEFAULT_SAVINGS_SETTINGS,
+    owners,
+    default_owner: 'Közös',
+    separate_owner: separateOwner,
+  });
+}

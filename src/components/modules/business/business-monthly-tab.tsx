@@ -4,6 +4,8 @@ import classNames from 'classnames';
 import { Button } from '@/components/ui/button';
 import { Tooltip as UiTooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Section } from '@/components/design';
+import { TierGatedButton } from '@/components/subscription/TierGatedButton';
+import { useTierFeature } from '@/components/subscription/TierFeatureGate';
 import { Plus, RefreshCw } from 'lucide-react';
 import type { BusinessPageState } from '@/components/modules/business/hooks/use-business-page-state';
 import { BusinessOrdersTable } from '@/components/modules/business/business-orders-table';
@@ -19,6 +21,7 @@ type BusinessMonthlyTabProps = Pick<
   | 'openForm'
   | 'deleteOrder'
   | 'requestDelete'
+  | 'isReader'
 >;
 
 export function BusinessMonthlyTab({
@@ -31,28 +34,34 @@ export function BusinessMonthlyTab({
   openForm,
   deleteOrder,
   requestDelete,
+  isReader,
 }: BusinessMonthlyTabProps) {
+  const { allowed: shopifyAllowed } = useTierFeature('shopify_import');
+
   return (
     <Section
       title={`Rendelések · ${selectedYear}. ${String(selectedMonth).padStart(2, '0')}.`}
       description="Rendelési napló — manuális rögzítés vagy opcionális Shopify import"
       action={
+        !isReader ? (
         <div className="flex items-center gap-2">
           <UiTooltip>
             <TooltipTrigger asChild>
               <span className="inline-flex">
-                <Button
+                <TierGatedButton
+                  feature="shopify_import"
+                  featureLabel="Shopify import"
                   variant="outline"
                   size="sm"
                   onClick={handleShopifySync}
-                  disabled={isSyncing || !shopifyImportEnabled}
+                  disabled={isSyncing || !shopifyImportEnabled || !shopifyAllowed}
                 >
                   <RefreshCw size={13} className={classNames(isSyncing && 'animate-spin')} />
                   {isSyncing ? 'Szinkron…' : 'Shopify import'}
-                </Button>
+                </TierGatedButton>
               </span>
             </TooltipTrigger>
-            {!shopifyImportEnabled && (
+            {!shopifyImportEnabled && shopifyAllowed && (
               <TooltipContent side="bottom" className="max-w-xs text-center">
                 A Shopify import ki van kapcsolva. Kapcsold be a Beállítások → Modulok → Vállalkozás menüpontban, ha használni szeretnéd.
               </TooltipContent>
@@ -62,6 +71,7 @@ export function BusinessMonthlyTab({
             <Plus size={13} /> Új rendelés
           </Button>
         </div>
+        ) : undefined
       }
     >
       <BusinessOrdersTable
@@ -69,6 +79,7 @@ export function BusinessMonthlyTab({
         openForm={openForm}
         deleteOrder={deleteOrder}
         requestDelete={requestDelete}
+        isReader={isReader}
       />
     </Section>
   );

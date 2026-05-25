@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { Meter, MeterReading } from '@/types';
 import { aiFinanceClient } from '@/lib/api-client';
+import { canEditHousehold } from '@/lib/householdRole';
+import { useAuthStore } from './useAuthStore';
 import { useMetersStore } from './useMetersStore';
 import {
   bracketAnchorReadings,
@@ -98,6 +100,7 @@ export const useMetersPageUiStore = create<MetersPageUiState>((set, get) => ({
   setNewMeterLoc: (newMeterLoc) => set({ newMeterLoc }),
 
   openNewMeterModal: (metersSettings) => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
     set({
       newMeterName: '',
       newMeterUnit: metersSettings.units[0] ?? 'kWh',
@@ -116,6 +119,7 @@ export const useMetersPageUiStore = create<MetersPageUiState>((set, get) => ({
 
   handleMeterSubmit: (e) => {
     e.preventDefault();
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
     const { newMeterName, newMeterUnit, newMeterLoc } = get();
     void useMetersStore.getState().addMeter({ name: newMeterName, unit: newMeterUnit, location: newMeterLoc });
     set({ isNewMeterModalOpen: false, newMeterName: '' });
@@ -123,6 +127,7 @@ export const useMetersPageUiStore = create<MetersPageUiState>((set, get) => ({
 
   handleSubmit: (e) => {
     e.preventDefault();
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
     const { value, editingReading, meterId, date, isReset, isOfficial } = get();
     if (!value) return;
     const { addMeterReading, updateMeterReading } = useMetersStore.getState();

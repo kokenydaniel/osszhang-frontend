@@ -6,6 +6,7 @@ import { useSavingsStore } from '@/stores/useSavingsStore';
 import { useMetersStore } from '@/stores/useMetersStore';
 import { useBusinessStore } from '@/stores/useBusinessStore';
 import { useDebtsStore } from '@/stores/useDebtsStore';
+import { useWalletStore } from '@/stores/useWalletStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { formatHUF, isDueOverdue, compareDates } from '@/utils';
 import { dayjs, d, formatTodayLong, toDateString, today as todayDate } from '@/lib/dates';
@@ -14,7 +15,10 @@ import { computeUtilityNetBalance } from '@/lib/utilityBalance';
 import { ourUtilityPortion, resolveUtilitySplitLabels } from '@/lib/utilityViewer';
 import { LedgerEntry } from '@/types';
 import { HELP } from '@/lib/helpTexts';
-import { canAccessModule } from '@/lib/moduleAccess';
+import { canUseModuleWithTier } from '@/lib/moduleAccess';
+import { canUseFeature } from '@/lib/checkAccess';
+import { isHouseholdReader } from '@/lib/householdRole';
+import { activeWalletManualBalance } from '@/lib/walletBalance';
 import type { MetricItem } from '@/components/design';
 import {
   Wallet,
@@ -78,13 +82,27 @@ export type DashboardChartPoint = {
 export function useDashboardPageState() {
   const { user, aiDashboardAdvice, lastAiFingerprint, setAiDashboardAdvice } = useAuthStore();
   const isAdmin = user?.role === 'admin';
-  const canUse = (mod: string) => canAccessModule(user, mod as Parameters<typeof canAccessModule>[1]);
+  const isReader = isHouseholdReader(user);
+  const canUse = (mod: string) => canUseModuleWithTier(user, mod as Parameters<typeof canUseModuleWithTier>[1]);
+  const canUseBudget = user ? canUseModuleWithTier(user, 'budget') : false;
+  const canUseAi = canUseFeature(user, 'ai');
+  const activeWalletId = useWalletStore((s) => s.activeWalletId);
+  const fetchTransactions = useBudgetStore((s) => s.fetchTransactions);
+  const loadedWalletId = useBudgetStore((s) => s.loadedWalletId);
+  const walletLoading = useBudgetStore((s) => s.isLoading);
+
+  useEffect(() => {
+    if (!canUseBudget || activeWalletId === null) return;
+    if (loadedWalletId === activeWalletId && !walletLoading) return;
+    void fetchTransactions(activeWalletId);
+  }, [activeWalletId, canUseBudget, fetchTransactions, loadedWalletId, walletLoading]);
 
   const businessEnabled = canUse('business');
   const businessName = user?.household?.businessName ?? user?.household?.business_name ?? 'Vállalkozás';
+  const utilitySplitConfigured =
+    user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? false;
   const utilitySplitEnabled =
-    canUse('utilities') &&
-    (user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? false);
+    canUse('utilities') && utilitySplitConfigured && canUseFeature(user, 'utility_split');
 
   const utilityLabels = useMemo(() => resolveUtilitySplitLabels(user), [user]);
   const { onHouseholdSide, partnerId, counterpartyLabel } = utilityLabels;
@@ -247,7 +265,7 @@ export function useDashboardPageState() {
   const totalSavings = savingsAccountsTotal + totalInvestmentsValue;
 
   const unpaidBills = bills.filter((b) => !b.paidDate && b.dueDate.startsWith(selectedYearMonthPrefix));
-  const manualBalance = user?.household?.manualBalance ?? user?.household?.manual_balance ?? 0;
+  const manualBalance = activeWalletManualBalance(user);
 
   const unpaidExpensesTotal =
     (canUse('budget')
@@ -319,13 +337,16 @@ export function useDashboardPageState() {
       unpaidBillsCount: unpaidBills.length,
       heavyConsumption: consumptionData.some((c) => c.name === 'Villany' && c.value > 120),
       month: selectedYearMonthPrefix,
+      walletId: activeWalletId,
     });
 
     const fetchAiAdvice = async () => {
+      if (!canUseAi) return;
+      if (activeWalletId === null || loadedWalletId !== activeWalletId || walletLoading) return;
       if (lastAiFingerprint === currentFingerprint && aiDashboardAdvice) return;
       try {
         const promises = [];
-        if (canUse('budget')) promises.push(fetchAiWeeklyBriefing());
+        if (canUse('budget')) promises.push(fetchAiWeeklyBriefing(undefined, activeWalletId));
         if (canUse('utilities')) promises.push(fetchAiUtilityAnomalies(selectedYear, selectedMonth));
         await Promise.all(promises);
         if (canUse('budget') && aiWeeklyBriefing?.briefing_text) {
@@ -341,7 +362,7 @@ export function useDashboardPageState() {
     const timeoutId = setTimeout(fetchAiAdvice, 1500);
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedYearMonthPrefix, totalSavings, businessTotal, incomeReceived, actualSpent, monthlyBalance, isOverspentThisMonth, rezsiBalance, externalDebts, unpaidBills.length]);
+  }, [selectedYearMonthPrefix, totalSavings, businessTotal, incomeReceived, actualSpent, monthlyBalance, isOverspentThisMonth, rezsiBalance, externalDebts, unpaidBills.length, activeWalletId, canUseAi, loadedWalletId, walletLoading]);
 
   const last6MonthsSparkline = useMemo(() => {
     const result: number[] = [];
@@ -501,6 +522,7 @@ export function useDashboardPageState() {
     .sort((a, b) => (!a.date ? 1 : !b.date ? -1 : compareDates(a.date, b.date)));
 
   const handlePayItem = async (item: DashboardUnpaidItem) => {
+    if (isReader) return;
     const paidOn = todayDate();
     if (item.type === 'expense') await updateTransaction(item.id, { paidDate: paidOn });
     else await updateBill(item.id, { paidDate: paidOn });
@@ -509,6 +531,7 @@ export function useDashboardPageState() {
   return {
     user,
     isAdmin,
+    isReader,
     canUse,
     businessEnabled,
     utilitySplitEnabled,

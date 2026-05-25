@@ -2,12 +2,14 @@ import { useEffect, useMemo } from 'react';
 import { useDebtsStore } from '@/stores/useDebtsStore';
 import { useDebtsUiStore } from '@/stores/useDebtsUiStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useWalletStore } from '@/stores/useWalletStore';
 import { useBudgetStore } from '@/stores/useBudgetStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { formatHUF } from '@/utils';
 import { computePayoff, computeAcceleration, formatPayoffDate } from '@/utils/debt';
 import { HELP } from '@/lib/helpTexts';
 import { resolveDebtsSettings } from '@/lib/debtsSettings';
+import { isHouseholdReader } from '@/lib/householdRole';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import { CalendarDays, CreditCard, Target, TrendingDown } from 'lucide-react';
 import type { MetricItem } from '@/components/design';
@@ -15,18 +17,21 @@ import type { MetricItem } from '@/components/design';
 export type { DebtStrategy } from '@/stores/useDebtsUiStore';
 
 export function useDebtsPageState() {
-  const { debts, fetchDebts, deleteDebt, aiDebtPlan } = useDebtsStore();
+  const { debts, fetchDebts, deleteDebt, aiDebtPlan, loadedWalletId, isLoading: walletLoading } = useDebtsStore();
   const ui = useDebtsUiStore();
   const { user } = useAuthStore();
+  const activeWalletId = useWalletStore((s) => s.activeWalletId);
   const { categories } = useBudgetStore();
   const { selectedYear, selectedMonth } = usePreferenceStore();
   const debtsSettings = useMemo(() => resolveDebtsSettings(user?.household), [user?.household]);
-  const isReader = user?.role === 'reader';
+  const isReader = isHouseholdReader(user);
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
 
   useEffect(() => {
-    fetchDebts();
-  }, [fetchDebts]);
+    if (activeWalletId === null) return;
+    if (loadedWalletId === activeWalletId && !walletLoading) return;
+    void fetchDebts(activeWalletId);
+  }, [activeWalletId, fetchDebts, loadedWalletId, walletLoading]);
 
   useEffect(() => {
     useDebtsUiStore.getState().syncPayCategory(categories);

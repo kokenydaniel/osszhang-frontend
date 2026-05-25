@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { Investment, LedgerEntry } from '@/types';
+import { canEditHousehold } from '@/lib/householdRole';
+import { useAuthStore } from './useAuthStore';
 import { useSavingsStore } from './useSavingsStore';
 
 import { today } from '@/lib/dates';
@@ -16,7 +18,7 @@ interface SavingsUiState {
   editingLedgerId: number | null;
 
   isNewAssetModalOpen: boolean;
-  newAssetInitialKind: 'account' | 'investment';
+  newAssetInitialKind: 'account' | 'goal' | 'investment';
 
   editingInvId: number | null;
   editingInvValue: string;
@@ -39,7 +41,7 @@ interface SavingsUiState {
   openLedgerModal: (accId: number) => void;
   startEditLedger: (item: LedgerEntry) => void;
   handleLedgerSubmit: () => Promise<void>;
-  openNewAsset: (kind?: 'account' | 'investment') => void;
+  openNewAsset: (kind?: 'account' | 'goal' | 'investment') => void;
   startEditInvestmentValue: (inv: Investment, totalValue: number) => void;
   saveInvestmentValue: (invId: number) => void;
   cancelEditInvestmentValue: () => void;
@@ -94,6 +96,7 @@ export const useSavingsUiStore = create<SavingsUiState>((set, get) => ({
   },
 
   startEditLedger: (item) => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
     set({
       editingLedgerId: item.id,
       ledgerAmount: String(Math.abs(item.amount)),
@@ -104,6 +107,8 @@ export const useSavingsUiStore = create<SavingsUiState>((set, get) => ({
   },
 
   handleLedgerSubmit: async () => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
+
     const { selectedSavings, ledgerAmount, ledgerType, ledgerReason, ledgerDate, editingLedgerId } = get();
     if (!selectedSavings) return;
     const cleanAmount = ledgerAmount.replace(',', '.');
@@ -125,9 +130,13 @@ export const useSavingsUiStore = create<SavingsUiState>((set, get) => ({
     get().clearLedgerForm();
   },
 
-  openNewAsset: (kind = 'account') => set({ newAssetInitialKind: kind, isNewAssetModalOpen: true }),
+  openNewAsset: (kind = 'account') => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
+    set({ newAssetInitialKind: kind, isNewAssetModalOpen: true });
+  },
 
   startEditInvestmentValue: (inv, totalValue) => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
     set({
       editingInvId: inv.id,
       editingInvValue: inv.currentValue ? String(inv.currentValue) : Math.round(totalValue).toString(),
@@ -135,6 +144,7 @@ export const useSavingsUiStore = create<SavingsUiState>((set, get) => ({
   },
 
   saveInvestmentValue: (invId) => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
     const { editingInvValue } = get();
     void useSavingsStore.getState().updateInvestment(invId, { currentValue: Number(editingInvValue) });
     set({ editingInvId: null });
@@ -143,6 +153,7 @@ export const useSavingsUiStore = create<SavingsUiState>((set, get) => ({
   cancelEditInvestmentValue: () => set({ editingInvId: null }),
 
   saveInvestmentPayout: (invId) => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
     const { editingPayoutAmount, editingPayoutDate } = get();
     void useSavingsStore.getState().updateInvestment(invId, {
       nextPayoutAmount: Number(editingPayoutAmount),

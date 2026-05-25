@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { useMetersPageState } from '@/components/modules/meters/hooks/use-meters-page-state';
 import { MeterPanel } from '@/components/modules/meters/meter-panel';
+import { TierGatedAiPanel } from '@/components/subscription/TierGatedAiPanel';
+import { TierGatedButton } from '@/components/subscription/TierGatedButton';
 import { MetersReadingModal } from '@/components/modules/meters/meters-reading-modal';
 import { MetersAiModal } from '@/components/modules/meters/meters-ai-modal';
 import { MetersNewMeterModal } from '@/components/modules/meters/meters-new-meter-modal';
@@ -41,7 +43,7 @@ export default function MetersPage() {
         }
       />
 
-      {!!state.aiUtilityAnomalies?.anomalies?.length && (
+      {state.canUseAi && !!state.aiUtilityAnomalies?.anomalies?.length ? (
         <AccentPanel
           tone="warning"
           icon={Sparkles}
@@ -65,7 +67,22 @@ export default function MetersPage() {
             ))}
           </ul>
         </AccentPanel>
-      )}
+      ) : !state.canUseAi ? (
+        <TierGatedAiPanel
+          featureLabel="AI anomáliafigyelés"
+          icon={Sparkles}
+          title="AI anomáliák ezen a hónapon"
+          titleInfo={HELP.meters.aiAnomaly}
+          description="A modell szokatlan fogyasztási értékeket keres"
+          action={
+            <TierGatedButton feature="ai" featureLabel="AI anomáliafigyelés" variant="ghost" size="xs" showBadge={false}>
+              Premium csomag
+            </TierGatedButton>
+          }
+        >
+          {null}
+        </TierGatedAiPanel>
+      ) : null}
 
       {Object.keys(state.locationGroups).length === 0 ? (
         <EmptyState

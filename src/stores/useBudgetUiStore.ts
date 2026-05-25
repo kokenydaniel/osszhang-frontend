@@ -1,8 +1,11 @@
 import { create } from 'zustand';
-import { CashTransaction } from '@/types';
+import { CashTransaction, isSavingsGoalTransaction } from '@/types';
 import { aiFinanceClient } from '@/lib/api-client';
+import { canEditHousehold } from '@/lib/householdRole';
 import { useAuthStore } from './useAuthStore';
 import { useBudgetStore } from './useBudgetStore';
+import { usePreferenceStore } from './usePreferenceStore';
+import { getActiveWalletId } from './useWalletStore';
 
 import { today } from '@/lib/dates';
 
@@ -10,7 +13,7 @@ const todayIso = today;
 
 interface BudgetUiState {
   isTxModalOpen: boolean;
-  editTxId: number | null;
+  editTxId: number | string | null;
   txType: 'expense' | 'income';
   txCat: string;
   txDesc: string;
@@ -22,9 +25,11 @@ interface BudgetUiState {
   isCategoryLoading: boolean;
 
   isLedgerModalOpen: boolean;
-  activeTxId: number | null;
+  activeTxId: number | string | null;
   ledgerAmount: string;
   ledgerReason: string;
+  ledgerIsGoalPayment: boolean;
+  ledgerGoalTitle: string;
 
   manualBalance: string;
   balanceSaved: boolean;
@@ -42,7 +47,7 @@ interface BudgetUiState {
   setLedgerReason: (reason: string) => void;
   setManualBalance: (value: string) => void;
   setBalanceSaved: (saved: boolean) => void;
-  setActiveTxId: (id: number | null) => void;
+  setActiveTxId: (id: number | string | null) => void;
   setIsLedgerModalOpen: (open: boolean) => void;
 
   syncManualBalanceFromDb: (value: number) => void;
@@ -50,9 +55,10 @@ interface BudgetUiState {
   handleTxSubmit: (e: React.FormEvent) => void;
   handleAutoCategory: () => Promise<void>;
   handleManualBalanceSave: () => Promise<void>;
-  handleLedgerSubmit: () => void;
+  handleLedgerSubmit: () => Promise<void>;
   closeLedgerModal: () => void;
-  openLedgerModal: (txId: number) => void;
+  openLedgerModal: (txId: number | string) => void;
+  openGoalPaymentModal: (goalRow: CashTransaction) => void;
 }
 
 export const useBudgetUiStore = create<BudgetUiState>((set, get) => ({
@@ -72,6 +78,8 @@ export const useBudgetUiStore = create<BudgetUiState>((set, get) => ({
   activeTxId: null,
   ledgerAmount: '',
   ledgerReason: '',
+  ledgerIsGoalPayment: false,
+  ledgerGoalTitle: '',
 
   manualBalance: '0',
   balanceSaved: false,
@@ -95,6 +103,8 @@ export const useBudgetUiStore = create<BudgetUiState>((set, get) => ({
   syncManualBalanceFromDb: (value) => set({ manualBalance: value.toString() }),
 
   openTxForm: (tx, defaultType = 'expense', categories = useBudgetStore.getState().categories) => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
+
     if (tx) {
       set({
         editTxId: tx.id,
@@ -126,6 +136,8 @@ export const useBudgetUiStore = create<BudgetUiState>((set, get) => ({
 
   handleTxSubmit: (e) => {
     e.preventDefault();
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
+
     const {
       editTxId,
       txType,
@@ -138,6 +150,7 @@ export const useBudgetUiStore = create<BudgetUiState>((set, get) => ({
       txPaidDate,
     } = get();
     const cleanAmount = txAmount.toString().replace(',', '.');
+    const walletId = getActiveWalletId() ?? undefined;
     const data = {
       type: txType,
       description: txDesc,
@@ -147,14 +160,17 @@ export const useBudgetUiStore = create<BudgetUiState>((set, get) => ({
       isBudget: txIsBudget,
       isReserve: txIsReserve,
       paidDate: txPaidDate,
+      walletId,
     };
     const { addTransaction, updateTransaction } = useBudgetStore.getState();
-    if (editTxId) void updateTransaction(editTxId, data);
+    if (editTxId !== null && typeof editTxId === 'number') void updateTransaction(editTxId, data);
     else void addTransaction(data);
     set({ isTxModalOpen: false });
   },
 
   handleAutoCategory: async () => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
+
     const { txDesc, txType, txAmount } = get();
     if (!txDesc.trim()) return;
     const categories = useBudgetStore.getState().categories;
@@ -174,10 +190,15 @@ export const useBudgetUiStore = create<BudgetUiState>((set, get) => ({
   },
 
   handleManualBalanceSave: async () => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
+
     const { manualBalance } = get();
+    const walletId = getActiveWalletId();
+    if (walletId === null) return;
+
     set({ balanceSaving: true });
     try {
-      await useAuthStore.getState().updateManualBalance(Number(manualBalance) || 0);
+      await useAuthStore.getState().updateWalletManualBalance(walletId, Number(manualBalance) || 0);
       set({ balanceSaved: true });
       window.setTimeout(() => set({ balanceSaved: false }), 2000);
     } finally {
@@ -185,20 +206,68 @@ export const useBudgetUiStore = create<BudgetUiState>((set, get) => ({
     }
   },
 
-  handleLedgerSubmit: () => {
-    const { activeTxId, ledgerAmount, ledgerReason } = get();
-    if (!activeTxId) return;
+  handleLedgerSubmit: async () => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
+
+    const { activeTxId, ledgerAmount, ledgerReason, ledgerIsGoalPayment } = get();
+    if (activeTxId === null) return;
     const cleanAmount = ledgerAmount.replace(',', '.');
-    const amt = -Math.abs(Number(cleanAmount));
-    void useBudgetStore.getState().addSubItem(activeTxId, {
-      date: todayIso(),
+    const isGoal = ledgerIsGoalPayment || isSavingsGoalTransaction({ id: activeTxId });
+    const { selectedMonth, selectedYear } = usePreferenceStore.getState();
+    const monthDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
+    const amt = isGoal ? Math.abs(Number(cleanAmount)) : -Math.abs(Number(cleanAmount));
+    await useBudgetStore.getState().addSubItem(activeTxId, {
+      date: isGoal ? monthDate : todayIso(),
       amount: amt,
-      reason: ledgerReason,
+      reason: ledgerReason || (isGoal ? 'Költségvetés – havi befizetés' : ''),
     });
-    set({ ledgerAmount: '', ledgerReason: '' });
+    if (isGoal) {
+      set({
+        isLedgerModalOpen: false,
+        activeTxId: null,
+        ledgerIsGoalPayment: false,
+        ledgerGoalTitle: '',
+        ledgerAmount: '',
+        ledgerReason: '',
+      });
+    } else {
+      set({ ledgerAmount: '', ledgerReason: '' });
+    }
   },
 
-  closeLedgerModal: () => set({ isLedgerModalOpen: false, activeTxId: null }),
+  closeLedgerModal: () =>
+    set({
+      isLedgerModalOpen: false,
+      activeTxId: null,
+      ledgerIsGoalPayment: false,
+      ledgerGoalTitle: '',
+      ledgerAmount: '',
+      ledgerReason: '',
+    }),
 
-  openLedgerModal: (txId) => set({ activeTxId: txId, isLedgerModalOpen: true }),
+  openLedgerModal: (txId) => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
+    set({
+      activeTxId: txId,
+      isLedgerModalOpen: true,
+      ledgerIsGoalPayment: false,
+      ledgerGoalTitle: '',
+      ledgerAmount: '',
+      ledgerReason: '',
+    });
+  },
+
+  openGoalPaymentModal: (goalRow) => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
+    const title = goalRow.description.replace(/^Cél:\s*/, '');
+    const planned = goalRow.amount > 0 ? String(Math.round(goalRow.amount)) : '';
+    set({
+      activeTxId: goalRow.id,
+      isLedgerModalOpen: true,
+      ledgerIsGoalPayment: true,
+      ledgerGoalTitle: title,
+      ledgerAmount: planned,
+      ledgerReason: `Költségvetés – ${title}`,
+    });
+  },
 }));

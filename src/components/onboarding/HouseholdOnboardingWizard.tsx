@@ -16,9 +16,11 @@ import {
   Droplets,
   Users,
   Wand2,
+  X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { FormField } from '@/components/ui/FormField';
@@ -31,6 +33,9 @@ import { useBudgetStore } from '@/stores/useBudgetStore';
 import {
   ONBOARDING_CATEGORY_PRESETS,
   ONBOARDING_MODULE_OPTIONS,
+  financialModelLabel,
+  financialModelNeedsPrivateWallet,
+  type FinancialModelId,
   type OnboardingModuleId,
 } from '@/lib/householdOnboarding';
 import {
@@ -46,11 +51,17 @@ import {
   type PersonalizationQuestionId,
 } from '@/lib/onboardingPersonalization';
 import { OnboardingPersonalizationStep } from '@/components/onboarding/OnboardingPersonalizationStep';
+import { OnboardingFinancialModelStep } from '@/components/onboarding/OnboardingFinancialModelStep';
 import { HOUSEHOLD_VIBE_ICONS } from '@/lib/onboardingIcons';
 import { formatGivenName } from '@/lib/personName';
-import { DEFAULT_SAVINGS_SETTINGS } from '@/lib/savingsSettings';
+import { TierBadge } from '@/components/subscription/TierBadge';
+import { tierForOnboardingFeature } from '@/lib/householdOnboarding';
+import { buildOnboardingSavingsSettings } from '@/lib/savingsSettings';
+import { ApiClientError } from '@/lib/api-client/api-client';
+import { walletClient } from '@/lib/api-client';
+import { openUpgradeModal } from '@/stores/useUpgradeModalStore';
 
-const STEP_TITLES = ['Üdvözlünk', 'Rólatok', 'Modulok', 'Részletek', 'Indítás'];
+const STEP_TITLES = ['Üdvözlünk', 'Pénzügyi modell', 'Rólatok', 'Modulok', 'Részletek', 'Indítás'];
 
 const MODULE_ICONS: Record<OnboardingModuleId, React.ComponentType<{ size?: number; className?: string }>> = {
   budget: Wallet,
@@ -71,7 +82,9 @@ export function HouseholdOnboardingWizard() {
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [skipModalOpen, setSkipModalOpen] = useState(false);
   const [selectedVibe, setSelectedVibe] = useState<string | null>(null);
+  const [financialModel, setFinancialModel] = useState<FinancialModelId | null>(null);
 
   const [householdName, setHouseholdName] = useState(user?.household?.name ?? '');
   const [modules, setModules] = useState<ModuleSelection>({
@@ -166,25 +179,50 @@ export function HouseholdOnboardingWizard() {
 
   const canNext = () => {
     if (step === 0) return householdName.trim().length > 0 && selectedVibe !== null;
-    if (step === 1) return answeredCount >= 3;
-    if (step === 2) return modules.budget;
-    if (step === 3) {
+    if (step === 1) return financialModel !== null;
+    if (step === 2) return answeredCount >= 3;
+    if (step === 3) return modules.budget;
+    if (step === 4) {
       if (modules.savings && savingsSeparateGroup && !savingsSeparateName.trim()) return false;
       if (modules.business && !businessName.trim()) return false;
       return true;
     }
-    if (step === 4 && modules.business && !businessName.trim()) return false;
+    if (step === 5 && modules.business && !businessName.trim()) return false;
     return true;
   };
 
   const goNext = () => {
-    if (step === 1) {
+    if (step === 2) {
       applyPersonalizationToCategories();
     }
-    if (step === 2 && modules.business) {
+    if (step === 3 && modules.business) {
       setSelectedCategories((prev) => mergeCategoryList(prev, ['Vállalkozás']));
     }
     setStep((s) => s + 1);
+  };
+
+  const handleSkip = async () => {
+    setSaving(true);
+    try {
+      const name = householdName.trim() || user?.household?.name || 'Háztartás';
+
+      await updateHouseholdSettings({
+        name,
+        onboarding_completed: true,
+      });
+
+      setSkipModalOpen(false);
+      await initialize();
+      addNotification(
+        'Az első beállítást később is befejezheted a Beállítások → Háztartás menüpontban.',
+        'info',
+      );
+    } catch {
+      addNotification('A művelet nem sikerült. Próbáld újra.', 'error');
+      throw new Error('skip failed');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleFinish = async () => {
@@ -208,11 +246,10 @@ export function HouseholdOnboardingWizard() {
         utility_split_enabled: modules.utilities ? utilitySplit : false,
       };
 
-      if (modules.savings && savingsSeparateGroup && savingsSeparateName.trim()) {
-        payload.savings_settings = {
-          ...DEFAULT_SAVINGS_SETTINGS,
-          separate_owner: savingsSeparateName.trim(),
-        };
+      if (modules.savings) {
+        payload.savings_settings = buildOnboardingSavingsSettings(
+          savingsSeparateGroup ? savingsSeparateName : undefined,
+        );
       }
 
       if (modules.business) {
@@ -233,8 +270,43 @@ export function HouseholdOnboardingWizard() {
       }
 
       await useAuthStore.getState().fetchMe();
+
+      let privateWalletPendingUpgrade = false;
+
+      if (financialModel && financialModelNeedsPrivateWallet(financialModel)) {
+        try {
+          const res = await walletClient.create(
+            { name: 'Saját privát kasszám', isShared: false },
+            { silent: true },
+          );
+          const { mapWalletFromApi } = await import('@/lib/mapWallet');
+          const { useWalletStore } = await import('@/stores/useWalletStore');
+          const created = mapWalletFromApi(res.data);
+          await useAuthStore.getState().fetchMe();
+          useWalletStore.getState().setActiveWalletId(created.id);
+        } catch (error) {
+          if (error instanceof ApiClientError && error.status === 403) {
+            privateWalletPendingUpgrade = true;
+            openUpgradeModal({
+              requiredTier: 'pro',
+              featureLabel: 'A privát kasszád beállításához válts Pro csomagra!',
+            });
+          } else {
+            throw error;
+          }
+        }
+      }
+
       await initialize();
-      addNotification('A háztartás beállítva — jó munkát!', 'success');
+
+      if (privateWalletPendingUpgrade) {
+        addNotification(
+          'A háztartás kész — a közös kassza már használható. A privát kasszához Pro csomag kell.',
+          'info',
+        );
+      } else {
+        addNotification('A háztartás beállítva — jó munkát!', 'success');
+      }
     } catch {
       addNotification('A beállítás mentése nem sikerült. Próbáld újra.', 'error');
     } finally {
@@ -253,8 +325,20 @@ export function HouseholdOnboardingWizard() {
       />
 
       <div className="relative z-10 w-full max-w-2xl flex flex-col max-h-[min(92dvh,880px)] rounded-2xl border border-border bg-card shadow-2xl ring-1 ring-primary/10 overflow-hidden">
-        <div className="shrink-0 border-b border-border bg-gradient-to-br from-primary/[0.08] via-card to-card px-6 py-5">
-          <div className="flex items-start gap-3">
+        <div className="shrink-0 border-b border-border bg-gradient-to-br from-primary/[0.08] via-card to-card px-6 py-5 relative">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+            disabled={saving}
+            aria-label="Beállítás későbbre halasztása"
+            onClick={() => setSkipModalOpen(true)}
+          >
+            <X size={16} />
+          </Button>
+
+          <div className="flex items-start gap-3 pr-10">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
               <Command size={20} strokeWidth={2.5} />
             </div>
@@ -267,10 +351,11 @@ export function HouseholdOnboardingWizard() {
               </h2>
               <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
                 {step === 0 && 'Kezdjük a nevetekkel — aztán pár játékos kérdés következik.'}
-                {step === 1 && 'Egyesével jönnek a kérdések — a válaszaidból épül a költségvetés.'}
-                {step === 2 && 'A válaszaid alapján ajánlott modulokat is kiemeltük.'}
-                {step === 3 && 'Utolsó simítások — kategóriák és modul-specifikus beállítások.'}
-                {step === 4 && 'Minden kész — indulhat a háztartás!'}
+                {step === 1 && 'Válasszátok ki, hogyan kezelitek együtt a pénzügyeket — ehhez igazítjuk a kasszákat.'}
+                {step === 2 && 'Egyesével jönnek a kérdések — a válaszaidból épül a költségvetés.'}
+                {step === 3 && 'A válaszaid alapján ajánlott modulokat is kiemeltük.'}
+                {step === 4 && 'Utolsó simítások — kategóriák és modul-specifikus beállítások.'}
+                {step === 5 && 'Minden kész — indulhat a háztartás!'}
               </p>
             </div>
           </div>
@@ -380,6 +465,10 @@ export function HouseholdOnboardingWizard() {
               )}
 
               {step === 1 && (
+                <OnboardingFinancialModelStep value={financialModel} onChange={setFinancialModel} />
+              )}
+
+              {step === 2 && (
                 <OnboardingPersonalizationStep
                   householdName={householdName}
                   answers={personalization}
@@ -388,7 +477,7 @@ export function HouseholdOnboardingWizard() {
                 />
               )}
 
-              {step === 2 && (
+              {step === 3 && (
                 <>
                   {suggestedModules.length > 0 && (
                     <motion.div
@@ -441,6 +530,7 @@ export function HouseholdOnboardingWizard() {
                               <Icon size={18} />
                             </div>
                             <div className="flex flex-col items-end gap-1 shrink-0">
+                              {mod.tier && <TierBadge tier={mod.tier} />}
                               {recommended && (
                                 <span className="text-[0.55rem] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400 whitespace-nowrap">
                                   Ajánlott
@@ -472,7 +562,7 @@ export function HouseholdOnboardingWizard() {
                 </>
               )}
 
-              {step === 3 && (
+              {step === 4 && (
                 <>
                   {modules.budget && (
                     <div className="space-y-3">
@@ -519,7 +609,10 @@ export function HouseholdOnboardingWizard() {
                   {modules.utilities && (
                     <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/20 px-4 py-3">
                       <div>
-                        <p className="text-sm font-medium text-foreground">Rezsi megosztás</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-medium text-foreground">Rezsi megosztás</p>
+                          <TierBadge tier={tierForOnboardingFeature('utility_split')} />
+                        </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           Közös számlák elszámolása partnerekkel (partnert később állíthatod be).
                         </p>
@@ -556,13 +649,19 @@ export function HouseholdOnboardingWizard() {
                   )}
 
                   {modules.business && (
-                    <FormField label="Vállalkozás megjelenő neve">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Shopify import</span>
+                        <TierBadge tier={tierForOnboardingFeature('shopify')} />
+                      </div>
+                      <FormField label="Vállalkozás megjelenő neve">
                       <Input
                         value={businessName}
                         onChange={(e) => setBusinessName(e.target.value)}
                         placeholder="Pl. webshop neve — a menüben és a modulban így jelenik meg"
                       />
                     </FormField>
+                    </div>
                   )}
 
                   {!modules.budget && !modules.utilities && !modules.savings && !modules.business && (
@@ -573,7 +672,7 @@ export function HouseholdOnboardingWizard() {
                 </>
               )}
 
-              {step === 4 && (
+              {step === 5 && (
                 <div className="space-y-4">
                   <motion.div
                     initial={{ opacity: 0, scale: 0.98 }}
@@ -586,6 +685,12 @@ export function HouseholdOnboardingWizard() {
                         label: 'Háztartás',
                         value: householdName.trim(),
                         icon: Home,
+                      },
+                      {
+                        delay: 0.1,
+                        label: 'Pénzügyi modell',
+                        value: financialModel ? financialModelLabel(financialModel) : '—',
+                        icon: Wallet,
                       },
                       {
                         delay: 0.15,
@@ -662,15 +767,26 @@ export function HouseholdOnboardingWizard() {
         </div>
 
         <div className="shrink-0 border-t border-border bg-muted/20 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={step === 0 || saving}
-            onClick={() => setStep((s) => Math.max(0, s - 1))}
-          >
-            <ArrowLeft size={14} />
-            Vissza
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={step === 0 || saving}
+              onClick={() => setStep((s) => Math.max(0, s - 1))}
+            >
+              <ArrowLeft size={14} />
+              Vissza
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-muted-foreground"
+              disabled={saving}
+              onClick={() => setSkipModalOpen(true)}
+            >
+              Később beállítom
+            </Button>
+          </div>
           {step < STEP_TITLES.length - 1 ? (
             <Button type="button" disabled={!canNext() || saving} onClick={goNext}>
               Tovább
@@ -684,6 +800,19 @@ export function HouseholdOnboardingWizard() {
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={skipModalOpen}
+        onClose={() => !saving && setSkipModalOpen(false)}
+        onConfirm={handleSkip}
+        title="Beállítás későbbre halasztása?"
+        message="Az alap funkciók azonnal használhatók lesznek. A modulokat, kategóriákat és egyéb részleteket később is beállíthatod a Beállításokban."
+        confirmText="Igen, később"
+        cancelText="Folytatom a varázslót"
+        type="info"
+        overlayZIndex={700}
+        confirmLoading={saving}
+      />
     </div>
   );
 }

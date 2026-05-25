@@ -8,6 +8,8 @@ import {
   pickDefaultDestination,
   type BusinessSettings,
 } from '@/lib/businessSettings';
+import { canEditHousehold } from '@/lib/householdRole';
+import { useAuthStore } from './useAuthStore';
 import { useBusinessStore } from './useBusinessStore';
 
 import { today } from '@/lib/dates';
@@ -79,6 +81,7 @@ export const useBusinessUiStore = create<BusinessUiState>((set, get) => ({
   setInvoiceId: (invoiceId) => set({ invoiceId }),
 
   openForm: (order, bizOptions) => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
     if (order) {
       set({
         editId: order.id,
@@ -112,6 +115,8 @@ export const useBusinessUiStore = create<BusinessUiState>((set, get) => ({
 
   handleSubmit: (e) => {
     e.preventDefault();
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
+
     const {
       editId,
       customer,
@@ -144,6 +149,7 @@ export const useBusinessUiStore = create<BusinessUiState>((set, get) => ({
   },
 
   handleShopifySync: async () => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
     set({ isSyncing: true });
     try {
       await useBusinessStore.getState().shopifyImport();

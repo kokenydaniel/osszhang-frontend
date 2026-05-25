@@ -16,9 +16,9 @@ import type {
   DashboardUnpaidItem,
 } from '@/components/modules/dashboard/hooks/use-dashboard-page-state';
 
-type Props = Pick<DashboardPageState, 'unpaidItemsList' | 'todayStr' | 'handlePayItem'>;
+type Props = Pick<DashboardPageState, 'unpaidItemsList' | 'todayStr' | 'handlePayItem' | 'isReader'>;
 
-export function DashboardUnpaidSection({ unpaidItemsList, todayStr, handlePayItem }: Props) {
+export function DashboardUnpaidSection({ unpaidItemsList, todayStr, handlePayItem, isReader }: Props) {
   return (
     <div className="lg:col-span-3">
       <Section
@@ -96,7 +96,8 @@ export function DashboardUnpaidSection({ unpaidItemsList, todayStr, handlePayIte
                 header: '',
                 align: 'right',
                 width: '14%',
-                cell: (item) => (
+                cell: (item) =>
+                  isReader ? null : (
                   <Button
                     variant="ghost"
                     size="icon-sm"

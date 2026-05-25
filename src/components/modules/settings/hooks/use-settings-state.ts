@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import {
+  CreditCard,
   Droplets,
+  FlaskConical,
   Gauge,
   Home,
   LayoutGrid,
@@ -20,13 +22,19 @@ export type { SettingsTabId } from '@/stores/useSettingsUiStore';
 
 export function useSettingsState() {
   const { categories, addCategory, deleteCategory } = useBudgetStore();
-  const { user, updateMember, patchMemberLocally, removeMember } = useAuthStore();
+  const { user, updateMember, patchMemberLocally, removeMember, fetchMe } = useAuthStore();
   const ui = useSettingsUiStore();
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
 
   useEffect(() => {
     useSettingsUiStore.getState().syncFromUser(user);
   }, [user]);
+
+  useEffect(() => {
+    if (ui.activeTab !== 'household' || !user?.household?.id) return;
+    if ((user.household.users?.length ?? 0) > 0) return;
+    fetchMe();
+  }, [ui.activeTab, user?.household?.id, user?.household?.users?.length, fetchMe]);
 
   const hasShopifyToken = user?.household?.hasShopifyToken ?? user?.household?.has_shopify_token ?? false;
   const isAdmin = user?.role === 'admin';
@@ -59,6 +67,10 @@ export function useSettingsState() {
     { id: 'profile' as const, label: 'Profilom', icon: User, hint: 'Személyes adatok, jelszó, fiók törlése' },
     { id: 'household' as const, label: 'Háztartás', icon: Home, hint: 'Név, családtagok, jogosultságok' },
     { id: 'modules' as const, label: 'Modulok', icon: LayoutGrid, hint: 'Bekapcsolható funkciók és beállításaik' },
+    { id: 'billing' as const, label: 'Előfizetés', icon: CreditCard, hint: 'Csomag, fizetés, számlák' },
+    ...(user?.lifetimeAdmin
+      ? [{ id: 'platform' as const, label: 'Platform', icon: FlaskConical, hint: 'Béta mód és super admin beállítások' }]
+      : []),
   ];
 
   return {

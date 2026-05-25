@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Debt } from '@/types';
 import { formatHUF } from '@/utils';
 import { matchPaymentCategory, resolveDebtsSettings } from '@/lib/debtsSettings';
+import { canEditHousehold } from '@/lib/householdRole';
 import { useAuthStore } from './useAuthStore';
 import { useBudgetStore } from './useBudgetStore';
 import { useDebtsStore } from './useDebtsStore';
@@ -125,6 +126,7 @@ export const useDebtsUiStore = create<DebtsUiState>((set, get) => ({
   },
 
   openForm: (debt) => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
     if (debt) {
       set({
         editId: debt.id,
@@ -152,6 +154,8 @@ export const useDebtsUiStore = create<DebtsUiState>((set, get) => ({
 
   handleSubmit: (e) => {
     e.preventDefault();
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
+
     const { editId, name, targetAmount, paidAmount, annualInterestRate, minimumPayment, dueDay } = get();
     const data = {
       name,
@@ -169,6 +173,7 @@ export const useDebtsUiStore = create<DebtsUiState>((set, get) => ({
   },
 
   openPayModal: (debt) => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
     const settings = getDebtsSettings();
     const categories = useBudgetStore.getState().categories;
     set({
@@ -187,6 +192,7 @@ export const useDebtsUiStore = create<DebtsUiState>((set, get) => ({
 
   handlePaySubmit: async (e) => {
     e.preventDefault();
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
     const { payDebt, payAmount, payDate, payNote, payAddToBudget, payCategory } = get();
     if (!payDebt) return;
     const amt = Number(String(payAmount).replace(',', '.'));

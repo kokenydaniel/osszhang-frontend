@@ -2,25 +2,29 @@ import { useEffect, useMemo } from 'react';
 import { useMetersStore } from '@/stores/useMetersStore';
 import { useMetersPageUiStore } from '@/stores/useMetersPageUiStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { canUseFeature } from '@/lib/checkAccess';
 import { resolveMetersSettings } from '@/lib/metersSettings';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { useUtilitiesStore } from '@/stores/useUtilitiesStore';
 import { Meter } from '@/types';
+import { isHouseholdReader } from '@/lib/householdRole';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 
 export function useMetersPageState() {
   const { user } = useAuthStore();
   const metersSettings = useMemo(() => resolveMetersSettings(user?.household), [user?.household]);
-  const isReader = user?.role === 'reader';
+  const isReader = isHouseholdReader(user);
   const { meters, deleteMeter, deleteMeterReading } = useMetersStore();
   const ui = useMetersPageUiStore();
   const { selectedMonth, selectedYear } = usePreferenceStore();
   const { aiUtilityAnomalies, fetchAiUtilityAnomalies } = useUtilitiesStore();
+  const canUseAi = canUseFeature(user, 'ai');
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
 
   useEffect(() => {
+    if (!canUseAi) return;
     fetchAiUtilityAnomalies(selectedYear, selectedMonth);
-  }, [fetchAiUtilityAnomalies, selectedMonth, selectedYear]);
+  }, [canUseAi, fetchAiUtilityAnomalies, selectedMonth, selectedYear]);
 
   useEffect(() => {
     useMetersPageUiStore.getState().setAiYear(selectedYear);
@@ -65,6 +69,7 @@ export function useMetersPageState() {
     selectedMonth,
     aiUtilityAnomalies,
     fetchAiUtilityAnomalies,
+    canUseAi,
     isModalOpen: ui.isModalOpen,
     setIsModalOpen: ui.setIsModalOpen,
     editingReading: ui.editingReading,

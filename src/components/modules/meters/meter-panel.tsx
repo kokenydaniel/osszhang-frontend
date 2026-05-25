@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { Meter, MeterReading } from '@/types';
 import { formatNumber, formatDate, compareDates, today, getCurrentMonth, getCurrentYear } from '@/utils';
 import { Button } from '@/components/ui/button';
+import { TierGatedButton } from '@/components/subscription/TierGatedButton';
 import { Input } from '@/components/ui/input';
 import { ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
 import classNames from 'classnames';
@@ -224,9 +225,15 @@ export function MeterPanel({
               <Button size="sm" onClick={() => onAddReading(meter)}>
                 <PlusCircle size={13} /> Leolvasás
               </Button>
-              <Button size="sm" variant="outline" onClick={() => onAiClick(meter.id)}>
+              <TierGatedButton
+                feature="ai"
+                featureLabel="AI fogyasztás-becslés"
+                size="sm"
+                variant="outline"
+                onClick={() => onAiClick(meter.id)}
+              >
                 <Sparkles size={13} /> AI
-              </Button>
+              </TierGatedButton>
               <Button size="icon-sm" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => onDeleteMeter(meter.id)}>
                 <Trash2 size={13} />
               </Button>

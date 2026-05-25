@@ -1,6 +1,8 @@
 import type { UserProfile } from '@/types';
-import { canAccessModule, type ModuleId } from '@/lib/moduleAccess';
+import { canUseModuleWithTier, type ModuleId } from '@/lib/moduleAccess';
 import { useBudgetStore } from '@/stores/useBudgetStore';
+import { usePreferenceStore } from '@/stores/usePreferenceStore';
+import { getActiveWalletId } from '@/stores/useWalletStore';
 import { useUtilitiesStore } from '@/stores/useUtilitiesStore';
 import { useMetersStore } from '@/stores/useMetersStore';
 import { useBusinessStore } from '@/stores/useBusinessStore';
@@ -32,11 +34,17 @@ function modulesForPath(pathname: string): ModuleId[] {
   return [];
 }
 
-async function fetchModule(moduleId: ModuleId, options?: { silent?: boolean }): Promise<void> {
+async function fetchModule(moduleId: ModuleId, options?: { silent?: boolean; walletId?: number | null }): Promise<void> {
   switch (moduleId) {
-    case 'budget':
-      await useBudgetStore.getState().fetchTransactions();
+    case 'budget': {
+      const walletId = getActiveWalletId();
+      const { selectedMonth, selectedYear } = usePreferenceStore.getState();
+      await Promise.all([
+        useBudgetStore.getState().fetchTransactions(walletId),
+        useBudgetStore.getState().fetchGoalRows(walletId, selectedMonth, selectedYear),
+      ]);
       break;
+    }
     case 'utilities':
       await useUtilitiesStore.getState().fetchBills();
       break;
@@ -47,11 +55,11 @@ async function fetchModule(moduleId: ModuleId, options?: { silent?: boolean }): 
       await useBusinessStore.getState().fetchOrders();
       break;
     case 'debts':
-      await useDebtsStore.getState().fetchDebts();
+      await useDebtsStore.getState().fetchDebts(getActiveWalletId());
       break;
     case 'savings':
       await Promise.allSettled([
-        useSavingsStore.getState().fetchSavings({ silent: options?.silent }),
+        useSavingsStore.getState().fetchSavings(getActiveWalletId(), { silent: options?.silent }),
         useSavingsStore.getState().fetchInvestments({ silent: options?.silent }),
       ]);
       break;
@@ -60,7 +68,7 @@ async function fetchModule(moduleId: ModuleId, options?: { silent?: boolean }): 
 }
 
 function enabledModules(user: UserProfile, moduleIds: ModuleId[]): ModuleId[] {
-  return moduleIds.filter((id) => canAccessModule(user, id));
+  return moduleIds.filter((id) => canUseModuleWithTier(user, id));
 }
 
 export function resetRouteDataCache() {

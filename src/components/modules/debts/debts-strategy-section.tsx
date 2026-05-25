@@ -3,7 +3,7 @@
 import classNames from 'classnames';
 import { formatHUF } from '@/utils';
 import { formatPayoffDate, formatTerm } from '@/utils/debt';
-import { Button } from '@/components/ui/button';
+import { TierGatedButton } from '@/components/subscription/TierGatedButton';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { HELP } from '@/lib/helpTexts';
 import { Section, ChoiceCardGroup, type ChoiceCardOption } from '@/components/design';
@@ -79,7 +79,9 @@ export function DebtsStrategySection({
       info={HELP.debts.strategy}
       description="Két matematikai módszer közül választhatsz — a stratégia rendezi a tartozásokat, hogy mire fókuszálj."
       action={
-        <Button
+        <TierGatedButton
+          feature="ai"
+          featureLabel="Tartozás-visszafizetési sorrend"
           variant={aiDebtPlan ? 'outline' : 'default'}
           size="sm"
           onClick={handleAiOptimize}
@@ -87,7 +89,7 @@ export function DebtsStrategySection({
         >
           <RefreshCw size={12} className={classNames(isAiLoading && 'animate-spin')} />
           {isAiLoading ? 'Számítás…' : aiDebtPlan ? 'Újraszámítás' : 'Sorrend generálása'}
-        </Button>
+        </TierGatedButton>
       }
     >
       <ChoiceCardGroup

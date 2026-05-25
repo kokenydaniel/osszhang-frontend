@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { UtilityBill, UtilitySplitRule } from '@/types';
+import { canEditHousehold } from '@/lib/householdRole';
+import { useAuthStore } from './useAuthStore';
 import { useUtilitiesStore } from './useUtilitiesStore';
 
 import { today } from '@/lib/dates';
@@ -56,6 +58,7 @@ export const useUtilitiesUiStore = create<UtilitiesUiState>((set, get) => ({
     }),
 
   openNewBillModal: () => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
     set({
       editingBill: null,
       isModalOpen: true,
@@ -63,6 +66,7 @@ export const useUtilitiesUiStore = create<UtilitiesUiState>((set, get) => ({
   },
 
   handleEdit: (bill) => {
+    if (!canEditHousehold(useAuthStore.getState().user)) return;
     set({
       editingBill: bill,
       type: bill.type,

@@ -23,7 +23,7 @@ import type { BusinessPageState } from '@/components/modules/business/hooks/use-
 
 type BusinessOrdersTableProps = Pick<
   BusinessPageState,
-  'filteredOrders' | 'openForm' | 'deleteOrder' | 'requestDelete'
+  'filteredOrders' | 'openForm' | 'deleteOrder' | 'requestDelete' | 'isReader'
 >;
 
 function getChannelIcon(c: string) {
@@ -39,6 +39,7 @@ export function BusinessOrdersTable({
   openForm,
   deleteOrder,
   requestDelete,
+  isReader,
 }: BusinessOrdersTableProps) {
   const orderColumns: DataTableColumn<BusinessOrder>[] = [
     {
@@ -128,7 +129,8 @@ export function BusinessOrdersTable({
       header: '',
       align: 'right',
       width: '8%',
-      cell: (order) => (
+      cell: (order) =>
+        isReader ? null : (
         <RowActions
           onEdit={() => openForm(order)}
           onDelete={() =>
@@ -150,9 +152,11 @@ export function BusinessOrdersTable({
         title="Nincsenek rendelések"
         description="Még nincs rögzített rendelés ebben a hónapban."
         action={
+          isReader ? undefined : (
           <Button size="sm" onClick={() => openForm()}>
             <Plus size={13} /> Új rendelés
           </Button>
+        )
         }
       />
     );

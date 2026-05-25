@@ -15,6 +15,8 @@ import {
   viewerPrivateRule,
 } from '@/lib/utilityViewer';
 import { HELP } from '@/lib/helpTexts';
+import { canUseFeature } from '@/lib/checkAccess';
+import { isHouseholdReader } from '@/lib/householdRole';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import { useAsyncAction, usePendingIds } from '@/hooks/useAsyncAction';
 import { ArrowLeftRight, CheckCircle, Clock, Receipt, User, Users } from 'lucide-react';
@@ -40,8 +42,11 @@ export function useUtilitiesPageState() {
   const { addNotification } = useNotificationStore();
   const { selectedMonth, selectedYear } = usePreferenceStore();
   const isAdmin = user?.role === 'admin';
-  const isReader = user?.role === 'reader';
-  const utilitySplitEnabled = user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? false;
+  const isReader = isHouseholdReader(user);
+  const utilitySplitConfigured =
+    user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? false;
+  const utilitySplitEnabled = utilitySplitConfigured && canUseFeature(user, 'utility_split');
+  const canUseAi = canUseFeature(user, 'ai');
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
   const { pending: settling, run: runSettle } = useAsyncAction();
   const { pending: unsettling, run: runUnsettle } = useAsyncAction();
@@ -97,8 +102,9 @@ export function useUtilitiesPageState() {
   }, [bills.length, settlements.length, fetchBills]);
 
   useEffect(() => {
+    if (!canUseAi) return;
     fetchAiUtilityAnomalies(selectedYear, selectedMonth);
-  }, [fetchAiUtilityAnomalies, selectedMonth, selectedYear]);
+  }, [canUseAi, fetchAiUtilityAnomalies, selectedMonth, selectedYear]);
 
   const filteredBills = bills.filter((b) => billMatchesMonthYear(b.dueDate, selectedMonth, selectedYear));
 
@@ -293,6 +299,7 @@ export function useUtilitiesPageState() {
     metrics,
     aiUtilityAnomalies,
     fetchAiUtilityAnomalies,
+    canUseAi,
     filteredBills,
     sortedBills,
     todayStr,

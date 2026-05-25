@@ -5,6 +5,8 @@ import { formatHUF } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { HELP } from '@/lib/helpTexts';
 import { AccentPanel, SectionPanel, ProgressBar } from '@/components/design';
+import { TierGatedAiPanel } from '@/components/subscription/TierGatedAiPanel';
+import { TierGatedButton } from '@/components/subscription/TierGatedButton';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Legend } from 'recharts';
 import { RefreshCw, Cpu, BarChart3, PieChart } from 'lucide-react';
 import type { BusinessPageState } from '@/components/modules/business/hooks/use-business-page-state';
@@ -35,22 +37,44 @@ export function BusinessSummaryTab({
 }: BusinessSummaryTabProps) {
   return (
     <div className="flex flex-col gap-7">
-      <AccentPanel
-        tone="ai"
+      <TierGatedAiPanel
+        featureLabel="AI stratéga"
         icon={Cpu}
         title="Little Loom AI stratéga"
         titleInfo={HELP.business.aiStrategist}
         description="Személyre szabott növekedési stratégia"
         glow
         action={
-          <Button variant="ghost" size="xs" onClick={handleRequestAiAdvice} disabled={isAiLoading}>
+          <TierGatedButton
+            feature="ai"
+            featureLabel="AI stratéga"
+            variant="ghost"
+            size="xs"
+            onClick={handleRequestAiAdvice}
+            disabled={isAiLoading}
+          >
             <RefreshCw size={11} className={classNames(isAiLoading && 'animate-spin')} />
             {isAiLoading ? 'Elemzés…' : 'Új elemzés'}
-          </Button>
+          </TierGatedButton>
         }
       >
-        {isAiLoading ? 'Az adatok elemzése és a stratégia generálása folyamatban…' : realAiAdvice || aiAdvice}
-      </AccentPanel>
+        <AccentPanel
+          tone="ai"
+          icon={Cpu}
+          title="Little Loom AI stratéga"
+          titleInfo={HELP.business.aiStrategist}
+          description="Személyre szabott növekedési stratégia"
+          glow
+          action={
+            <Button variant="ghost" size="xs" onClick={handleRequestAiAdvice} disabled={isAiLoading}>
+              <RefreshCw size={11} className={classNames(isAiLoading && 'animate-spin')} />
+              {isAiLoading ? 'Elemzés…' : 'Új elemzés'}
+            </Button>
+          }
+        >
+          {isAiLoading ? 'Az adatok elemzése és a stratégia generálása folyamatban…' : realAiAdvice || aiAdvice}
+        </AccentPanel>
+      </TierGatedAiPanel>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3">

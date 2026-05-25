@@ -8,6 +8,7 @@ import { DebtsTable } from '@/components/modules/debts/debts-table';
 import { DebtsStrategySection } from '@/components/modules/debts/debts-strategy-section';
 import { DebtsFormModal } from '@/components/modules/debts/debts-form-modal';
 import { DebtsPayModal } from '@/components/modules/debts/debts-pay-modal';
+import { WalletSwitcher } from '@/components/wallets/WalletSwitcher';
 
 export default function DebtsPage() {
   const state = useDebtsPageState();
@@ -19,6 +20,7 @@ export default function DebtsPage() {
         breadcrumbs={[{ label: 'Pénzügyek' }, { label: 'Tartozások' }]}
         title="Tartozások"
         description="Hitelek, kölcsönök — pontos lejárattal és költségvetés-integrációval."
+        meta={<WalletSwitcher />}
         actions={
           !state.isReader ? (
             <Button size="sm" onClick={() => state.openForm()}>

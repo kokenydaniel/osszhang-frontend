@@ -10,6 +10,7 @@ import { FieldHint } from '@/components/ui/FieldHint';
 import { FormChoiceCard } from '@/components/ui/FormChoiceCard';
 import { HELP } from '@/lib/helpTexts';
 import { SegmentedControl } from '@/components/design';
+import { TierGatedButton } from '@/components/subscription/TierGatedButton';
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -188,8 +189,10 @@ export function BudgetTransactionModal(props: BudgetTransactionModalProps) {
                 </option>
               ))}
             </select>
-            <Button
+            <TierGatedButton
               type="button"
+              feature="ai"
+              featureLabel="Automatikus kategorizálás"
               variant="outline"
               size="sm"
               onClick={handleAutoCategory}
@@ -197,7 +200,7 @@ export function BudgetTransactionModal(props: BudgetTransactionModalProps) {
             >
               {isCategoryLoading ? <RefreshCw size={13} className="animate-spin" /> : <Bot size={13} />}
               Auto
-            </Button>
+            </TierGatedButton>
           </div>
         </div>
 

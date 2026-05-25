@@ -7,8 +7,8 @@ import { SavingsAccountCard } from '@/components/modules/savings/savings-account
 
 type SavingsAccountsSectionProps = Pick<
   SavingsPageState,
-  | 'personalSavings'
-  | 'wifeSavings'
+  | 'personalAccounts'
+  | 'wifeAccounts'
   | 'separateOwner'
   | 'convertToHUF'
   | 'formatCurrencyAmount'
@@ -16,36 +16,37 @@ type SavingsAccountsSectionProps = Pick<
   | 'deleteSavingsAccount'
   | 'requestDelete'
   | 'openLedgerModal'
+  | 'isReader'
 >;
 
 export function SavingsAccountsSection({
-  personalSavings,
-  wifeSavings,
+  personalAccounts,
+  wifeAccounts,
   separateOwner,
   ...cardProps
 }: SavingsAccountsSectionProps) {
   return (
     <>
-      <Section title="Saját és közös számlák" description={`${personalSavings.length} aktív számla`}>
-        {personalSavings.length === 0 ? (
+      <Section title="Számlák és vagyon" description={`${personalAccounts.length} aktív számla`}>
+        {personalAccounts.length === 0 ? (
           <EmptyState
             icon={Wallet}
-            title="Nincs saját vagy közös számla"
-            description="Adj hozzá egy új számlát a jobb felső sarokban lévő „Új” gombbal."
+            title="Nincs számla vagy vagyon tétel"
+            description="Adj hozzá egy bankszámlát, Revolutot vagy készpénzt a jobb felső „Új” gombbal."
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {personalSavings.map((acc) => (
+            {personalAccounts.map((acc) => (
               <SavingsAccountCard key={acc.id} acc={acc} accent="primary" {...cardProps} />
             ))}
           </div>
         )}
       </Section>
 
-      {separateOwner && wifeSavings.length > 0 && (
-        <Section title={`${separateOwner} számlák`} description={`${wifeSavings.length} aktív számla`}>
+      {separateOwner && wifeAccounts.length > 0 && (
+        <Section title={`${separateOwner} számlák`} description={`${wifeAccounts.length} aktív számla`}>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {wifeSavings.map((acc) => (
+            {wifeAccounts.map((acc) => (
               <SavingsAccountCard key={acc.id} acc={acc} accent="rose" {...cardProps} />
             ))}
           </div>

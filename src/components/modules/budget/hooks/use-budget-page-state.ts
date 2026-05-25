@@ -1,14 +1,18 @@
 import { useEffect } from 'react';
-import { useBudgetStore } from '@/stores/useBudgetStore';
+import { useBudgetStore, isWalletTransactionsReady } from '@/stores/useBudgetStore';
 import { useBudgetUiStore } from '@/stores/useBudgetUiStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useWalletStore } from '@/stores/useWalletStore';
 import { useUtilitiesStore } from '@/stores/useUtilitiesStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { formatHUF, today as todayDate, isDueOverdue, hasSettlementDate } from '@/utils';
-import { LedgerEntry, UtilityBill } from '@/types';
+import { LedgerEntry, UtilityBill, CashTransaction } from '@/types';
 import { isLegacySettlementBill } from '@/lib/utilityBills';
 import { HELP } from '@/lib/helpTexts';
 import { isUtilityHouseholdSide, ourUtilityPortion } from '@/lib/utilityViewer';
+import { resolveActiveWallet } from '@/lib/walletBalance';
+import { canUseFeature } from '@/lib/checkAccess';
+import { isHouseholdReader } from '@/lib/householdRole';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import { useAsyncAction, usePendingIds } from '@/hooks/useAsyncAction';
 import { AlertCircle, ReceiptText, TrendingUp } from 'lucide-react';
@@ -17,41 +21,93 @@ import type { MetricItem } from '@/components/design';
 export function useBudgetPageState() {
   const {
     transactions,
+    goalBudgetRows,
     deleteTransaction,
     updateTransaction,
     aiOverspend,
     fetchAiOverspend,
+    fetchAiCashflowForecast,
     clonePreviousMonth,
     categories,
+    fetchTransactions,
+    fetchGoalRows,
+    loadedWalletId,
+    loadedMonth,
+    loadedYear,
+    isLoading: walletLoading,
+    isLoadingGoals,
   } = useBudgetStore();
 
   const ui = useBudgetUiStore();
   const { user } = useAuthStore();
+  const activeWalletId = useWalletStore((s) => s.activeWalletId);
   const { bills } = useUtilitiesStore();
   const { selectedMonth, selectedYear } = usePreferenceStore();
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
   const { pending: cloning, run: runClone } = useAsyncAction();
   const { wrap: wrapTxPending, isPending: isTxPending } = usePendingIds();
 
-  const utilitySplitEnabled = user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? false;
+  const utilitySplitConfigured =
+    user?.household?.utilitySplitEnabled ?? user?.household?.utility_split_enabled ?? false;
+  const utilitySplitEnabled = utilitySplitConfigured && canUseFeature(user, 'utility_split');
+  const canUseAi = canUseFeature(user, 'ai');
+  const isReader = isHouseholdReader(user);
   const partnerId = user?.household?.utilitySplitPartnerId ?? user?.household?.utility_split_partner_id;
   const onHouseholdSide = isUtilityHouseholdSide(user?.id, partnerId);
   const getBillPortion = (b: UtilityBill) => ourUtilityPortion(b, onHouseholdSide, utilitySplitEnabled);
 
   useEffect(() => {
-    fetchAiOverspend(selectedYear, selectedMonth);
-  }, [fetchAiOverspend, selectedMonth, selectedYear]);
+    if (!canUseAi || activeWalletId === null) return;
+    if (loadedWalletId !== activeWalletId) return;
+    fetchAiOverspend(selectedYear, selectedMonth, activeWalletId);
+    fetchAiCashflowForecast(selectedYear, selectedMonth, activeWalletId);
+  }, [activeWalletId, canUseAi, fetchAiCashflowForecast, fetchAiOverspend, loadedWalletId, selectedMonth, selectedYear]);
 
   useEffect(() => {
-    const dbVal = user?.household?.manualBalance ?? user?.household?.manual_balance ?? 0;
-    useBudgetUiStore.getState().syncManualBalanceFromDb(dbVal);
-  }, [user?.household?.manualBalance, user?.household?.manual_balance]);
+    if (activeWalletId === null) return;
+    if (isWalletTransactionsReady(activeWalletId, loadedWalletId, walletLoading)) return;
+    void fetchTransactions(activeWalletId);
+  }, [activeWalletId, fetchTransactions, loadedWalletId, walletLoading]);
+
+  useEffect(() => {
+    if (activeWalletId === null) return;
+    if (loadedWalletId !== activeWalletId) return;
+    if (
+      loadedMonth === selectedMonth &&
+      loadedYear === selectedYear &&
+      !isLoadingGoals
+    ) {
+      return;
+    }
+    void fetchGoalRows(activeWalletId, selectedMonth, selectedYear);
+  }, [
+    activeWalletId,
+    fetchGoalRows,
+    isLoadingGoals,
+    loadedWalletId,
+    loadedMonth,
+    loadedYear,
+    selectedMonth,
+    selectedYear,
+  ]);
+
+  useEffect(() => {
+    if (activeWalletId === null) return;
+    const wallet = resolveActiveWallet(user, activeWalletId);
+    useBudgetUiStore.getState().syncManualBalanceFromDb(wallet?.manualBalance ?? 0);
+  }, [activeWalletId, user?.wallets]);
 
   const selectedYearMonth = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
+  const goalsReady =
+    loadedMonth === selectedMonth && loadedYear === selectedYear && !isLoadingGoals;
+  const activeGoalRows = goalsReady ? goalBudgetRows : [];
   const allMonthTransactions = transactions.filter((t) => t.dueDate.startsWith(selectedYearMonth));
   const reserves = allMonthTransactions.filter((t) => t.isReserve);
   const incomes = allMonthTransactions.filter((t) => t.type === 'income' && !t.isReserve);
-  const expenses = allMonthTransactions.filter((t) => t.type === 'expense' && !t.isReserve);
+  const expenses = [
+    ...allMonthTransactions.filter((t) => t.type === 'expense' && !t.isReserve),
+    ...activeGoalRows,
+  ];
   const monthlyBills = bills.filter(
     (b) => b.dueDate.startsWith(selectedYearMonth) && !isLegacySettlementBill(b),
   );
@@ -149,7 +205,9 @@ export function useBudgetPageState() {
     },
   ];
 
-  const activeLedgerItems = transactions.find((t) => t.id === ui.activeTxId)?.subItems;
+  const activeLedgerItems =
+    transactions.find((t) => t.id === ui.activeTxId)?.subItems ??
+    activeGoalRows.find((t) => t.id === ui.activeTxId)?.subItems;
 
   return {
     transactions,
@@ -161,14 +219,23 @@ export function useBudgetPageState() {
     selectedYear,
     cloning,
     runClone,
-    openTxForm: (tx?: Parameters<typeof ui.openTxForm>[0], defaultType?: 'income' | 'expense') =>
-      ui.openTxForm(tx, defaultType, categories),
+    openTxForm: (tx?: Parameters<typeof ui.openTxForm>[0], defaultType?: 'income' | 'expense') => {
+      if (isReader) return;
+      ui.openTxForm(tx, defaultType, categories);
+    },
     manualBalance: ui.manualBalance,
     setManualBalance: ui.setManualBalance,
     balanceSaved: ui.balanceSaved,
     setBalanceSaved: ui.setBalanceSaved,
     balanceSaving: ui.balanceSaving,
     handleManualBalanceSave: ui.handleManualBalanceSave,
+    isReader,
+    walletLoading,
+    isLoadingGoals,
+    walletDataReady: isWalletTransactionsReady(activeWalletId, loadedWalletId, walletLoading),
+    goalsDataReady: goalsReady,
+    gridLoading:
+      !isWalletTransactionsReady(activeWalletId, loadedWalletId, walletLoading) || isLoadingGoals,
     cashflowMetrics,
     aiOverspend,
     summaryMetrics,
@@ -185,7 +252,16 @@ export function useBudgetPageState() {
     isTxPending,
     setActiveTxId: ui.setActiveTxId,
     setIsLedgerModalOpen: ui.setIsLedgerModalOpen,
-    openLedgerModal: ui.openLedgerModal,
+    openGoalPaymentModal: (goalRow: CashTransaction) => {
+      if (isReader) return;
+      ui.openGoalPaymentModal(goalRow);
+    },
+    ledgerIsGoalPayment: ui.ledgerIsGoalPayment,
+    ledgerGoalTitle: ui.ledgerGoalTitle,
+    openLedgerModal: (txId: number | string) => {
+      if (isReader) return;
+      ui.openLedgerModal(txId);
+    },
     isTxModalOpen: ui.isTxModalOpen,
     setIsTxModalOpen: ui.setIsTxModalOpen,
     editTxId: ui.editTxId,

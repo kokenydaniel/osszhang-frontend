@@ -6,8 +6,11 @@ import { Plus } from 'lucide-react';
 import { NewAssetModal } from '@/components/modules/savings/NewAssetModal';
 import { useSavingsPageState } from '@/components/modules/savings/hooks/use-savings-page-state';
 import { SavingsAccountsSection } from '@/components/modules/savings/savings-accounts-section';
+import { SavingsGoalsSection } from '@/components/modules/savings/savings-goals-section';
 import { SavingsInvestmentsSection } from '@/components/modules/savings/savings-investments-section';
 import { SavingsLedgerModal } from '@/components/modules/savings/savings-ledger-modal';
+import { SavingsPageSkeleton } from '@/components/modules/savings/savings-page-skeleton';
+import { WalletSwitcher } from '@/components/wallets/WalletSwitcher';
 
 export default function SavingsPage() {
   const state = useSavingsPageState();
@@ -18,19 +21,27 @@ export default function SavingsPage() {
       <PageHeader
         breadcrumbs={[{ label: 'Megtakarítások' }, { label: 'Széf' }]}
         title="Megtakarítások · Széf"
-        description="Számlák, állampapírok és vagyon — egy nézetben."
+        description="Számlák, megtakarítási célok és vagyon — kasszánként."
+        meta={<WalletSwitcher />}
         actions={
-          <Button size="sm" onClick={() => state.openNewAsset()}>
-            <Plus size={13} /> Új
-          </Button>
+          !state.isReader ? (
+            <Button size="sm" onClick={() => state.openNewAsset()}>
+              <Plus size={13} /> Új
+            </Button>
+          ) : undefined
         }
       />
 
-      <MetricStrip items={state.savingsMetrics} columns={4} variant="separated" />
-
-      <SavingsAccountsSection {...state} />
-
-      <SavingsInvestmentsSection {...state} />
+      {!state.walletDataReady ? (
+        <SavingsPageSkeleton />
+      ) : (
+        <>
+          <MetricStrip items={state.savingsMetrics} columns={4} variant="separated" />
+          <SavingsAccountsSection {...state} />
+          <SavingsGoalsSection {...state} />
+          <SavingsInvestmentsSection {...state} />
+        </>
+      )}
 
       <NewAssetModal
         isOpen={state.isNewAssetModalOpen}
