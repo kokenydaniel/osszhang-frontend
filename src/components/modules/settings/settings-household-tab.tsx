@@ -141,7 +141,7 @@ export function SettingsHouseholdTab({
                           patchMemberLocally(member.id, { role });
                           void updateMember(member.id, { role });
                         }}
-                        className="h-8 rounded-lg border border-border bg-input px-2.5 text-xs font-medium appearance-none focus:border-ring outline-none"
+                        className="h-9 w-full max-w-full rounded-lg border border-border bg-input px-2.5 text-xs font-medium appearance-none focus:border-ring outline-none"
                       >
                         <option value="admin">Admin</option>
                         <option value="editor">Szerkesztő</option>

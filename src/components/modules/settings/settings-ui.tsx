@@ -1,7 +1,7 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import { Trash2 } from 'lucide-react';
+import { ChevronDown, Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import classNames from 'classnames';
 
@@ -21,44 +21,88 @@ export function SettingsTopTabs<T extends string>({
   active: T;
   onChange: (id: T) => void;
 }) {
+  const activeTab = tabs.find((tab) => tab.id === active);
+  const ActiveIcon = activeTab?.icon;
+
   return (
-    <div
-      role="tablist"
-      className="flex w-full gap-1 rounded-xl border border-border bg-muted/30 p-1"
-      aria-label="Beállítások menü"
-    >
-      {tabs.map((tab) => {
-        const isActive = active === tab.id;
-        const Icon = tab.icon;
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            title={tab.hint}
-            onClick={() => onChange(tab.id as T)}
-            className={classNames(
-              'flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-2 transition-all touch-manipulation sm:flex-row sm:gap-2 sm:px-3',
-              isActive
-                ? 'bg-card text-foreground shadow-sm ring-1 ring-border'
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
-            )}
+    <div className="w-full min-w-0">
+      {/* Mobile: full-width native select — avoids cramped horizontal tabs */}
+      <div className="md:hidden space-y-2">
+        <label htmlFor="settings-section-select" className="sr-only">
+          Beállítások szekció
+        </label>
+        <div className="relative">
+          {ActiveIcon ? (
+            <ActiveIcon
+              size={16}
+              strokeWidth={2.2}
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-primary"
+              aria-hidden
+            />
+          ) : null}
+          <select
+            id="settings-section-select"
+            value={active}
+            onChange={(e) => onChange(e.target.value as T)}
+            className="h-11 w-full min-w-0 appearance-none rounded-xl border border-border bg-card py-2 pl-10 pr-10 text-sm font-semibold text-foreground shadow-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
           >
-            <span className="flex items-center gap-1.5 sm:gap-2">
-              <Icon size={15} strokeWidth={2.2} className={classNames('shrink-0', isActive && 'text-primary')} />
-              <span className={classNames('truncate text-[0.9375rem] font-semibold', !isActive && 'font-medium')}>
+            {tabs.map((tab) => (
+              <option key={tab.id} value={tab.id}>
                 {tab.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            size={16}
+            strokeWidth={2.2}
+            className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+        </div>
+        {activeTab?.hint ? (
+          <p className="px-0.5 text-xs leading-relaxed text-muted-foreground">{activeTab.hint}</p>
+        ) : null}
+      </div>
+
+      {/* Tablet+: scrollable tab strip */}
+      <div
+        role="tablist"
+        aria-label="Beállítások menü"
+        className="hidden md:flex w-full min-w-0 gap-1 overflow-x-auto overscroll-x-contain rounded-xl border border-border bg-muted/30 p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {tabs.map((tab) => {
+          const isActive = active === tab.id;
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              title={tab.hint}
+              onClick={() => onChange(tab.id as T)}
+              className={classNames(
+                'flex shrink-0 snap-start flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-2 transition-all touch-manipulation lg:flex-row lg:gap-2 lg:px-4',
+                isActive
+                  ? 'bg-card text-foreground shadow-sm ring-1 ring-border'
+                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+              )}
+            >
+              <span className="flex items-center gap-2 whitespace-nowrap">
+                <Icon size={15} strokeWidth={2.2} className={classNames('shrink-0', isActive && 'text-primary')} />
+                <span className={classNames('text-[0.9375rem] font-semibold', !isActive && 'font-medium')}>
+                  {tab.label}
+                </span>
               </span>
-            </span>
-            {isActive && tab.hint ? (
-              <span className="hidden sm:block text-[0.7rem] font-normal text-muted-foreground truncate max-w-full px-1">
-                {tab.hint}
-              </span>
-            ) : null}
-          </button>
-        );
-      })}
+              {isActive && tab.hint ? (
+                <span className="hidden lg:block max-w-[14rem] truncate text-[0.7rem] font-normal text-muted-foreground px-1">
+                  {tab.hint}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -152,10 +196,10 @@ export function ModuleFeatureCard({
           : 'border-border bg-muted/10',
       )}
     >
-      <div className="flex gap-4 p-5 sm:p-6">
+      <div className="flex gap-3 p-4 sm:gap-4 sm:p-6">
         <div
           className={classNames(
-            'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm',
+            'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm sm:h-12 sm:w-12',
             enabled
               ? iconClassName ?? 'bg-primary/10 text-primary border border-primary/20'
               : 'bg-muted text-muted-foreground border border-border',
@@ -164,7 +208,7 @@ export function ModuleFeatureCard({
           {icon}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <h4 className="text-base font-semibold text-foreground leading-snug">{title}</h4>
             <span
               className={classNames(
@@ -184,7 +228,7 @@ export function ModuleFeatureCard({
             </p>
           )}
         </div>
-        <div className="flex h-12 shrink-0 items-start pt-0.5">
+        <div className="flex shrink-0 items-start pt-0.5">
           <Switch checked={enabled} onCheckedChange={() => onToggle()} aria-label={`${title} ${enabled ? 'kikapcsolása' : 'bekapcsolása'}`} />
         </div>
       </div>
@@ -273,18 +317,22 @@ export function MemberCard({
 }) {
   return (
     <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden hover:border-primary/15 transition-colors">
-      <div className="flex items-center justify-between gap-3 p-4 sm:p-5 bg-gradient-to-r from-primary/[0.04] to-transparent border-b border-border">
+      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5 bg-gradient-to-r from-primary/[0.04] to-transparent border-b border-border">
         <div className="flex items-center gap-3 min-w-0">
           <div className="h-12 w-12 shrink-0 rounded-xl bg-gradient-to-br from-primary to-violet-600 text-primary-foreground text-sm font-bold flex items-center justify-center shadow-md">
             {initials}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground flex flex-wrap items-center gap-2">{name}</p>
             <p className="text-sm text-muted-foreground truncate mt-0.5">@{username}</p>
             {badges && <div className="flex flex-wrap gap-1.5 mt-2">{badges}</div>}
           </div>
         </div>
-        {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+        {actions && (
+          <div className="flex w-full items-center gap-2 sm:w-auto sm:shrink-0 [&_select]:min-w-0 [&_select]:flex-1 sm:[&_select]:flex-none">
+            {actions}
+          </div>
+        )}
       </div>
       <div className="px-4 sm:px-5 py-4 bg-muted/10">
         <p className="text-xs font-medium text-muted-foreground mb-2.5">Hozzáférés modulokhoz</p>

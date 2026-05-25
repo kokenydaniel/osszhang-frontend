@@ -29,7 +29,7 @@ export default function SettingsPage() {
   }, [searchParams]);
 
   return (
-    <div className="flex flex-col gap-7 w-full max-w-[1500px] mx-auto">
+    <div className="flex flex-col gap-7 w-full min-w-0 max-w-[1500px] mx-auto">
       <PageHeader
         breadcrumbs={[{ label: 'Rendszer' }, { label: 'Beállítások' }]}
         title="Beállítások"

@@ -48,14 +48,14 @@ export function SubscriptionPlanCards({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h3 className="text-base font-semibold text-foreground">Válassz csomagot</h3>
           <p className="text-sm text-muted-foreground mt-0.5">
             Havi vagy éves számlázás — bármikor módosítható a Stripe ügyfélkapun.
           </p>
         </div>
-        <BillingIntervalToggle value={interval} onChange={onIntervalChange} />
+        <BillingIntervalToggle value={interval} onChange={onIntervalChange} className="shrink-0" />
       </div>
 
       <div
