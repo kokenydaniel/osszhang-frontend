@@ -5,15 +5,21 @@ import type { RequestOptions } from '../response';
 export class SavingsClient {
   constructor(protected apiClient: ApiClient, protected baseEndpoint = 'savings') {}
 
-  getAll(options?: RequestOptions) {
-    return this.apiClient.getJson<SavingsAccount[]>(this.baseEndpoint, options);
+  getAll(walletId?: number | null, options?: RequestOptions) {
+    return this.apiClient.getJson<SavingsAccount[]>(this.baseEndpoint, {
+      ...options,
+      params: {
+        ...options?.params,
+        ...(walletId ? { walletId } : {}),
+      },
+    });
   }
 
-  create(data: Omit<SavingsAccount, 'id' | 'ledger'>) {
+  create(data: Record<string, unknown>) {
     return this.apiClient.postJson<SavingsAccount>(this.baseEndpoint, data);
   }
 
-  update(id: number, data: Partial<Omit<SavingsAccount, 'id' | 'ledger'>>) {
+  update(id: number, data: Record<string, unknown>) {
     return this.apiClient.putJson<SavingsAccount>(`${this.baseEndpoint}/${id}`, data);
   }
 

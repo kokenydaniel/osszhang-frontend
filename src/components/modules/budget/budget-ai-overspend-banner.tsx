@@ -1,12 +1,30 @@
 import { formatHUF } from '@/utils';
 import { HELP } from '@/lib/helpTexts';
 import { AccentPanel } from '@/components/design';
+import { TierGatedAiPanel } from '@/components/subscription/TierGatedAiPanel';
+import { useTierFeature } from '@/components/subscription/TierFeatureGate';
 import { Bot, Tag } from 'lucide-react';
 import type { BudgetPageState } from '@/components/modules/budget/hooks/use-budget-page-state';
 
 type BudgetAiOverspendBannerProps = Pick<BudgetPageState, 'aiOverspend'>;
 
 export function BudgetAiOverspendBanner({ aiOverspend }: BudgetAiOverspendBannerProps) {
+  const { allowed: canUseAi } = useTierFeature('ai');
+
+  if (!canUseAi) {
+    return (
+      <TierGatedAiPanel
+        featureLabel="AI túlköltés figyelő"
+        icon={Bot}
+        title="AI túlköltés ellenőrzés"
+        titleInfo={HELP.budget.aiOverspend}
+        description="Modell alapú elemzés a tárgyhavi költésekről"
+      >
+        {null}
+      </TierGatedAiPanel>
+    );
+  }
+
   if (!aiOverspend) return null;
 
   return (

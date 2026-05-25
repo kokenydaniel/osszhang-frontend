@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import classNames from 'classnames';
-import { dayjs, d, today, DATE_FORMAT, DISPLAY_FORMAT_LONG } from '@/lib/dates';
+import { dayjs, d, today, DATE_FORMAT, DISPLAY_FORMAT, parseDateInput } from '@/lib/dates';
 
 interface DatePickerProps {
   value: string;
@@ -14,6 +14,13 @@ interface DatePickerProps {
 }
 
 const CALENDAR_HEIGHT = 340;
+const INPUT_PLACEHOLDER = 'éééé.hh.nn.';
+
+function formatInputValue(dateStr: string): string {
+  if (!dateStr) return '';
+  const parsed = d(dateStr);
+  return parsed.isValid() ? parsed.format(DISPLAY_FORMAT) : '';
+}
 
 export const DatePicker: React.FC<DatePickerProps> = ({
   value,
@@ -26,10 +33,25 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 288 });
   const [mounted, setMounted] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(() => (value ? d(value) : dayjs()));
+  const [inputText, setInputText] = useState(() => formatInputValue(value));
+  const [isFocused, setIsFocused] = useState(false);
+  const [inputInvalid, setInputInvalid] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const selectedDate = value ? d(value) : null;
 
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!isFocused) {
+      setInputText(formatInputValue(value));
+      setInputInvalid(false);
+    }
+  }, [value, isFocused]);
+
+  useEffect(() => {
+    if (value) setCurrentMonth(d(value));
+  }, [value]);
 
   const updatePosition = () => {
     if (!containerRef.current) return;
@@ -82,6 +104,29 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen]);
+
+  const commitInput = (): boolean => {
+    const trimmed = inputText.trim();
+    if (!trimmed) {
+      onChange('');
+      setInputText('');
+      setInputInvalid(false);
+      return true;
+    }
+
+    const parsed = parseDateInput(trimmed);
+    if (parsed === null) {
+      setInputInvalid(true);
+      setInputText(formatInputValue(value));
+      return false;
+    }
+
+    onChange(parsed);
+    setInputText(formatInputValue(parsed));
+    setInputInvalid(false);
+    setCurrentMonth(d(parsed));
+    return true;
+  };
 
   const calendarDays = (() => {
     const monthStart = currentMonth.startOf('month');
@@ -152,6 +197,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               type="button"
               onClick={() => {
                 onChange(cellDate.format(DATE_FORMAT));
+                setInputText(cellDate.format(DISPLAY_FORMAT));
+                setInputInvalid(false);
                 setIsOpen(false);
               }}
               className={classNames(
@@ -192,6 +239,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           className="px-3 py-1.5 rounded-md text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors touch-manipulation"
           onClick={() => {
             onChange('');
+            setInputText('');
+            setInputInvalid(false);
             setIsOpen(false);
           }}
         >
@@ -201,7 +250,10 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           type="button"
           className="px-3 py-1.5 rounded-md text-xs font-medium text-primary hover:bg-primary/10 transition-colors touch-manipulation"
           onClick={() => {
-            onChange(today());
+            const todayValue = today();
+            onChange(todayValue);
+            setInputText(formatInputValue(todayValue));
+            setInputInvalid(false);
             setIsOpen(false);
           }}
         >
@@ -213,39 +265,80 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
   return (
     <div ref={containerRef} className={classNames('relative w-full', className)}>
-      <button
-        type="button"
-        onClick={() => setIsOpen((o) => !o)}
+      <div
         className={classNames(
-          'flex w-full items-center gap-2.5 h-9 px-3 bg-input border border-border rounded-md',
-          'cursor-pointer hover:border-foreground/20 transition-colors text-sm text-left touch-manipulation',
-          isOpen && 'border-primary/50 ring-2 ring-primary/20',
+          'flex w-full items-center gap-2 h-9 px-3 bg-input border border-border rounded-md',
+          'hover:border-foreground/20 transition-colors text-sm touch-manipulation',
+          (isOpen || isFocused) && 'border-primary/50 ring-2 ring-primary/20',
+          inputInvalid && 'border-destructive ring-2 ring-destructive/20',
         )}
       >
-        <CalendarIcon size={15} className="text-muted-foreground shrink-0" />
-        <span className={classNames('flex-1 truncate', value ? 'text-foreground' : 'text-muted-foreground')}>
-          {value ? d(value).format(DISPLAY_FORMAT_LONG) : placeholder}
-        </span>
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label="Naptár megnyitása"
+          onClick={() => {
+            setIsOpen((open) => !open);
+            inputRef.current?.focus();
+          }}
+          className="text-muted-foreground hover:text-foreground transition-colors shrink-0 -ml-0.5"
+        >
+          <CalendarIcon size={15} />
+        </button>
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          spellCheck={false}
+          aria-invalid={inputInvalid}
+          placeholder={placeholder === 'Válassz dátumot' ? INPUT_PLACEHOLDER : placeholder}
+          value={inputText}
+          onChange={(e) => {
+            setInputText(e.target.value);
+            setInputInvalid(false);
+          }}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => {
+            setIsFocused(false);
+            commitInput();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (commitInput()) setIsOpen(false);
+            }
+            if (e.key === 'Escape') {
+              setInputText(formatInputValue(value));
+              setInputInvalid(false);
+              setIsOpen(false);
+              inputRef.current?.blur();
+            }
+            if (e.key === 'ArrowDown' && !isOpen) {
+              e.preventDefault();
+              setIsOpen(true);
+            }
+          }}
+          className="flex-1 min-w-0 bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
+        />
         {value && (
-          <span
-            role="button"
-            tabIndex={0}
-            className="ml-auto text-muted-foreground hover:text-destructive transition-colors p-0.5 shrink-0"
-            onClick={(e) => {
-              e.stopPropagation();
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label="Dátum törlése"
+            className="text-muted-foreground hover:text-destructive transition-colors p-0.5 shrink-0"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
               onChange('');
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.stopPropagation();
-                onChange('');
-              }
+              setInputText('');
+              setInputInvalid(false);
+              setIsOpen(false);
             }}
           >
             <X size={14} />
-          </span>
+          </button>
         )}
-      </button>
+      </div>
 
       {typeof document !== 'undefined' && createPortal(calendarPanel, document.body)}
     </div>

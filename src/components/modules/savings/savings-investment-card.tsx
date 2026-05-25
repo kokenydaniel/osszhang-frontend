@@ -30,6 +30,7 @@ type SavingsInvestmentCardProps = Pick<
   | 'saveInvestmentValue'
   | 'cancelEditInvestmentValue'
   | 'saveInvestmentPayout'
+  | 'isReader'
 > & {
   inv: Investment;
 };
@@ -54,6 +55,7 @@ export function SavingsInvestmentCard({
   saveInvestmentValue,
   cancelEditInvestmentValue,
   saveInvestmentPayout,
+  isReader,
 }: SavingsInvestmentCardProps) {
   const { totalValue, accruedInterest, daysPassed } = getInvestmentValue(inv);
   const inactive = inv.countInSavings === false;
@@ -103,18 +105,20 @@ export function SavingsInvestmentCard({
             </p>
           </div>
         </div>
-        <button
-          onClick={() =>
-            requestDelete({
-              title: 'Befektetés törlése',
-              message: `Biztosan törlöd a „${inv.name}" befektetést? Ez a művelet nem vonható vissza.`,
-              onConfirm: () => deleteInvestment(inv.id),
-            })
-          }
-          className="text-muted-foreground hover:text-destructive transition-colors p-1"
-        >
-          <Trash2 size={13} />
-        </button>
+        {!isReader ? (
+          <button
+            onClick={() =>
+              requestDelete({
+                title: 'Befektetés törlése',
+                message: `Biztosan törlöd a „${inv.name}" befektetést? Ez a művelet nem vonható vissza.`,
+                onConfirm: () => deleteInvestment(inv.id),
+              })
+            }
+            className="text-muted-foreground hover:text-destructive transition-colors p-1"
+          >
+            <Trash2 size={13} />
+          </button>
+        ) : null}
       </div>
 
       <div>
@@ -122,7 +126,7 @@ export function SavingsInvestmentCard({
           <span className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
             {isEditingValue ? 'Új érték (Ft)' : 'Aktuális érték'}
           </span>
-          {!isEditingValue && (
+          {!isEditingValue && !isReader && (
             <button
               onClick={() => startEditInvestmentValue(inv, totalValue)}
               className="inline-flex items-center gap-1 text-[0.65rem] font-medium text-primary hover:text-primary/80 transition-colors"
@@ -203,6 +207,7 @@ export function SavingsInvestmentCard({
           label="Vagyonba"
           title="Beleszámít a fő vagyon összegébe a Széf nézetben"
           tone="success"
+          disabled={isReader}
         />
         <span className="text-[0.65rem] text-muted-foreground tabular-nums">
           {formatDate(inv.purchaseDate)}

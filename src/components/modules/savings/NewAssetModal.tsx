@@ -3,18 +3,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSavingsStore } from '@/stores/useSavingsStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useWalletStore } from '@/stores/useWalletStore';
 import { resolveSavingsSettings } from '@/lib/savingsSettings';
 import { Modal } from '@/components/ui/Modal';
 import { DatePicker } from '@/components/ui/DatePicker';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/FieldLabel';
 import { HELP } from '@/lib/helpTexts';
 import { today, d } from '@/lib/dates';
 import { SegmentedControl, ModalFormFooter } from '@/components/design';
-import { Wallet, TrendingUp } from 'lucide-react';
+import { Target, TrendingUp, Wallet } from 'lucide-react';
 
-type AssetKind = 'account' | 'investment';
+type AssetKind = 'account' | 'goal' | 'investment';
 
 interface NewAssetModalProps {
   isOpen: boolean;
@@ -25,6 +25,7 @@ interface NewAssetModalProps {
 export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewAssetModalProps) {
   const { addSavingsAccount, addInvestment } = useSavingsStore();
   const { user } = useAuthStore();
+  const activeWalletId = useWalletStore((s) => s.activeWalletId);
   const savingsSettings = useMemo(() => resolveSavingsSettings(user?.household), [user?.household]);
 
   const [kind, setKind] = useState<AssetKind>(initialKind);
@@ -32,6 +33,11 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
   const [savInst, setSavInst] = useState('');
   const [savCurr, setSavCurr] = useState(savingsSettings.currencies[0] ?? 'HUF');
   const [savOwner, setSavOwner] = useState(savingsSettings.default_owner);
+
+  const [goalName, setGoalName] = useState('');
+  const [goalAmount, setGoalAmount] = useState('');
+  const [currentAmount, setCurrentAmount] = useState('0');
+  const [targetDate, setTargetDate] = useState(d().add(6, 'month').format('YYYY-MM-DD'));
 
   const [invName, setInvName] = useState('');
   const [invType, setInvType] = useState('bond');
@@ -58,6 +64,10 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
     setSavInst('');
     setSavCurr(savingsSettings.currencies[0] ?? 'HUF');
     setSavOwner(savingsSettings.default_owner);
+    setGoalName('');
+    setGoalAmount('');
+    setCurrentAmount('0');
+    setTargetDate(d().add(6, 'month').format('YYYY-MM-DD'));
     setInvName('');
     setInvType('bond');
     setInvPrincipal('');
@@ -70,13 +80,28 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
     setInvNextPayoutDate('');
   };
 
-  const handleSavingsSubmit = (e: React.FormEvent) => {
+  const handleAccountSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addSavingsAccount({
+    void addSavingsAccount({
+      type: 'account',
       institution: savInst,
       currency: savCurr,
       owner: savOwner,
       count_in_savings: savingsSettings.default_count_in_savings,
+      walletId: activeWalletId,
+    });
+    resetAndClose();
+  };
+
+  const handleGoalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void addSavingsAccount({
+      type: 'goal',
+      institution: goalName,
+      goalAmount: Number(goalAmount),
+      currentAmount: Number(currentAmount) || 0,
+      targetDate,
+      walletId: activeWalletId,
     });
     resetAndClose();
   };
@@ -114,7 +139,7 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
       isOpen={isOpen}
       onClose={resetAndClose}
       title="Új megtakarítás"
-      description="Válaszd ki, számlát vagy állampapírt szeretnél rögzíteni."
+      description="Számla, cél vagy állampapír — válaszd ki, mit szeretnél rögzíteni."
       size={kind === 'investment' ? 'lg' : 'md'}
       contentKey={kind}
     >
@@ -128,13 +153,20 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
             label: 'Számla',
             icon: Wallet,
             tone: 'primary',
-            description: 'Bankszámla, Revolut, készpénz',
+            description: 'Revolut, készpénz, bankszámla',
+          },
+          {
+            value: 'goal',
+            label: 'Cél',
+            icon: Target,
+            tone: 'accent',
+            description: 'Célösszeg, határidő, progress',
           },
           {
             value: 'investment',
             label: 'Állampapír',
             icon: TrendingUp,
-            tone: 'accent',
+            tone: 'positive',
             description: 'PMÁP, DKJ, befektetés',
           },
         ]}
@@ -143,7 +175,7 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
       />
 
       {kind === 'account' ? (
-        <form onSubmit={handleSavingsSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleAccountSubmit} className="flex flex-col gap-4">
           <div className="space-y-1.5">
             <FieldLabel info={HELP.savings.accountName}>Intézmény / Megnevezés</FieldLabel>
             <Input
@@ -207,7 +239,47 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
               )}
             </div>
           </div>
-          <ModalFormFooter onCancel={resetAndClose} submitLabel="Létrehozás" />
+          <ModalFormFooter onCancel={resetAndClose} submitLabel="Számla létrehozása" />
+        </form>
+      ) : kind === 'goal' ? (
+        <form onSubmit={handleGoalSubmit} className="flex flex-col gap-4">
+          <div className="space-y-1.5">
+            <FieldLabel info={HELP.savings.accountName}>Cél neve</FieldLabel>
+            <Input
+              placeholder="pl. Nyaralás, Vésztartalék, Autó"
+              value={goalName}
+              onChange={(e) => setGoalName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <FieldLabel info={HELP.savings.principal}>Célösszeg (Ft)</FieldLabel>
+              <Input
+                type="number"
+                min={1}
+                placeholder="500000"
+                value={goalAmount}
+                onChange={(e) => setGoalAmount(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <FieldLabel hint="Ami már félretettél">Jelenlegi összeg (Ft)</FieldLabel>
+              <Input
+                type="number"
+                min={0}
+                placeholder="0"
+                value={currentAmount}
+                onChange={(e) => setCurrentAmount(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <FieldLabel info={HELP.savings.maturityDate}>Cél határideje</FieldLabel>
+            <DatePicker value={targetDate} onChange={setTargetDate} />
+          </div>
+          <ModalFormFooter onCancel={resetAndClose} submitLabel="Cél létrehozása" />
         </form>
       ) : (
         <form onSubmit={handleInvestmentSubmit} className="flex flex-col gap-4">

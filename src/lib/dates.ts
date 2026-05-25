@@ -40,6 +40,41 @@ export function formatDateLong(dateStr: string): string {
   return parsed.isValid() ? parsed.format(DISPLAY_FORMAT_LONG) : '';
 }
 
+const DATE_INPUT_FORMATS = [
+  DATE_FORMAT,
+  DISPLAY_FORMAT,
+  DISPLAY_FORMAT_LONG,
+  'YYYY.M.D',
+  'YYYY.M.DD',
+  'YYYY.MM.D',
+  'D.M.YYYY',
+  'D.MM.YYYY',
+  'DD.M.YYYY',
+  'DD.MM.YYYY',
+  'D/M/YYYY',
+  'DD/MM/YYYY',
+  'D-M-YYYY',
+  'DD-MM-YYYY',
+] as const;
+
+/** Parses free-form date text; returns ISO date, empty string, or null if invalid. */
+export function parseDateInput(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+
+  for (const fmt of DATE_INPUT_FORMATS) {
+    const parsed = dayjs(trimmed, fmt, true);
+    if (parsed.isValid()) return parsed.format(DATE_FORMAT);
+  }
+
+  if (/^\d{4}-\d{1,2}-\d{1,2}/.test(trimmed)) {
+    const parsed = d(trimmed);
+    if (parsed.isValid()) return parsed.format(DATE_FORMAT);
+  }
+
+  return null;
+}
+
 export function datePart(dateStr: string): string {
   if (!dateStr) return '';
   const parsed = d(dateStr);

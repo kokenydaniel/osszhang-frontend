@@ -37,6 +37,7 @@ type SavingsLedgerModalProps = Pick<
   | 'formatCurrencyAmount'
   | 'ledgerCurrency'
   | 'ledgerItems'
+  | 'isReader'
 >;
 
 export function SavingsLedgerModal({
@@ -58,6 +59,7 @@ export function SavingsLedgerModal({
   formatCurrencyAmount,
   ledgerCurrency,
   ledgerItems,
+  isReader,
 }: SavingsLedgerModalProps) {
   return (
     <Modal
@@ -65,13 +67,17 @@ export function SavingsLedgerModal({
       onClose={closeLedgerModal}
       title="Számla történet"
       description={
-        editingLedgerId
-          ? 'Tétel szerkesztése — módosítsd az adatokat, majd mentsd.'
-          : 'Új mozgás rögzítése vagy korábbi tétel javítása.'
+        isReader
+          ? 'Korábbi mozgások megtekintése.'
+          : editingLedgerId
+            ? 'Tétel szerkesztése — módosítsd az adatokat, majd mentsd.'
+            : 'Új mozgás rögzítése vagy korábbi tétel javítása.'
       }
       contentKey={`${ledgerType}-${editingLedgerId ?? 'new'}`}
     >
       <div className="flex flex-col gap-4">
+        {!isReader ? (
+          <>
         <SegmentedControl
           variant="choice"
           value={ledgerType}
@@ -138,11 +144,16 @@ export function SavingsLedgerModal({
             )}
           </Button>
         </div>
+          </>
+        ) : null}
         <LedgerHistoryPanel
           items={ledgerItems}
           editingId={editingLedgerId}
           formatAmount={(amount) => formatCurrencyAmount(amount, ledgerCurrency)}
-          actions={(item) => (
+          actions={
+            isReader
+              ? undefined
+              : (item) => (
             <>
               <Button
                 type="button"
@@ -164,7 +175,8 @@ export function SavingsLedgerModal({
                 <Trash2 size={13} />
               </Button>
             </>
-          )}
+          )
+          }
         />
       </div>
     </Modal>

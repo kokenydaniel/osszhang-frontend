@@ -29,6 +29,7 @@ type SavingsInvestmentsSectionProps = Pick<
   | 'saveInvestmentValue'
   | 'cancelEditInvestmentValue'
   | 'saveInvestmentPayout'
+  | 'isReader'
 >;
 
 export function SavingsInvestmentsSection({

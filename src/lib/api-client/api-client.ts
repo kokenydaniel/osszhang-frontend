@@ -1,7 +1,10 @@
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { getAuthToken, removeAuthToken } from '@/lib/authToken';
+import { isAbortError, isTimeoutError, mergeAbortSignals } from '@/lib/api-client/abortError';
 import { API_URL } from './public-env';
 import type { ApiResponse, RequestOptions } from './response';
+
+export { isAbortError, isTimeoutError } from '@/lib/api-client/abortError';
 
 export class ApiClientError extends Error {
   status: number;
@@ -104,18 +107,26 @@ export class ApiClient {
     body?: unknown,
     options?: RequestOptions,
   ): Promise<ApiResponse<T>> {
-    const controller = new AbortController();
+    const timeoutController = new AbortController();
     let timeout: ReturnType<typeof setTimeout> | undefined;
     if (typeof window !== 'undefined') {
-      timeout = setTimeout(() => controller.abort(), 15000);
+      timeout = setTimeout(() => {
+        timeoutController.abort(new DOMException('The request timed out.', 'TimeoutError'));
+      }, 30000);
     }
+
+    const signals = [timeoutController.signal];
+    if (options?.signal) {
+      signals.push(options.signal);
+    }
+    const signal = mergeAbortSignals(signals);
 
     try {
       const response = await fetch(this.buildUrl(endpoint, options?.params), {
         method,
         headers: this.getDefaultHeaders(),
         body: body === undefined ? undefined : JSON.stringify(body),
-        signal: controller.signal,
+        signal,
       });
 
       const data = await this.parseBody(response);
@@ -130,9 +141,17 @@ export class ApiClient {
         throw error;
       }
 
+      if (isAbortError(error)) {
+        throw error;
+      }
+
       const { addNotification } = useNotificationStore.getState();
       if (!options?.silent) {
-        addNotification('Hálózati hiba! Ellenőrizd az internetkapcsolatot.', 'error');
+        if (isTimeoutError(error)) {
+          addNotification('A kérés túl sokáig tartott. Próbáld újra!', 'error');
+        } else {
+          addNotification('Hálózati hiba! Ellenőrizd az internetkapcsolatot.', 'error');
+        }
       }
 
       throw error;

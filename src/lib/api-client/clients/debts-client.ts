@@ -1,11 +1,18 @@
 import type { ApiClient } from '../api-client';
 import type { Debt } from '@/types';
+import type { RequestOptions } from '../response';
 
 export class DebtsClient {
   constructor(protected apiClient: ApiClient, protected baseEndpoint = 'debts') {}
 
-  getAll() {
-    return this.apiClient.getJson<Debt[]>(this.baseEndpoint);
+  getAll(walletId?: number | null, options?: RequestOptions) {
+    return this.apiClient.getJson<Debt[]>(this.baseEndpoint, {
+      ...options,
+      params: {
+        ...options?.params,
+        ...(walletId ? { walletId } : {}),
+      },
+    });
   }
 
   create(data: Omit<Debt, 'id'>) {

@@ -5,5 +5,6 @@ export interface ApiResponse<T> {
 
 export type RequestOptions = {
   silent?: boolean;
+  signal?: AbortSignal;
   params?: Record<string, string | number | boolean | undefined | null>;
 };

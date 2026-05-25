@@ -1,12 +1,24 @@
-import type { LedgerEntry } from './budget';
+export type SavingsType = 'account' | 'goal';
+
+export interface SavingsWalletRef {
+  id: number;
+  name: string;
+  isShared: boolean;
+}
 
 export interface SavingsAccount {
   id: number;
+  type: SavingsType;
+  walletId?: number | null;
   institution: string;
   currency: string;
   owner: string;
   count_in_savings: boolean;
-  ledger: LedgerEntry[];
+  goalAmount: number;
+  currentAmount: number;
+  targetDate: string | null;
+  wallet?: SavingsWalletRef | null;
+  ledger: import('./budget').LedgerEntry[];
 }
 
 export interface Investment {
