@@ -12,9 +12,38 @@ export class ApiClientError extends Error {
 
   constructor(status: number, data: unknown, message?: string) {
     super(message || 'API request failed');
+    this.name = 'ApiClientError';
     this.status = status;
     this.data = data;
   }
+}
+
+type ApiErrorPayload = {
+  errors?: Record<string, string[]>;
+  message?: string;
+};
+
+export function getApiErrorMessage(error: unknown, fallback = 'Váratlan hiba történt.'): string {
+  if (error instanceof ApiClientError) {
+    const payload = (error.data ?? {}) as ApiErrorPayload;
+    if (payload.errors) {
+      const joined = Object.values(payload.errors).flat().filter(Boolean).join(' ');
+      if (joined) return joined;
+    }
+    if (payload.message) return payload.message;
+    if (error.status === 401) return 'Hibás felhasználónév vagy jelszó.';
+    if (error.status >= 500) return 'Szerver hiba történt. Próbáld újra később.';
+  }
+
+  if (isTimeoutError(error)) {
+    return 'A kérés túl sokáig tartott. Próbáld újra!';
+  }
+
+  if (error instanceof Error && error.message && error.message !== 'API request failed') {
+    return error.message;
+  }
+
+  return fallback;
 }
 
 export class ApiClient {

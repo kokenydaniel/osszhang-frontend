@@ -1,4 +1,4 @@
-export { ApiClient, ApiClientError } from './api-client';
+export { ApiClient, ApiClientError, getApiErrorMessage } from './api-client';
 export { apiClient, ApiClientFacade } from './api-client-instance';
 export { API_URL } from './public-env';
 export type { ApiResponse, RequestOptions } from './response';

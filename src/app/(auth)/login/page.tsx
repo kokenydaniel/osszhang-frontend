@@ -32,17 +32,13 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const loggedInUser = await login({
+      await login({
         username: username.trim().toLowerCase(),
         password,
       });
-      if (loggedInUser) {
-        router.replace('/');
-        return;
-      }
-      setError('Hibás felhasználónév vagy jelszó.');
-    } catch {
-      setError('Hiba történt a bejelentkezés során.');
+      router.replace('/');
+    } catch (err) {
+      setError(typeof err === 'string' ? err : 'Hiba történt a bejelentkezés során.');
     } finally {
       setLoading(false);
     }

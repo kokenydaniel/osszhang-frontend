@@ -53,7 +53,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const registeredUser = await register({
+      await register({
         first_name: formData.firstName,
         last_name: formData.lastName,
         username: formData.username.trim().toLowerCase(),
@@ -61,16 +61,9 @@ export default function RegisterPage() {
         password_confirmation: formData.password_confirmation,
         household_name: formData.householdName,
       });
-
-      if (registeredUser) {
-        router.replace('/');
-        return;
-      }
-
-      setError('Hiba történt a regisztráció során.');
+      router.replace('/');
     } catch (err) {
-      const apiErr = err as { response?: { data?: { message?: string } } };
-      setError(apiErr.response?.data?.message || 'Hiba történt a regisztráció során.');
+      setError(typeof err === 'string' ? err : 'Hiba történt a regisztráció során.');
     } finally {
       setLoading(false);
     }

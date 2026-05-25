@@ -8,6 +8,7 @@ export class AuthClient {
     return this.apiClient.postJson<{ access_token: string; token: string; user: RawApiUser }>(
       `${this.baseEndpoint}/login`,
       credentials,
+      { silent: true },
     );
   }
 
@@ -24,6 +25,7 @@ export class AuthClient {
     return this.apiClient.postJson<{ access_token: string; token: string; user: RawApiUser }>(
       `${this.baseEndpoint}/register`,
       data,
+      { silent: true },
     );
   }
 

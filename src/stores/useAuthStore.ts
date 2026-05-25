@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { UserProfile, RawApiUser } from '@/types';
-import { authClient, householdClient, walletClient, platformClient } from '@/lib/api-client';
+import { authClient, getApiErrorMessage, householdClient, walletClient, platformClient } from '@/lib/api-client';
 import { getAuthToken, removeAuthToken, setAuthToken as persistAuthToken } from '@/lib/authToken';
 import { LoadableStatus } from '@/lib/loadableStatus';
 import { resetRouteDataCache } from '@/lib/loadRouteData';
@@ -128,8 +128,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         useWalletStore.getState().syncFromUser(mappedUser.wallets, mappedUser.household?.id);
         return mappedUser;
       })
-      .catch((e) => {
-        console.error('Failed to fetch profile', e);
+      .catch(() => {
         removeAuthToken();
         set({ user: null, authToken: null, status: LoadableStatus.Error });
         return null;
@@ -174,6 +173,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   register: async (data) => {
     fetchUserPromise = null;
+    removeAuthToken();
     set({
       loginStatus: LoadableStatus.Loading,
       user: null,
@@ -191,7 +191,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       useWalletStore.getState().syncFromUser(user.wallets, user.household?.id);
       return user;
     } catch (e) {
-      console.error('Registration failed', e);
       removeAuthToken();
       set({
         loginStatus: LoadableStatus.Error,
@@ -199,7 +198,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         authToken: null,
         status: LoadableStatus.Loaded,
       });
-      return null;
+      throw getApiErrorMessage(e, 'Hiba történt a regisztráció során.');
     }
   },
 
