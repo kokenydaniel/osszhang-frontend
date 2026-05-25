@@ -34,10 +34,10 @@ export default function DashboardPage() {
           </span>
         }
         meta={
-          <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
-            <WalletSwitcher />
+          <div className="flex flex-col gap-2 w-full sm:w-auto sm:items-end">
+            <WalletSwitcher className="w-full sm:w-auto" />
             {state.householdMembers.length > 0 ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 self-start sm:self-end">
                 <span className="text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground">Család</span>
                 <div className="flex -space-x-1.5">
                   {state.householdMembers.slice(0, 5).map((member: { id: number; firstName?: string; lastName?: string }) => {

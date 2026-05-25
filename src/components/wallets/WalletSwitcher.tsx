@@ -20,6 +20,8 @@ import type { WalletProfile } from '@/types';
 interface WalletSwitcherProps {
   className?: string;
   compact?: boolean;
+  /** Full-width trigger on small screens (PageHeader). Default true. */
+  fullWidthMobile?: boolean;
 }
 
 interface MenuPosition {
@@ -54,7 +56,7 @@ function computeMenuPosition(trigger: HTMLElement): MenuPosition {
   };
 }
 
-export function WalletSwitcher({ className, compact = false }: WalletSwitcherProps) {
+export function WalletSwitcher({ className, compact = false, fullWidthMobile = true }: WalletSwitcherProps) {
   const { user, fetchMe } = useAuthStore();
   const { activeWalletId, setActiveWalletId } = useWalletStore();
   const openUpgrade = useUpgradeModalStore((s) => s.open);
@@ -363,18 +365,19 @@ export function WalletSwitcher({ className, compact = false }: WalletSwitcherPro
     : null;
 
   return (
-    <div className={classNames('relative w-full min-w-0 sm:w-auto', className)}>
+    <div className={classNames('relative min-w-0', fullWidthMobile ? 'w-full sm:w-auto' : 'w-auto', className)}>
       <button
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={classNames(
-          'inline-flex w-full min-w-0 items-center gap-2 rounded-lg border text-sm font-medium text-foreground',
+          'inline-flex min-w-0 items-center gap-2 rounded-lg border text-sm font-medium text-foreground',
           'hover:bg-muted/60 transition-colors shadow-sm touch-manipulation',
           activeIsShared
             ? 'border-sky-500/25 bg-sky-500/5'
             : 'border-violet-500/25 bg-violet-500/5',
-          compact ? 'h-8 px-2.5 sm:w-auto' : 'h-9 px-3 sm:w-auto',
+          compact ? 'h-8 px-2.5' : 'h-9 px-3',
+          fullWidthMobile ? 'w-full justify-between sm:w-auto sm:justify-start sm:max-w-[12rem]' : 'max-w-[12rem]',
         )}
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -388,13 +391,15 @@ export function WalletSwitcher({ className, compact = false }: WalletSwitcherPro
           <WalletTypeIcon isShared={activeIsShared} size={13} />
         </span>
         {!compact && (
-          <span className="min-w-0 flex-1 truncate text-left sm:max-w-[140px] sm:flex-none">
-            {activeWallet?.name ?? 'Kassza'}
-          </span>
+          <span className="min-w-0 truncate text-left">{activeWallet?.name ?? 'Kassza'}</span>
         )}
         <ChevronDown
           size={14}
-          className={classNames('ml-auto text-muted-foreground transition-transform shrink-0 sm:ml-0', open && 'rotate-180')}
+          className={classNames(
+            'text-muted-foreground transition-transform shrink-0',
+            fullWidthMobile && 'ml-auto sm:ml-0',
+            open && 'rotate-180',
+          )}
         />
       </button>
 

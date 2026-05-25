@@ -25,9 +25,9 @@ export function SettingsTopTabs<T extends string>({
   const ActiveIcon = activeTab?.icon;
 
   return (
-    <div className="w-full min-w-0">
-      {/* Mobile: full-width native select — avoids cramped horizontal tabs */}
-      <div className="md:hidden space-y-2">
+    <div className="w-full min-w-0 space-y-3">
+      {/* Mobile: full-width native select */}
+      <div className="md:hidden">
         <label htmlFor="settings-section-select" className="sr-only">
           Beállítások szekció
         </label>
@@ -60,15 +60,16 @@ export function SettingsTopTabs<T extends string>({
           />
         </div>
         {activeTab?.hint ? (
-          <p className="px-0.5 text-xs leading-relaxed text-muted-foreground">{activeTab.hint}</p>
+          <p className="mt-2 px-0.5 text-xs leading-relaxed text-muted-foreground">{activeTab.hint}</p>
         ) : null}
       </div>
 
-      {/* Tablet+: scrollable tab strip */}
+      {/* Desktop: equal-width tab grid */}
       <div
         role="tablist"
         aria-label="Beállítások menü"
-        className="hidden md:flex w-full min-w-0 gap-1 overflow-x-auto overscroll-x-contain rounded-xl border border-border bg-muted/30 p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="hidden md:grid w-full gap-1 rounded-xl border border-border bg-muted/30 p-1"
+        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
       >
         {tabs.map((tab) => {
           const isActive = active === tab.id;
@@ -82,23 +83,16 @@ export function SettingsTopTabs<T extends string>({
               title={tab.hint}
               onClick={() => onChange(tab.id as T)}
               className={classNames(
-                'flex shrink-0 snap-start flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-2 transition-all touch-manipulation lg:flex-row lg:gap-2 lg:px-4',
+                'flex min-w-0 flex-row items-center justify-center gap-2 rounded-lg px-2 py-2.5 transition-all touch-manipulation',
                 isActive
                   ? 'bg-card text-foreground shadow-sm ring-1 ring-border'
                   : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
               )}
             >
-              <span className="flex items-center gap-2 whitespace-nowrap">
-                <Icon size={15} strokeWidth={2.2} className={classNames('shrink-0', isActive && 'text-primary')} />
-                <span className={classNames('text-[0.9375rem] font-semibold', !isActive && 'font-medium')}>
-                  {tab.label}
-                </span>
+              <Icon size={15} strokeWidth={2.2} className={classNames('shrink-0', isActive && 'text-primary')} />
+              <span className={classNames('truncate text-sm font-semibold', !isActive && 'font-medium')}>
+                {tab.label}
               </span>
-              {isActive && tab.hint ? (
-                <span className="hidden lg:block max-w-[14rem] truncate text-[0.7rem] font-normal text-muted-foreground px-1">
-                  {tab.hint}
-                </span>
-              ) : null}
             </button>
           );
         })}
