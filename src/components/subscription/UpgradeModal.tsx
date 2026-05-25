@@ -71,8 +71,8 @@ export function UpgradeModal() {
       size="sm"
     >
       <div className="flex flex-col gap-5">
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/20 px-4 py-3">
-          <div>
+        <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
+          <div className="min-w-0">
             <p className="text-sm font-semibold text-foreground">{tierName} csomag</p>
             <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">
               {formatPlanPrice(requiredTier, billingInterval)}
@@ -81,7 +81,9 @@ export function UpgradeModal() {
               <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium mt-0.5">{priceSubline}</p>
             )}
           </div>
-          <BillingIntervalToggle value={billingInterval} onChange={setBillingInterval} />
+          <div className="flex justify-start">
+            <BillingIntervalToggle value={billingInterval} onChange={setBillingInterval} />
+          </div>
         </div>
 
         <ul className="space-y-2.5">
@@ -95,11 +97,21 @@ export function UpgradeModal() {
           ))}
         </ul>
 
-        <div className="flex flex-col sm:flex-row gap-2 pt-1">
-          <Button className="flex-1" loading={loading} onClick={() => void handleUpgrade()}>
-            Váltás {tierName} csomagra
+        <div className="flex flex-col gap-2.5 pt-1">
+          <Button
+            size="lg"
+            className="w-full min-h-11 h-auto whitespace-normal py-3 text-center leading-snug"
+            loading={loading}
+            onClick={() => void handleUpgrade()}
+          >
+            Előfizetés — {tierName}
           </Button>
-          <Button variant="outline" className="flex-1" asChild>
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full min-h-10 h-auto whitespace-normal py-2.5 text-center leading-snug"
+            asChild
+          >
             <Link href="/pricing" onClick={closeUpgradeModal}>
               Összes csomag
             </Link>

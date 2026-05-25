@@ -47,15 +47,15 @@ export function SubscriptionPlanCards({
   const currentRank = tierRank(currentTier);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="min-w-0">
           <h3 className="text-base font-semibold text-foreground">Válassz csomagot</h3>
           <p className="text-sm text-muted-foreground mt-0.5">
             Havi vagy éves számlázás — bármikor módosítható a Stripe ügyfélkapun.
           </p>
         </div>
-        <BillingIntervalToggle value={interval} onChange={onIntervalChange} className="shrink-0" />
+        <BillingIntervalToggle value={interval} onChange={onIntervalChange} />
       </div>
 
       <div
@@ -166,8 +166,9 @@ export function SubscriptionPlanCards({
               <Button
                 type="button"
                 variant={plan.highlighted && currentTier === 'free' ? 'default' : isPremium ? 'default' : 'outline'}
+                size="lg"
                 className={classNames(
-                  'w-full',
+                  'w-full min-h-11 h-auto whitespace-normal py-3 text-center leading-snug',
                   isPremium && !isCurrent && 'bg-violet-600 hover:bg-violet-700 dark:bg-violet-600 dark:hover:bg-violet-500',
                 )}
                 disabled={isCurrent || (isBelowCurrent && !isCurrent)}
@@ -178,7 +179,7 @@ export function SubscriptionPlanCards({
                   ? 'Aktív csomag'
                   : isBelowCurrent
                     ? 'Alacsonyabb csomag'
-                    : `Váltás ${plan.name} csomagra`}
+                    : `Előfizetés — ${plan.name}`}
               </Button>
             </div>
           );
