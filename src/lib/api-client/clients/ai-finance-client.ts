@@ -12,10 +12,11 @@ import type {
 export class AiFinanceClient {
   constructor(protected apiClient: ApiClient, protected baseEndpoint = 'ai') {}
 
-  query(prompt: string, includeContext = true) {
+  query(prompt: string, includeContext = true, walletId?: number | null) {
     return this.apiClient.postJson<{ answer: string }>(`${this.baseEndpoint}/query`, {
       prompt,
       include_context: includeContext,
+      ...(walletId != null ? { wallet_id: walletId } : {}),
     });
   }
 
@@ -31,17 +32,29 @@ export class AiFinanceClient {
     );
   }
 
-  getOverspendRootCause(year: number, month: number) {
+  getOverspendRootCause(year: number, month: number, walletId?: number | null) {
     return this.apiClient.getJson<AiEnvelope<AiOverspendAnalysis>>(
       `${this.baseEndpoint}/v1/budget/overspend-root-cause`,
-      { params: { year, month } },
+      {
+        params: {
+          year,
+          month,
+          ...(walletId != null ? { wallet_id: walletId } : {}),
+        },
+      },
     );
   }
 
-  getCashflowForecast(year: number, month: number) {
+  getCashflowForecast(year: number, month: number, walletId?: number | null) {
     return this.apiClient.getJson<AiEnvelope<AiCashflowForecast>>(
       `${this.baseEndpoint}/v1/budget/cashflow-forecast`,
-      { params: { year, month } },
+      {
+        params: {
+          year,
+          month,
+          ...(walletId != null ? { wallet_id: walletId } : {}),
+        },
+      },
     );
   }
 
@@ -52,11 +65,14 @@ export class AiFinanceClient {
     );
   }
 
-  getWeeklyBriefing(weekStart?: string) {
+  getWeeklyBriefing(weekStart?: string, walletId?: number | null) {
     return this.apiClient.getJson<AiEnvelope<AiWeeklyBriefing>>(
       `${this.baseEndpoint}/v1/dashboard/weekly-briefing`,
       {
-        params: weekStart ? { week_start: weekStart } : undefined,
+        params: {
+          ...(weekStart ? { week_start: weekStart } : {}),
+          ...(walletId != null ? { wallet_id: walletId } : {}),
+        },
       },
     );
   }
@@ -64,6 +80,7 @@ export class AiFinanceClient {
   getSavingsRecommendations(data: {
     goals: Array<{ name: string; target_amount: number; target_date: string; priority?: number }>;
     constraints?: { min_buffer?: number };
+    wallet_id?: number | null;
   }) {
     return this.apiClient.postJson<AiEnvelope<AiSavingsPlan>>(
       `${this.baseEndpoint}/v1/savings/recommendations`,
@@ -71,7 +88,7 @@ export class AiFinanceClient {
     );
   }
 
-  optimizeDebts(data: { strategy?: 'avalanche' | 'snowball' }) {
+  optimizeDebts(data: { strategy?: 'avalanche' | 'snowball'; wallet_id?: number | null }) {
     return this.apiClient.postJson<AiEnvelope<AiDebtPlan>>(`${this.baseEndpoint}/v1/debts/optimize`, data);
   }
 }
