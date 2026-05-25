@@ -3,6 +3,7 @@
 import type { LucideIcon } from 'lucide-react';
 import { ChevronDown, Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { TierBadge } from '@/components/subscription/TierBadge';
 import classNames from 'classnames';
 
 export interface SettingsTabItem {
@@ -169,15 +170,17 @@ export function ModuleFeatureCard({
   onToggle,
   icon,
   iconClassName,
+  tierBadge,
   children,
   footer,
 }: {
   title: string;
   description: string;
   enabled: boolean;
-  onToggle: () => void;
+  onToggle: (next: boolean) => void;
   icon: React.ReactNode;
   iconClassName?: string;
+  tierBadge?: 'pro' | 'premium' | null;
   children?: React.ReactNode;
   footer?: React.ReactNode;
 }) {
@@ -202,28 +205,36 @@ export function ModuleFeatureCard({
           {icon}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h4 className="text-base font-semibold text-foreground leading-snug">{title}</h4>
-            <span
-              className={classNames(
-                'text-[0.6rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border',
-                enabled
-                  ? 'border-primary/30 bg-primary/10 text-primary'
-                  : 'border-border bg-muted text-muted-foreground',
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <h4 className="text-base font-semibold text-foreground leading-snug">{title}</h4>
+                <span
+                  className={classNames(
+                    'text-[0.6rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border',
+                    enabled
+                      ? 'border-primary/30 bg-primary/10 text-primary'
+                      : 'border-border bg-muted text-muted-foreground',
+                  )}
+                >
+                  {enabled ? 'Be' : 'Ki'}
+                </span>
+                {tierBadge ? <TierBadge tier={tierBadge} /> : null}
+              </div>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed max-w-prose">{description}</p>
+              {!enabled && (
+                <p className="text-xs text-muted-foreground/80 mt-2 italic">
+                  Ki van kapcsolva — nem jelenik meg a menüben és a kapcsolódó beállítások rejtve maradnak.
+                </p>
               )}
-            >
-              {enabled ? 'Be' : 'Ki'}
-            </span>
+            </div>
+            <Switch
+              checked={enabled}
+              onCheckedChange={onToggle}
+              aria-label={`${title} ${enabled ? 'kikapcsolása' : 'bekapcsolása'}`}
+              className="shrink-0 mt-0.5"
+            />
           </div>
-          <p className="text-sm text-muted-foreground mt-2 leading-relaxed max-w-prose">{description}</p>
-          {!enabled && (
-            <p className="text-xs text-muted-foreground/80 mt-2 italic">
-              Ki van kapcsolva — nem jelenik meg a menüben és a kapcsolódó beállítások rejtve maradnak.
-            </p>
-          )}
-        </div>
-        <div className="flex shrink-0 items-start pt-0.5">
-          <Switch checked={enabled} onCheckedChange={() => onToggle()} aria-label={`${title} ${enabled ? 'kikapcsolása' : 'bekapcsolása'}`} />
         </div>
       </div>
       {enabled && children ? (

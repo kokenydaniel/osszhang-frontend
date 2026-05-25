@@ -5,6 +5,8 @@ import { resolveDebtsSettings, type DebtsSettings } from '@/lib/debtsSettings';
 import { resolveMetersSettings, type MetersSettings } from '@/lib/metersSettings';
 import { resolveSavingsSettings, savingsSettingsForApi, type SavingsSettings } from '@/lib/savingsSettings';
 import { type ModuleId } from '@/lib/moduleAccess';
+import { featureEnableAllowed, moduleEnableAllowed } from '@/lib/moduleTierGate';
+import { canUseFeature } from '@/lib/checkAccess';
 import { useAuthStore } from './useAuthStore';
 import { useBudgetStore } from './useBudgetStore';
 import { useNotificationStore } from './useNotificationStore';
@@ -194,10 +196,16 @@ export const useSettingsUiStore = create<SettingsUiState>((set, get) => ({
       metersEnabled: h.metersEnabled ?? h.meters_enabled ?? false,
       businessEnabled: h.businessEnabled ?? h.business_enabled ?? false,
       businessName: h.businessName ?? h.business_name ?? '',
-      shopifyImportEnabled: h.shopifyImportEnabled ?? h.shopify_import_enabled ?? false,
+      shopifyImportEnabled: (() => {
+        const raw = h.shopifyImportEnabled ?? h.shopify_import_enabled ?? false;
+        return raw && canUseFeature(user, 'shopify_import');
+      })(),
       shopifyShopUrl: h.shopifyShopUrl ?? h.shopify_shop_url ?? '',
       shopifyAccessToken: '',
-      utilitySplitEnabled: h.utilitySplitEnabled ?? h.utility_split_enabled ?? false,
+      utilitySplitEnabled: (() => {
+        const raw = h.utilitySplitEnabled ?? h.utility_split_enabled ?? false;
+        return raw && canUseFeature(user, 'utility_split');
+      })(),
       utilitySplitPartnerId: h.utilitySplitPartnerId ?? h.utility_split_partner_id ?? null,
       businessSettings: resolveBusinessSettings(h),
       utilityTemplates: resolveUtilityTemplates(h),
@@ -294,14 +302,23 @@ export const useSettingsUiStore = create<SettingsUiState>((set, get) => ({
       shopifyAccessToken,
       businessSettings,
     } = get();
+    const user = useAuthStore.getState().user;
     const { updateHouseholdSettings } = useAuthStore.getState();
     const { addNotification } = useNotificationStore.getState();
+    if (businessEnabled && !moduleEnableAllowed(user, 'business')) {
+      addNotification('A vállalkozás modul nem érhető el a jelenlegi csomagodban.', 'error');
+      return;
+    }
     if (businessEnabled) {
       if (!businessName.trim()) {
         addNotification('A vállalkozás nevét kötelező megadni, ha a modul be van kapcsolva!', 'error');
         return;
       }
       if (shopifyImportEnabled) {
+        if (!featureEnableAllowed(user, 'shopify_import')) {
+          addNotification('A Shopify import nem érhető el a jelenlegi csomagodban.', 'error');
+          return;
+        }
         if (!shopifyShopUrl.trim()) {
           addNotification('A Shopify bolt URL-jét kötelező megadni, ha az import be van kapcsolva!', 'error');
           return;
@@ -342,8 +359,13 @@ export const useSettingsUiStore = create<SettingsUiState>((set, get) => ({
 
   handleSavingsSave: async () => {
     const { savingsEnabled, savingsSettings } = get();
+    const user = useAuthStore.getState().user;
     const { updateHouseholdSettings } = useAuthStore.getState();
     const { addNotification } = useNotificationStore.getState();
+    if (savingsEnabled && !moduleEnableAllowed(user, 'savings')) {
+      addNotification('A megtakarítás modul nem érhető el a jelenlegi csomagodban.', 'error');
+      return;
+    }
     set({ isSavingsSaving: true });
     try {
       await updateHouseholdSettings({
@@ -360,8 +382,13 @@ export const useSettingsUiStore = create<SettingsUiState>((set, get) => ({
 
   handleDebtsSave: async () => {
     const { debtsEnabled, debtsSettings } = get();
+    const user = useAuthStore.getState().user;
     const { updateHouseholdSettings } = useAuthStore.getState();
     const { addNotification } = useNotificationStore.getState();
+    if (debtsEnabled && !moduleEnableAllowed(user, 'debts')) {
+      addNotification('A tartozások modul nem érhető el a jelenlegi csomagodban.', 'error');
+      return;
+    }
     set({ isDebtsSaving: true });
     try {
       await updateHouseholdSettings({ debts_enabled: debtsEnabled, debts_settings: debtsSettings });
@@ -375,8 +402,13 @@ export const useSettingsUiStore = create<SettingsUiState>((set, get) => ({
 
   handleMetersSave: async () => {
     const { metersEnabled, metersSettings } = get();
+    const user = useAuthStore.getState().user;
     const { updateHouseholdSettings } = useAuthStore.getState();
     const { addNotification } = useNotificationStore.getState();
+    if (metersEnabled && !moduleEnableAllowed(user, 'meters')) {
+      addNotification('A közműórák modul nem érhető el a jelenlegi csomagodban.', 'error');
+      return;
+    }
     set({ isMetersSaving: true });
     try {
       await updateHouseholdSettings({ meters_enabled: metersEnabled, meters_settings: metersSettings });
@@ -390,8 +422,17 @@ export const useSettingsUiStore = create<SettingsUiState>((set, get) => ({
 
   handleUtilitiesSave: async (utilityPartnersCount) => {
     const { utilitiesEnabled, utilitySplitEnabled, utilitySplitPartnerId, utilityTemplates } = get();
+    const user = useAuthStore.getState().user;
     const { updateHouseholdSettings } = useAuthStore.getState();
     const { addNotification } = useNotificationStore.getState();
+    if (utilitiesEnabled && !moduleEnableAllowed(user, 'utilities')) {
+      addNotification('A rezsi modul nem érhető el a jelenlegi csomagodban.', 'error');
+      return;
+    }
+    if (utilitiesEnabled && utilitySplitEnabled && !featureEnableAllowed(user, 'utility_split')) {
+      addNotification('A rezsi megosztás nem érhető el a jelenlegi csomagodban.', 'error');
+      return;
+    }
     if (utilitiesEnabled && utilitySplitEnabled && utilityPartnersCount > 0 && !utilitySplitPartnerId) {
       addNotification('Válassz elszámolási partnert a rezsi megosztáshoz!', 'error');
       return;

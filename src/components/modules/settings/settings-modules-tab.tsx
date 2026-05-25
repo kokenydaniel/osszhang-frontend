@@ -19,13 +19,17 @@ import { MetersSettingsEditor } from '@/components/modules/settings/MetersSettin
 import { SavingsSettingsEditor } from '@/components/modules/settings/SavingsSettingsEditor';
 import { UtilityTemplatesEditor } from '@/components/modules/settings/UtilityTemplatesEditor';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/FormField';
 import { HELP } from '@/lib/helpTexts';
 import { formatDisplayName } from '@/lib/personName';
+import { blockModuleEnable } from '@/lib/moduleTierGate';
+import { canAccessModuleByTier, showTierBadgeForModule } from '@/lib/checkAccess';
+import type { ModuleId } from '@/lib/moduleAccess';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { InsightBanner, StatusPill } from '@/components/design';
-import { TierFeatureGate, useTierFeature } from '@/components/subscription/TierFeatureGate';
+import { useTierFeature } from '@/components/subscription/TierFeatureGate';
+import { TierFeatureSwitchRow } from '@/components/subscription/TierFeatureSwitchRow';
 import {
   CategoryTag,
   ModuleFeatureCard,
@@ -150,9 +154,28 @@ export function SettingsModulesTab({
   newCat,
   setNewCat,
 }: SettingsModulesTabProps) {
-  const { allowed: utilitySplitAllowed, promptUpgrade: promptUtilitySplitUpgrade } =
-    useTierFeature('utility_split');
-  const { allowed: shopifyAllowed, promptUpgrade: promptShopifyUpgrade } = useTierFeature('shopify_import');
+  const user = useAuthStore((s) => s.user);
+  const { allowed: shopifyAllowed } = useTierFeature('shopify_import');
+
+  const moduleCardProps = (moduleId: ModuleId, enabled: boolean, setter: (value: boolean) => void) => {
+    const allowed = canAccessModuleByTier(user, moduleId);
+    const badgeTier = showTierBadgeForModule(user, moduleId);
+
+    return {
+      tierBadge: badgeTier === 'premium' ? ('premium' as const) : badgeTier === 'pro' ? ('pro' as const) : null,
+      onToggle: (next: boolean) => {
+        if (blockModuleEnable(user, moduleId, next)) return;
+        setter(next);
+      },
+      tierLocked: enabled && !allowed,
+    };
+  };
+
+  const savingsProps = moduleCardProps('savings', savingsEnabled, setSavingsEnabled);
+  const debtsProps = moduleCardProps('debts', debtsEnabled, setDebtsEnabled);
+  const utilitiesProps = moduleCardProps('utilities', utilitiesEnabled, setUtilitiesEnabled);
+  const metersProps = moduleCardProps('meters', metersEnabled, setMetersEnabled);
+  const businessProps = moduleCardProps('business', businessEnabled, setBusinessEnabled);
 
   return (
     <>
@@ -173,7 +196,7 @@ export function SettingsModulesTab({
             title="Költségvetés"
             description="Havi bevételek, kiadások és kategóriák — a pénzügyi alapmodul."
             enabled={budgetEnabled}
-            onToggle={() => setBudgetEnabled(!budgetEnabled)}
+            onToggle={(next) => setBudgetEnabled(next)}
             icon={<Wallet size={22} strokeWidth={2} />}
             iconClassName="bg-emerald-500/12 text-emerald-600 border border-emerald-500/20"
             footer={
@@ -244,7 +267,8 @@ export function SettingsModulesTab({
             title="Megtakarítás"
             description="Széf, bankszámlák és befektetések külön modulban."
             enabled={savingsEnabled}
-            onToggle={() => setSavingsEnabled(!savingsEnabled)}
+            tierBadge={savingsProps.tierBadge}
+            onToggle={savingsProps.onToggle}
             icon={<PiggyBank size={22} strokeWidth={2} />}
             iconClassName="bg-violet-500/12 text-violet-600 border border-violet-500/20"
             footer={
@@ -254,6 +278,11 @@ export function SettingsModulesTab({
               </Button>
             }
           >
+            {savingsProps.tierLocked ? (
+              <InsightBanner tone="warning" icon={ShieldAlert} title="Nincs a csomagodban">
+                Ez a modul a Pro csomag része. Kapcsold ki, vagy válts magasabb csomagra a mentéshez.
+              </InsightBanner>
+            ) : null}
             <SavingsSettingsEditor value={savingsSettings} onChange={setSavingsSettings} />
           </ModuleFeatureCard>
 
@@ -261,7 +290,8 @@ export function SettingsModulesTab({
             title="Tartozások"
             description="Hitelek, kölcsönök és visszafizetési tervek."
             enabled={debtsEnabled}
-            onToggle={() => setDebtsEnabled(!debtsEnabled)}
+            tierBadge={debtsProps.tierBadge}
+            onToggle={debtsProps.onToggle}
             icon={<TrendingDown size={22} strokeWidth={2} />}
             iconClassName="bg-rose-500/12 text-rose-600 border border-rose-500/20"
             footer={
@@ -271,6 +301,11 @@ export function SettingsModulesTab({
               </Button>
             }
           >
+            {debtsProps.tierLocked ? (
+              <InsightBanner tone="warning" icon={ShieldAlert} title="Nincs a csomagodban">
+                Ez a modul a Pro csomag része. Kapcsold ki, vagy válts magasabb csomagra a mentéshez.
+              </InsightBanner>
+            ) : null}
             <DebtsSettingsEditor value={debtsSettings} onChange={setDebtsSettings} />
           </ModuleFeatureCard>
 
@@ -278,7 +313,8 @@ export function SettingsModulesTab({
             title="Rezsi"
             description="Közüzemi számlák, megosztás és havi sablon tételek."
             enabled={utilitiesEnabled}
-            onToggle={() => setUtilitiesEnabled(!utilitiesEnabled)}
+            tierBadge={utilitiesProps.tierBadge}
+            onToggle={utilitiesProps.onToggle}
             icon={<Droplets size={22} strokeWidth={2} />}
             iconClassName="bg-sky-500/12 text-sky-600 border border-sky-500/20"
             footer={
@@ -288,49 +324,43 @@ export function SettingsModulesTab({
               </Button>
             }
           >
+            {utilitiesProps.tierLocked ? (
+              <InsightBanner tone="warning" icon={ShieldAlert} title="Nincs a csomagodban">
+                Ez a modul a Pro csomag része. Kapcsold ki, vagy válts magasabb csomagra a mentéshez.
+              </InsightBanner>
+            ) : null}
             <div className="space-y-4">
-              <TierFeatureGate feature="utility_split" featureLabel="Rezsi megosztás">
-                <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Rezsi megosztás</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Közös számlák elszámolása partnerekkel.</p>
-                  </div>
-                  <Switch
-                    checked={utilitySplitEnabled}
-                    onCheckedChange={(v) => {
-                      if (!utilitySplitAllowed) {
-                        promptUtilitySplitUpgrade('Rezsi megosztás');
-                        return;
-                      }
-                      setUtilitySplitEnabled(v);
-                    }}
-                    aria-label="Rezsi megosztás"
-                  />
-                </div>
-                {utilitySplitEnabled && (
-                  <FormField label="Elszámolási partner" info={HELP.settings.splitPartner}>
-                    {utilityPartners.length === 0 ? (
-                      <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2.5">
-                        Nincs más tag. Először hozz létre egy családtagot a Háztartás fülön.
-                      </p>
-                    ) : (
-                      <select
-                        className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
-                        value={utilitySplitPartnerId || ''}
-                        onChange={(e) => setUtilitySplitPartnerId(e.target.value ? Number(e.target.value) : null)}
-                        disabled={!utilitySplitAllowed}
-                      >
-                        <option value="">Válassz partnert…</option>
-                        {utilityPartners.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {formatDisplayName(p.firstName, p.lastName)}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </FormField>
-                )}
-              </TierFeatureGate>
+              <TierFeatureSwitchRow
+                feature="utility_split"
+                featureLabel="Rezsi megosztás"
+                title="Rezsi megosztás"
+                description="Közös számlák elszámolása partnerekkel."
+                checked={utilitySplitEnabled}
+                onCheckedChange={setUtilitySplitEnabled}
+                disabled={!utilitiesEnabled}
+              />
+              {utilitySplitEnabled && utilitiesEnabled ? (
+                <FormField label="Elszámolási partner" info={HELP.settings.splitPartner}>
+                  {utilityPartners.length === 0 ? (
+                    <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2.5">
+                      Nincs más tag. Először hozz létre egy családtagot a Háztartás fülön.
+                    </p>
+                  ) : (
+                    <select
+                      className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
+                      value={utilitySplitPartnerId || ''}
+                      onChange={(e) => setUtilitySplitPartnerId(e.target.value ? Number(e.target.value) : null)}
+                    >
+                      <option value="">Válassz partnert…</option>
+                      {utilityPartners.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {formatDisplayName(p.firstName, p.lastName)}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </FormField>
+              ) : null}
             </div>
 
             <SettingsDivider />
@@ -352,7 +382,8 @@ export function SettingsModulesTab({
             title="Közműórák"
             description="Villany, gáz, víz fogyasztás és mérőállások."
             enabled={metersEnabled}
-            onToggle={() => setMetersEnabled(!metersEnabled)}
+            tierBadge={metersProps.tierBadge}
+            onToggle={metersProps.onToggle}
             icon={<Gauge size={22} strokeWidth={2} />}
             iconClassName="bg-amber-500/12 text-amber-600 border border-amber-500/20"
             footer={
@@ -362,6 +393,11 @@ export function SettingsModulesTab({
               </Button>
             }
           >
+            {metersProps.tierLocked ? (
+              <InsightBanner tone="warning" icon={ShieldAlert} title="Nincs a csomagodban">
+                Ez a modul a Pro csomag része. Kapcsold ki, vagy válts magasabb csomagra a mentéshez.
+              </InsightBanner>
+            ) : null}
             <MetersSettingsEditor value={metersSettings} onChange={setMetersSettings} />
           </ModuleFeatureCard>
 
@@ -369,7 +405,8 @@ export function SettingsModulesTab({
             title="Vállalkozás"
             description="Rendelések nyilvántartása, csatornák és fizetési módok — Shopify import opcionálisan."
             enabled={businessEnabled}
-            onToggle={() => setBusinessEnabled(!businessEnabled)}
+            tierBadge={businessProps.tierBadge}
+            onToggle={businessProps.onToggle}
             icon={<TrendingUp size={22} strokeWidth={2} />}
             iconClassName="bg-emerald-500/12 text-emerald-600 border border-emerald-500/20"
             footer={
@@ -379,6 +416,11 @@ export function SettingsModulesTab({
               </Button>
             }
           >
+            {businessProps.tierLocked ? (
+              <InsightBanner tone="warning" icon={ShieldAlert} title="Nincs a csomagodban">
+                Ez a modul a Premium csomag része. Kapcsold ki, vagy válts magasabb csomagra a mentéshez.
+              </InsightBanner>
+            ) : null}
             <div className="grid grid-cols-1 gap-4">
               <FormField label="Megjelenő név" info={HELP.settings.businessName}>
                 <Input
@@ -391,73 +433,58 @@ export function SettingsModulesTab({
 
             <SettingsDivider />
 
-            <TierFeatureGate feature="shopify_import" featureLabel="Shopify import">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h5 className="text-sm font-semibold text-foreground">Shopify import</h5>
-                    <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-                      Ha Shopify webshopod van, automatikusan importálhatod a rendeléseket. Kikapcsolva manuálisan rögzítheted őket.
-                    </p>
-                  </div>
-                  <Switch
-                    checked={shopifyImportEnabled}
-                    onCheckedChange={(v) => {
-                      if (!shopifyAllowed) {
-                        promptShopifyUpgrade('Shopify import');
-                        return;
-                      }
-                      setShopifyImportEnabled(v);
-                    }}
-                    disabled={!businessEnabled}
-                    aria-label="Shopify import"
-                  />
-                </div>
+            <div className="space-y-4">
+              <TierFeatureSwitchRow
+                feature="shopify_import"
+                featureLabel="Shopify import"
+                title="Shopify import"
+                description="Ha Shopify webshopod van, automatikusan importálhatod a rendeléseket. Kikapcsolva manuálisan rögzítheted őket."
+                checked={shopifyImportEnabled}
+                onCheckedChange={setShopifyImportEnabled}
+                disabled={!businessEnabled}
+              />
 
-                {shopifyImportEnabled && (
-                  <div className="grid grid-cols-1 gap-4 rounded-xl border border-border bg-muted/20 p-4">
-                    <FormField label="Shopify bolt URL" info={HELP.settings.shopifyUrl}>
-                      <Input
-                        value={shopifyShopUrl}
-                        onChange={(e) => setShopifyShopUrl(e.target.value)}
-                        placeholder="bolt-neve.myshopify.com"
-                        disabled={!shopifyAllowed}
+              {shopifyImportEnabled && businessEnabled && shopifyAllowed ? (
+                <div className="grid grid-cols-1 gap-4 rounded-xl border border-border bg-muted/20 p-4">
+                  <FormField label="Shopify bolt URL" info={HELP.settings.shopifyUrl}>
+                    <Input
+                      value={shopifyShopUrl}
+                      onChange={(e) => setShopifyShopUrl(e.target.value)}
+                      placeholder="bolt-neve.myshopify.com"
+                    />
+                  </FormField>
+                  <FormField
+                    label="Admin API token"
+                    info={HELP.settings.shopifyToken}
+                    hint={
+                      hasShopifyToken
+                        ? 'Mentett token van — hagyd üresen, ha nem cseréled. Új token: shpat_ előtaggal.'
+                        : 'Kötelező az első mentésnél. A token shpat_ karakterekkel kezdődik.'
+                    }
+                  >
+                    <div className="relative">
+                      <Lock
+                        size={14}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
                       />
-                    </FormField>
-                    <FormField
-                      label="Admin API token"
-                      info={HELP.settings.shopifyToken}
-                      hint={
-                        hasShopifyToken
-                          ? 'Mentett token van — hagyd üresen, ha nem cseréled. Új token: shpat_ előtaggal.'
-                          : 'Kötelező az első mentésnél. A token shpat_ karakterekkel kezdődik.'
-                      }
-                    >
-                      <div className="relative">
-                        <Lock
-                          size={14}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-                        />
-                        <Input
-                          type="password"
-                          className="pl-8 font-mono text-sm"
-                          value={shopifyAccessToken}
-                          onChange={(e) => setShopifyAccessToken(e.target.value)}
-                          placeholder={
-                            hasShopifyToken
-                              ? 'Üresen hagyva: megtartjuk a mentett tokent'
-                              : 'shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
-                          }
-                          autoComplete="new-password"
-                          spellCheck={false}
-                          disabled={!shopifyAllowed}
-                        />
-                      </div>
-                    </FormField>
-                  </div>
-                )}
-              </div>
-            </TierFeatureGate>
+                      <Input
+                        type="password"
+                        className="pl-8 font-mono text-sm"
+                        value={shopifyAccessToken}
+                        onChange={(e) => setShopifyAccessToken(e.target.value)}
+                        placeholder={
+                          hasShopifyToken
+                            ? 'Üresen hagyva: megtartjuk a mentett tokent'
+                            : 'shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+                        }
+                        autoComplete="new-password"
+                        spellCheck={false}
+                      />
+                    </div>
+                  </FormField>
+                </div>
+              ) : null}
+            </div>
 
             <SettingsDivider />
 

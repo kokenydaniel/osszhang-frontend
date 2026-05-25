@@ -41,7 +41,7 @@ export function TierFeatureGate({
 
   return (
     <div
-      className={classNames('relative rounded-lg', className)}
+      className={classNames('rounded-lg border border-dashed border-border/80', className)}
       onClick={handleLockedClick}
       role="button"
       tabIndex={0}
@@ -50,9 +50,11 @@ export function TierFeatureGate({
       }}
       aria-label={`${featureLabel} — ${tier === 'premium' ? 'Premium' : 'Pro'} csomag szükséges`}
     >
-      <div className="pointer-events-none opacity-50 select-none">{children}</div>
-      <div className={classNames('absolute top-2 right-2 z-10 pointer-events-none', badgeClassName)}>
-        <TierBadge tier={tier === 'premium' ? 'premium' : 'pro'} />
+      <div className="flex items-start gap-3 p-3">
+        <div className="pointer-events-none min-w-0 flex-1 opacity-50 select-none">{children}</div>
+        <div className={classNames('shrink-0 self-start pointer-events-none', badgeClassName)}>
+          <TierBadge tier={tier === 'premium' ? 'premium' : 'pro'} />
+        </div>
       </div>
     </div>
   );
