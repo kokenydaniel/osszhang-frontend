@@ -8,3 +8,6 @@ export { DebtsClient } from './debts-client';
 export { SavingsClient } from './savings-client';
 export { InvestmentsClient } from './investments-client';
 export { AiFinanceClient } from './ai-finance-client';
+export { WalletClient } from './wallet-client';
+export { SubscriptionClient } from './subscription-client';
+export { PlatformClient } from './platform-client';

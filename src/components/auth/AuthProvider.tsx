@@ -7,6 +7,7 @@ import { LoadableStatus } from '@/lib/loadableStatus';
 import { syncBudgetCategories } from '@/lib/sessionBootstrap';
 import type { UserProfile } from '@/types';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useWalletStore } from '@/stores/useWalletStore';
 
 interface AuthProviderProps extends PropsWithChildren {
   validateUser?: (user: UserProfile) => boolean;
@@ -46,6 +47,7 @@ export function AuthProvider({
       ?.then((user) => {
         if (user) {
           syncBudgetCategories(user);
+          useWalletStore.getState().syncFromUser(user.wallets, user.household?.id);
           if (validateUser && !validateUser(user)) {
             void logout();
           }

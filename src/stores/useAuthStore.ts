@@ -1,13 +1,15 @@
 import { create } from 'zustand';
 import { UserProfile, RawApiUser } from '@/types';
-import { authClient, householdClient } from '@/lib/api-client';
+import { authClient, householdClient, walletClient, platformClient } from '@/lib/api-client';
 import { getAuthToken, removeAuthToken, setAuthToken as persistAuthToken } from '@/lib/authToken';
 import { LoadableStatus } from '@/lib/loadableStatus';
 import { resetRouteDataCache } from '@/lib/loadRouteData';
 import { syncBudgetCategories } from '@/lib/sessionBootstrap';
 import { useNotificationStore } from './useNotificationStore';
 import { mapUserFromApi } from '@/lib/mapUser';
+import { mapWalletFromApi } from '@/lib/mapWallet';
 import { unwrapApiData } from '@/lib/unwrapApiData';
+import { useWalletStore } from './useWalletStore';
 
 let fetchUserPromise: Promise<UserProfile | null> | null = null;
 
@@ -55,6 +57,7 @@ interface AuthState {
   deleteInvitation: (id: number) => Promise<void>;
   setAiDashboardAdvice: (advice: string, fingerprint: string) => void;
   updateManualBalance: (balance: number) => Promise<void>;
+  updateWalletManualBalance: (walletId: number, balance: number) => Promise<void>;
   deleteHousehold: (confirmName: string) => Promise<void>;
   updateHouseholdSettings: (data: {
     name?: string;
@@ -80,6 +83,7 @@ interface AuthState {
     business_settings?: import('@/lib/businessSettings').BusinessSettings;
     utility_templates?: import('@/lib/utilityTemplates').UtilityTemplate[];
   }) => Promise<void>;
+  updateBetaMode: (enabled: boolean) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -121,6 +125,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       .then((res) => {
         const mappedUser = mapUserFromApi(res.data);
         set({ user: mappedUser, authToken: token, status: LoadableStatus.Loaded });
+        useWalletStore.getState().syncFromUser(mappedUser.wallets, mappedUser.household?.id);
         return mappedUser;
       })
       .catch((e) => {
@@ -152,6 +157,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const user = mapUserFromApi(res.data.user);
       set({ user, loginStatus: LoadableStatus.Loaded, status: LoadableStatus.Loaded });
       syncBudgetCategories(user);
+      useWalletStore.getState().syncFromUser(user.wallets, user.household?.id);
       return user;
     } catch (e) {
       console.error('Login failed', e);
@@ -182,6 +188,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const user = mapUserFromApi(res.data.user);
       set({ user, loginStatus: LoadableStatus.Loaded, status: LoadableStatus.Loaded });
       syncBudgetCategories(user);
+      useWalletStore.getState().syncFromUser(user.wallets, user.household?.id);
       return user;
     } catch (e) {
       console.error('Registration failed', e);
@@ -353,6 +360,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await get().updateHouseholdSettings({ manual_balance: balance });
   },
 
+  updateWalletManualBalance: async (walletId, balance) => {
+    const res = await walletClient.updateManualBalance(walletId, balance);
+    const updated = mapWalletFromApi(res.data);
+    const currentUser = get().user;
+    if (!currentUser?.wallets?.length) return;
+
+    set({
+      user: {
+        ...currentUser,
+        wallets: currentUser.wallets.map((w) => (w.id === walletId ? updated : w)),
+      },
+    });
+  },
+
   deleteHousehold: async (confirmName) => {
     await householdClient.destroy(confirmName);
     fetchUserPromise = null;
@@ -367,6 +388,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updateHouseholdSettings: async (data) => {
     await householdClient.update(data);
     await get().fetchMe();
+  },
+
+  updateBetaMode: async (enabled) => {
+    const res = await platformClient.updateBetaMode(enabled);
+    const betaMode = Boolean(res.data.betaMode ?? res.data.beta_mode);
+    const user = get().user;
+    if (user) {
+      set({ user: { ...user, betaMode } });
+    }
   },
 
   logout: async () => {

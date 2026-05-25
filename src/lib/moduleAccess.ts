@@ -1,4 +1,5 @@
 import type { UserProfile } from '@/types';
+import { canAccessModuleByTier } from '@/lib/checkAccess';
 
 export const MODULE_IDS = ['budget', 'savings', 'debts', 'utilities', 'meters', 'business'] as const;
 export type ModuleId = (typeof MODULE_IDS)[number];
@@ -40,6 +41,10 @@ export function canAccessModule(user: UserProfile | null | undefined, moduleId: 
   if (!isModuleEnabled(user.household, moduleId)) return false;
   if (user.role === 'admin') return true;
   return user.permissions?.includes(moduleId) ?? false;
+}
+
+export function canUseModuleWithTier(user: UserProfile | null | undefined, moduleId: ModuleId): boolean {
+  return canAccessModule(user, moduleId) && canAccessModuleByTier(user, moduleId);
 }
 
 export function enabledModuleIds(household: HouseholdLike | undefined): ModuleId[] {

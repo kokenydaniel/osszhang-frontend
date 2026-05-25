@@ -11,8 +11,11 @@ import { getCurrentMonth, getCurrentYear } from '@/utils';
 import { Lock } from 'lucide-react';
 import Link from 'next/link';
 import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
+import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { HouseholdOnboardingWizard } from '@/components/onboarding/HouseholdOnboardingWizard';
 import { canAccessModule, type ModuleId } from '@/lib/moduleAccess';
+import { requiresUpgradeForModule } from '@/lib/checkAccess';
+import { openUpgradeModal } from '@/stores/useUpgradeModalStore';
 import { needsHouseholdOnboarding } from '@/lib/householdOnboarding';
 import { loadRouteData } from '@/lib/loadRouteData';
 import { formatDisplayName } from '@/lib/personName';
@@ -72,6 +75,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (isStoreLoading(status) || !user) return;
     void loadRouteData(pathname, user);
   }, [pathname, status, user]);
+
+  useEffect(() => {
+    if (isStoreLoading(status) || !user) return;
+    const tierBlocked = (() => {
+      const routes: [string, ModuleId][] = [
+        ['/savings', 'savings'],
+        ['/debts', 'debts'],
+        ['/utilities', 'utilities'],
+        ['/meters', 'meters'],
+        ['/business', 'business'],
+      ];
+      for (const [prefix, moduleId] of routes) {
+        if (pathname.startsWith(prefix) && canAccessModule(user, moduleId)) {
+          return requiresUpgradeForModule(user, moduleId);
+        }
+      }
+      return null;
+    })();
+
+    if (tierBlocked) {
+      openUpgradeModal({
+        requiredTier: tierBlocked,
+      });
+      router.replace('/');
+    }
+  }, [pathname, router, status, user]);
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-collapsed');
@@ -152,6 +181,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className={classNames('flex min-h-screen bg-background', showOnboarding && 'overflow-hidden')}>
       <ChangePasswordModal />
+      <UpgradeModal />
       <div className={classNames('flex min-h-screen w-full', showOnboarding && 'pointer-events-none select-none blur-[6px] opacity-60')}>
       <Sidebar
         collapsed={collapsed}

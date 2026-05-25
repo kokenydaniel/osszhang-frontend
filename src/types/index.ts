@@ -1,6 +1,8 @@
 export type { UserProfile, RawApiUser } from './auth';
 export type { HouseholdProfile, RawApiHousehold } from './household';
-export type { LedgerEntry, CashTransaction } from './budget';
+export type { WalletProfile, RawApiWallet, SubscriptionTier, SubscriptionStatus } from './wallet';
+export type { LedgerEntry, CashTransaction, BudgetListResponse } from './budget';
+export { isSavingsGoalTransaction } from './budget';
 export type { SavingsAccount, Investment } from './savings';
 export type {
   UtilitySplitRule,
@@ -22,5 +24,6 @@ export type {
   AiWeeklyBriefing,
   AiDebtPlan,
 } from './ai';
+export type { BillingSummary, BillingInvoice, BillingPaymentMethod } from './billing';
 export type { PaymentStatus, Notification, Currency, Month } from './system';
 export { MONTH_NAMES } from './system';

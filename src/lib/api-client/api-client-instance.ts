@@ -10,6 +10,9 @@ import {
   MetersClient,
   SavingsClient,
   UtilitiesClient,
+  WalletClient,
+  SubscriptionClient,
+  PlatformClient,
 } from './clients';
 import { API_URL } from './public-env';
 
@@ -24,6 +27,9 @@ export class ApiClientFacade extends ApiClient {
   readonly savings: SavingsClient;
   readonly investments: InvestmentsClient;
   readonly aiFinance: AiFinanceClient;
+  readonly wallets: WalletClient;
+  readonly subscription: SubscriptionClient;
+  readonly platform: PlatformClient;
 
   constructor(baseUrl: string = API_URL) {
     super(baseUrl);
@@ -37,6 +43,9 @@ export class ApiClientFacade extends ApiClient {
     this.savings = new SavingsClient(this);
     this.investments = new InvestmentsClient(this);
     this.aiFinance = new AiFinanceClient(this);
+    this.wallets = new WalletClient(this);
+    this.subscription = new SubscriptionClient(this);
+    this.platform = new PlatformClient(this);
   }
 }
 

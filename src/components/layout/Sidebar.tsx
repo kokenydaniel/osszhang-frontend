@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
-import { canAccessModule, type ModuleId } from '@/lib/moduleAccess';
+import { canAccessModule, isModuleEnabled, type ModuleId } from '@/lib/moduleAccess';
+import { canAccessModuleByTier, requiresUpgradeForModule, showTierBadgeForModule } from '@/lib/checkAccess';
+import { useUpgradeModalStore } from '@/stores/useUpgradeModalStore';
 import { resolveAppName } from '@/lib/branding';
 import classNames from 'classnames';
 import {
@@ -12,6 +14,7 @@ import {
   TrendingUp, Gauge, PanelLeftClose, PanelLeftOpen, X, Command,
   PiggyBank, TrendingDown,
 } from 'lucide-react';
+import { TierBadge } from '@/components/subscription/TierBadge';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -24,6 +27,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   const pathname = usePathname();
   const { user } = useAuthStore();
   const { userPreferences } = usePreferenceStore();
+  const openUpgrade = useUpgradeModalStore((s) => s.open);
 
   const appName = resolveAppName(userPreferences?.appName);
   const businessName = user?.household?.businessName ?? user?.household?.business_name ?? 'Vállalkozás';
@@ -31,39 +35,67 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   const navGroups = [
     {
       section: null,
-      items: [{ href: '/', icon: LayoutDashboard, label: 'Irányítópult', id: 'dashboard' }],
+      items: [{ href: '/', icon: LayoutDashboard, label: 'Irányítópult', id: 'dashboard' as const }],
     },
     {
       section: 'Pénzügyek',
       items: [
-        { href: '/budget', icon: Wallet, label: 'Költségvetés', id: 'budget' },
-        { href: '/savings', icon: PiggyBank, label: 'Megtakarítások', id: 'savings' },
-        { href: '/debts', icon: TrendingDown, label: 'Tartozások', id: 'debts' },
+        { href: '/budget', icon: Wallet, label: 'Költségvetés', id: 'budget' as const },
+        { href: '/savings', icon: PiggyBank, label: 'Megtakarítások', id: 'savings' as const },
+        { href: '/debts', icon: TrendingDown, label: 'Tartozások', id: 'debts' as const },
       ],
     },
     {
       section: 'Háztartás',
       items: [
-        { href: '/utilities', icon: Home, label: 'Rezsi', id: 'utilities' },
-        { href: '/meters', icon: Gauge, label: 'Közműórák', id: 'meters' },
+        { href: '/utilities', icon: Home, label: 'Rezsi', id: 'utilities' as const },
+        { href: '/meters', icon: Gauge, label: 'Közműórák', id: 'meters' as const },
       ],
     },
     {
       section: 'Vállalkozás',
-      items: [{ href: '/business', icon: TrendingUp, label: businessName, id: 'business' }],
+      items: [{ href: '/business', icon: TrendingUp, label: businessName, id: 'business' as const }],
     },
     {
       section: 'Rendszer',
-      items: [{ href: '/settings', icon: Settings, label: 'Beállítások', id: 'settings' }],
+      items: [{ href: '/settings', icon: Settings, label: 'Beállítások', id: 'settings' as const }],
     },
   ];
 
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
 
-  const hasPermission = (id: string) => {
+  const isNavVisible = (id: string) => {
     if (!user) return false;
     if (['dashboard', 'settings'].includes(id)) return true;
-    return canAccessModule(user, id as ModuleId);
+    return isModuleEnabled(user.household, id as ModuleId);
+  };
+
+  const handleNavClick = (
+    e: React.MouseEvent,
+    href: string,
+    moduleId: string,
+    label: string,
+  ) => {
+    if (!user || ['dashboard', 'settings'].includes(moduleId)) return;
+
+    const mod = moduleId as ModuleId;
+
+    if (!canAccessModule(user, mod)) {
+      e.preventDefault();
+      return;
+    }
+
+    const upgradeTier = requiresUpgradeForModule(user, mod);
+    if (upgradeTier) {
+      e.preventDefault();
+      openUpgrade({
+        requiredTier: upgradeTier === 'premium' ? 'premium' : 'pro',
+        featureLabel: label,
+      });
+      return;
+    }
+
+    onMobileClose?.();
   };
 
   const showLabels = !collapsed || mobileOpen;
@@ -111,7 +143,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
 
         <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
           {navGroups.map((group, gi) => {
-            const items = group.items.filter((i) => hasPermission(i.id));
+            const items = group.items.filter((i) => isNavVisible(i.id));
             if (!items.length) return null;
             return (
               <div key={gi} className="flex flex-col gap-0.5">
@@ -123,20 +155,34 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                 {items.map((item) => {
                   const active = isActive(item.href);
                   const Icon = item.icon;
+                  const mod = item.id as ModuleId;
+                  const tierLocked =
+                    user &&
+                    !['dashboard', 'settings'].includes(item.id) &&
+                    canAccessModule(user, mod) &&
+                    !canAccessModuleByTier(user, mod);
+                  const badgeTier = showTierBadgeForModule(user, mod);
+
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      onClick={onMobileClose}
+                      onClick={(e) => handleNavClick(e, item.href, item.id, item.label)}
                       title={!showLabels ? item.label : undefined}
                       className={classNames(
                         'nav-item',
                         active && 'active',
                         !showLabels && 'justify-center px-2',
+                        tierLocked && 'opacity-90',
                       )}
                     >
                       <Icon size={16} strokeWidth={2} className="nav-icon shrink-0" />
-                      {showLabels && <span className="truncate">{item.label}</span>}
+                      {showLabels && (
+                        <span className="truncate flex-1">{item.label}</span>
+                      )}
+                      {showLabels && badgeTier && (
+                        <TierBadge tier={badgeTier === 'premium' ? 'premium' : 'pro'} />
+                      )}
                     </Link>
                   );
                 })}

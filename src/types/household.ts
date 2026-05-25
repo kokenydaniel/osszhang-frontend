@@ -25,6 +25,10 @@ interface HouseholdFields {
   metersSettings?: import('@/lib/metersSettings').MetersSettings;
   onboarding_completed?: boolean;
   onboardingCompleted?: boolean;
+  subscription_tier?: import('./wallet').SubscriptionTier;
+  subscriptionTier?: import('./wallet').SubscriptionTier;
+  subscription_status?: import('./wallet').SubscriptionStatus;
+  subscriptionStatus?: import('./wallet').SubscriptionStatus;
   business_enabled?: boolean;
   businessEnabled?: boolean;
   business_name?: string;
