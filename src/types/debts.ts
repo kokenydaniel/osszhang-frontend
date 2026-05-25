@@ -1,5 +1,6 @@
 export interface Debt {
   id: number;
+  walletId?: number | null;
   name: string;
   targetAmount: number;
   paidAmount: number;

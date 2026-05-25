@@ -15,14 +15,18 @@ interface ConfirmModalProps {
   confirmText?: string;
   cancelText?: string;
   type?: 'danger' | 'warning' | 'info';
+  overlayZIndex?: number;
+  confirmLoading?: boolean;
 }
 
 export function ConfirmModal({
   isOpen, onClose, onConfirm, title, message,
   confirmText = 'Törlés', cancelText = 'Mégse', type = 'danger',
+  overlayZIndex,
+  confirmLoading = false,
 }: ConfirmModalProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title}>
+    <Modal isOpen={isOpen} onClose={onClose} title={title} overlayZIndex={overlayZIndex}>
       <div className="flex flex-col gap-4 py-1">
         <div className="flex gap-3 items-start">
           <div className={classNames(
@@ -39,6 +43,8 @@ export function ConfirmModal({
           </Button>
           <Button
             variant={type === 'danger' ? 'destructive' : 'default'}
+            loading={confirmLoading}
+            disabled={confirmLoading}
             onClick={() => {
               void (async () => {
                 try {

@@ -18,6 +18,7 @@ interface ModalProps {
   contentKey?: string | number;
   animateContent?: boolean;
   dismissible?: boolean;
+  overlayZIndex?: number;
 }
 
 export function Modal({
@@ -31,6 +32,7 @@ export function Modal({
   contentKey,
   animateContent = true,
   dismissible = true,
+  overlayZIndex = 400,
 }: ModalProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -63,8 +65,8 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[400] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
-      style={{ background: 'oklch(0.22 0.015 260 / 40%)' }}
+      className="fixed inset-0 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
+      style={{ zIndex: overlayZIndex, background: 'oklch(0.22 0.015 260 / 40%)' }}
       onClick={dismissible ? onClose : undefined}
       role="presentation"
     >
