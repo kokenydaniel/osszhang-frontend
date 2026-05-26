@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { MetersUiProvider } from '@/components/modules/meters/MetersUiContext';
 import MetersPage from '@/components/modules/meters/meters-page';
 
 export const metadata: Metadata = {
@@ -6,5 +7,9 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <MetersPage />;
+  return (
+    <MetersUiProvider>
+      <MetersPage />
+    </MetersUiProvider>
+  );
 }

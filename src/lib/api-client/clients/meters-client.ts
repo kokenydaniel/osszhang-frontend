@@ -1,11 +1,12 @@
 import type { ApiClient } from '../api-client';
 import type { Meter, MeterReading } from '@/types';
+import type { RequestOptions } from '../response';
 
 export class MetersClient {
   constructor(protected apiClient: ApiClient, protected baseEndpoint = 'meters') {}
 
-  getAll() {
-    return this.apiClient.getJson<Meter[]>(this.baseEndpoint);
+  getAll(options?: RequestOptions) {
+    return this.apiClient.getJson<Meter[]>(this.baseEndpoint, options);
   }
 
   create(data: Omit<Meter, 'id' | 'readings' | 'icon'> & Partial<Pick<Meter, 'icon'>>) {

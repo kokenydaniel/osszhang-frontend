@@ -1,26 +1,6 @@
+'use client';
+
 import { formatNumber } from '@/utils';
-import { Meter, MeterReading } from '@/types';
-import { Zap, Droplets, Flame, Gauge } from 'lucide-react';
-
-export const MONTH_NAMES = ['Jan', 'Feb', 'Már', 'Ápr', 'Máj', 'Jún', 'Júl', 'Aug', 'Szep', 'Okt', 'Nov', 'Dec'];
-
-export function getChartData(
-  meter: Meter,
-  selectedYear: number,
-  getPreviousYearValue: (meterId: number, month: number, currentYear: number) => number | null,
-) {
-  const result = [];
-  for (let m = 1; m <= 12; m++) {
-    const cyData = meter.readings.find((r: MeterReading) => r.month === m && r.year === selectedYear);
-    const pyData = getPreviousYearValue(meter.id, m, selectedYear);
-    result.push({
-      monthName: MONTH_NAMES[m - 1],
-      idei: cyData ? cyData.consumption : null,
-      tavalyi: pyData !== null ? pyData : null,
-    });
-  }
-  return result;
-}
 
 interface CustomTooltipProps {
   active?: boolean;
@@ -48,38 +28,4 @@ export const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) =>
     );
   }
   return null;
-};
-
-export const getMeterMeta = (name: string) => {
-  if (name.includes('Villany'))
-    return {
-      Icon: Zap,
-      iconBg: 'bg-gradient-to-br from-amber-400 to-orange-500 text-white',
-      surface: 'from-amber-50/70 via-amber-50/20',
-      bar: 'bg-gradient-to-b from-amber-400 to-orange-500',
-      accent: 'oklch(0.72 0.16 60)',
-    };
-  if (name.includes('Víz'))
-    return {
-      Icon: Droplets,
-      iconBg: 'bg-gradient-to-br from-sky-400 to-cyan-500 text-white',
-      surface: 'from-sky-50/70 via-sky-50/20',
-      bar: 'bg-gradient-to-b from-sky-400 to-cyan-500',
-      accent: 'oklch(0.62 0.16 200)',
-    };
-  if (name.includes('Gáz'))
-    return {
-      Icon: Flame,
-      iconBg: 'bg-gradient-to-br from-rose-400 to-orange-500 text-white',
-      surface: 'from-rose-50/70 via-rose-50/20',
-      bar: 'bg-gradient-to-b from-rose-400 to-orange-500',
-      accent: 'oklch(0.62 0.22 25)',
-    };
-  return {
-    Icon: Gauge,
-    iconBg: 'bg-gradient-to-br from-primary to-violet-500 text-white',
-    surface: 'from-primary/8 via-primary/2',
-    bar: 'bg-gradient-to-b from-primary to-violet-500',
-    accent: 'oklch(0.55 0.22 275)',
-  };
 };

@@ -4,7 +4,6 @@ import { useBudgetStore } from '@/stores/useBudgetStore';
 import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { getActiveWalletId } from '@/stores/useWalletStore';
 import { useUtilitiesStore } from '@/stores/useUtilitiesStore';
-import { useMetersStore } from '@/stores/useMetersStore';
 
 const ROUTE_MODULES: Record<string, ModuleId[]> = {
   '/': ['budget', 'utilities', 'debts', 'savings', 'meters', 'business'],
@@ -51,9 +50,18 @@ async function fetchModule(moduleId: ModuleId, options?: { silent?: boolean; wal
     case 'utilities':
       await useUtilitiesStore.getState().fetchBills();
       break;
-    case 'meters':
-      await useMetersStore.getState().fetchMeters();
+    case 'meters': {
+      const { metersService } = await import('@/services/MetersService');
+      const { useMetersStore } = await import('@/stores/useMetersStore');
+      await metersService
+        .fetchAll({ silent: options?.silent })
+        .then((meters) => {
+          useMetersStore.getState().setMeters(meters);
+          useMetersStore.getState().setLoaded(true);
+        })
+        .catch(() => {});
       break;
+    }
     case 'business': {
       const { businessService } = await import('@/services/BusinessService');
       const { useBusinessStore } = await import('@/stores/useBusinessStore');

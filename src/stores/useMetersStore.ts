@@ -1,70 +1,37 @@
 import { create } from 'zustand';
-import { Meter, MeterReading } from '@/types';
-import { metersClient } from '@/lib/api-client';
+import type { Meter } from '@/types';
 
 interface MetersState {
   meters: Meter[];
   isLoading: boolean;
+  isLoaded: boolean;
 
-  fetchMeters: () => Promise<void>;
-  addMeter: (m: Omit<Meter, 'id' | 'readings' | 'icon'> & Partial<Pick<Meter, 'icon'>>) => Promise<void>;
-  deleteMeter: (id: number) => Promise<void>;
-  
-  addMeterReading: (meterId: number, reading: Omit<MeterReading, 'id' | 'consumption'>) => Promise<void>;
-  updateMeterReading: (meterId: number, readingId: number, reading: Partial<Omit<MeterReading, 'id' | 'consumption'>>) => Promise<void>;
-  deleteMeterReading: (meterId: number, readingId: number) => Promise<void>;
+  setMeters: (meters: Meter[]) => void;
+  setLoading: (loading: boolean) => void;
+  setLoaded: (loaded: boolean) => void;
+  patchMeter: (id: number, updated: Meter) => void;
+  appendMeter: (meter: Meter) => void;
+  removeMeter: (id: number) => void;
+  reset: () => void;
 }
 
-export const useMetersStore = create<MetersState>((set, get) => ({
-  meters: [],
+const INITIAL_STATE = {
+  meters: [] as Meter[],
   isLoading: false,
+  isLoaded: false,
+};
 
-  fetchMeters: async () => {
-    set({ isLoading: true });
-    try {
-      const res = await metersClient.getAll();
-      set({ meters: res.data });
-    } catch (e) {
-      console.error('Failed to fetch meters', e);
-    } finally {
-      set({ isLoading: false });
-    }
-  },
+export const useMetersStore = create<MetersState>((set) => ({
+  ...INITIAL_STATE,
 
-  addMeter: async (m) => {
-    const res = await metersClient.create(m);
-    set({ meters: [...get().meters, res.data] });
-  },
-
-  deleteMeter: async (id) => {
-    await metersClient.delete(id);
-    set({ meters: get().meters.filter((m) => m.id !== id) });
-  },
-
-  addMeterReading: async (meterId, reading) => {
-    const res = await metersClient.addReading(meterId, reading);
-    set({
-      meters: get().meters.map((m) =>
-        m.id === meterId ? res.data : m
-      ),
-    });
-  },
-
-  updateMeterReading: async (meterId, readingId, reading) => {
-    const res = await metersClient.updateReading(meterId, readingId, reading);
-    set({
-      meters: get().meters.map((m) =>
-        m.id === meterId ? res.data : m
-      ),
-    });
-  },
-
-  deleteMeterReading: async (meterId, readingId) => {
-    const res = await metersClient.deleteReading(meterId, readingId);
-    set({
-      meters: get().meters.map((m) =>
-        m.id === meterId ? res.data : m
-      ),
-    });
-  },
+  setMeters: (meters) => set({ meters, isLoading: false, isLoaded: true }),
+  setLoading: (isLoading) => set({ isLoading }),
+  setLoaded: (isLoaded) => set({ isLoaded }),
+  patchMeter: (id, updated) =>
+    set((state) => ({
+      meters: state.meters.map((meter) => (meter.id === id ? updated : meter)),
+    })),
+  appendMeter: (meter) => set((state) => ({ meters: [...state.meters, meter] })),
+  removeMeter: (id) => set((state) => ({ meters: state.meters.filter((m) => m.id !== id) })),
+  reset: () => set(INITIAL_STATE),
 }));

@@ -5,7 +5,6 @@ import { HELP } from '@/lib/helpTexts';
 import {
   PageHeader,
   Section,
-  InsightBanner,
   AccentPanel,
   EmptyState,
 } from '@/components/design';
@@ -16,7 +15,7 @@ import {
   PlusCircle,
   Gauge,
 } from 'lucide-react';
-import { useMetersPageState } from '@/components/modules/meters/hooks/use-meters-page-state';
+import { useMetersLogic } from '@/components/modules/meters/hooks/useMetersLogic';
 import { MeterPanel } from '@/components/modules/meters/meter-panel';
 import { TierGatedAiPanel } from '@/components/subscription/TierGatedAiPanel';
 import { TierGatedButton } from '@/components/subscription/TierGatedButton';
@@ -25,8 +24,8 @@ import { MetersAiModal } from '@/components/modules/meters/meters-ai-modal';
 import { MetersNewMeterModal } from '@/components/modules/meters/meters-new-meter-modal';
 
 export default function MetersPage() {
-  const state = useMetersPageState();
-  const { ConfirmDeleteModal } = state;
+  const logic = useMetersLogic();
+  const { ConfirmDeleteModal } = logic;
 
   return (
     <div className="flex flex-col gap-7 w-full max-w-[1500px] mx-auto">
@@ -35,15 +34,15 @@ export default function MetersPage() {
         title="Óraállások és trendek"
         description="Mérőóra állások, fogyasztás és AI-alapú becslések."
         actions={
-          !state.isReader ? (
-            <Button size="sm" onClick={state.openNewMeterModal}>
+          !logic.isReader ? (
+            <Button size="sm" onClick={logic.openNewMeterModal}>
               <PlusCircle size={13} /> Új mérőóra
             </Button>
           ) : undefined
         }
       />
 
-      {state.canUseAi && !!state.aiUtilityAnomalies?.anomalies?.length ? (
+      {logic.canUseAi && !!logic.aiUtilityAnomalies?.anomalies?.length ? (
         <AccentPanel
           tone="warning"
           icon={Sparkles}
@@ -51,13 +50,13 @@ export default function MetersPage() {
           titleInfo={HELP.meters.aiAnomaly}
           description="A modell az alábbi szokatlan értékeket észlelte"
           action={
-            <Button variant="ghost" size="xs" onClick={() => state.fetchAiUtilityAnomalies(state.selectedYear, state.selectedMonth)}>
+            <Button variant="ghost" size="xs" onClick={() => logic.fetchAiUtilityAnomalies(logic.selectedYear, logic.selectedMonth)}>
               <RefreshCw size={11} /> Frissítés
             </Button>
           }
         >
           <ul className="space-y-1.5">
-            {state.aiUtilityAnomalies.anomalies.map((a: { meter_id: number; meter_name: string; actual: number; expected: number; reason: string }) => (
+            {logic.aiUtilityAnomalies.anomalies.map((a: { meter_id: number; meter_name: string; actual: number; expected: number; reason: string }) => (
               <li key={`${a.meter_id}-${a.actual}`} className="text-foreground/80 flex items-start gap-2">
                 <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
                 <span>
@@ -67,7 +66,7 @@ export default function MetersPage() {
             ))}
           </ul>
         </AccentPanel>
-      ) : !state.canUseAi ? (
+      ) : !logic.canUseAi ? (
         <TierGatedAiPanel
           featureLabel="AI anomáliafigyelés"
           icon={Sparkles}
@@ -84,21 +83,21 @@ export default function MetersPage() {
         </TierGatedAiPanel>
       ) : null}
 
-      {Object.keys(state.locationGroups).length === 0 ? (
+      {Object.keys(logic.locationGroups).length === 0 ? (
         <EmptyState
           icon={Gauge}
           title="Még nincs mérőóra"
           description="Adj hozzá egy mérőórát az óraállások és fogyasztás követéséhez."
           action={
-            !state.isReader ? (
-              <Button size="sm" onClick={state.openNewMeterModal}>
+            !logic.isReader ? (
+              <Button size="sm" onClick={logic.openNewMeterModal}>
                 <PlusCircle size={13} /> Új mérőóra
               </Button>
             ) : undefined
           }
         />
       ) : (
-        Object.keys(state.locationGroups).map((loc) => (
+        Object.keys(logic.locationGroups).map((loc) => (
           <Section
             key={loc}
             title={
@@ -107,20 +106,28 @@ export default function MetersPage() {
                 {loc}
               </span>
             }
-            description={`${state.locationGroups[loc].length} mérőóra`}
+            description={`${logic.locationGroups[loc].length} mérőóra`}
           >
             <div className="flex flex-col gap-4">
-              {state.locationGroups[loc].map((meter) => (
+              {logic.locationGroups[loc].map((meter) => (
                 <MeterPanel
                   key={meter.id}
                   meter={meter}
-                  selectedYear={state.selectedYear}
-                  getPreviousYearValue={state.getPreviousYearValue}
-                  onAiClick={state.handleAiClick}
-                  onEditReading={state.openEdit}
-                  onAddReading={state.handleAddReading}
-                  onDeleteMeter={state.handleDeleteMeter}
-                  onDeleteReading={state.handleDeleteReading}
+                  selectedYear={logic.selectedYear}
+                  getPreviousYearValue={logic.getPreviousYearValue}
+                  isReader={logic.isReader}
+                  showHistory={logic.expandedHistory[meter.id] ?? false}
+                  showFullHistory={logic.expandedFullHistory[meter.id] ?? false}
+                  calcValue={logic.calcValues[meter.id] ?? ''}
+                  onToggleHistory={() => logic.toggleHistory(meter.id)}
+                  onExpandFullHistory={() => logic.expandFullHistory(meter.id)}
+                  onCalcValueChange={(value) => logic.setCalcValue(meter.id, value)}
+                  onQuickReadingSubmit={logic.recordQuickReading}
+                  onAiClick={logic.openAiModal}
+                  onEditReading={logic.openEditReading}
+                  onAddReading={logic.openAddReading}
+                  onDeleteMeter={logic.requestDeleteMeter}
+                  onDeleteReading={logic.requestDeleteReading}
                 />
               ))}
             </div>
@@ -128,9 +135,13 @@ export default function MetersPage() {
         ))
       )}
 
-      <MetersReadingModal {...state} />
-      <MetersAiModal {...state} />
-      <MetersNewMeterModal {...state} />
+      <MetersReadingModal meters={logic.meters} onSubmit={logic.saveReading} />
+      <MetersAiModal onSubmit={logic.estimateAiMonth} onFillAllGaps={logic.fillAllGaps} />
+      <MetersNewMeterModal
+        metersSettings={logic.metersSettings}
+        onSubmit={logic.saveMeter}
+        onApplyTemplate={logic.applyMeterTemplate}
+      />
       <ConfirmDeleteModal />
     </div>
   );

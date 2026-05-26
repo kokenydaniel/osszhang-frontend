@@ -1,5 +1,6 @@
 import { aiFinanceClient } from '@/lib/api-client';
 import { unwrapApiData } from '@/lib/unwrapApiData';
+import { MetersService } from '@/services/MetersService';
 import type { AiOverspendAnalysis, AiCashflowForecast, AiWeeklyBriefing, AiDebtPlan } from '@/types';
 
 class AiFinanceServiceImpl {
@@ -53,6 +54,16 @@ class AiFinanceServiceImpl {
       return unwrapApiData<AiDebtPlan>(res.data);
     } catch (error) {
       console.error('[AiFinanceService] getDebtOptimizationPlan failed', error);
+      return null;
+    }
+  }
+
+  async estimateMeterConsumption(prompt: string): Promise<number | null> {
+    try {
+      const res = await aiFinanceClient.query(prompt, false);
+      return MetersService.parseAiConsumption(res.data?.answer ?? '');
+    } catch (error) {
+      console.error('[AiFinanceService] estimateMeterConsumption failed', error);
       return null;
     }
   }
