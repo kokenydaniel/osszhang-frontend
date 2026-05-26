@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { BusinessUiProvider } from '@/components/modules/business/BusinessUiContext';
 import BusinessPage from '@/components/modules/business/business-page';
 
 export const metadata: Metadata = {
@@ -6,5 +7,9 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <BusinessPage />;
+  return (
+    <BusinessUiProvider>
+      <BusinessPage />
+    </BusinessUiProvider>
+  );
 }

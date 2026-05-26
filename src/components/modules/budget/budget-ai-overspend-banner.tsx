@@ -4,9 +4,9 @@ import { AccentPanel } from '@/components/design';
 import { TierGatedAiPanel } from '@/components/subscription/TierGatedAiPanel';
 import { useTierFeature } from '@/components/subscription/TierFeatureGate';
 import { Bot, Tag } from 'lucide-react';
-import type { BudgetPageState } from '@/components/modules/budget/hooks/use-budget-page-state';
+import type { BudgetLogicResult } from '@/components/modules/budget/hooks/useBudgetLogic';
 
-type BudgetAiOverspendBannerProps = Pick<BudgetPageState, 'aiOverspend'>;
+type BudgetAiOverspendBannerProps = Pick<BudgetLogicResult, 'aiOverspend'>;
 
 export function BudgetAiOverspendBanner({ aiOverspend }: BudgetAiOverspendBannerProps) {
   const { allowed: canUseAi } = useTierFeature('ai');

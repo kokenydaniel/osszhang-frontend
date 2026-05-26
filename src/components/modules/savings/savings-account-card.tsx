@@ -5,10 +5,11 @@ import { Wallet, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AssetCard, MiniSwitch } from '@/components/design';
 import { formatHUF } from '@/utils';
-import type { SavingsPageState } from '@/components/modules/savings/hooks/use-savings-page-state';
+import type { SavingsLogicResult } from '@/components/modules/savings/hooks/useSavingsLogic';
+import type { SavingsUiContextValue } from '@/components/modules/savings/SavingsUiContext';
 
 type SavingsAccountCardProps = Pick<
-  SavingsPageState,
+  SavingsLogicResult & SavingsUiContextValue,
   | 'convertToHUF'
   | 'formatCurrencyAmount'
   | 'updateSavingsAccount'
@@ -17,7 +18,7 @@ type SavingsAccountCardProps = Pick<
   | 'openLedgerModal'
   | 'isReader'
 > & {
-  acc: SavingsPageState['savings'][number];
+  acc: SavingsLogicResult['savings'][number];
   accent: 'primary' | 'rose';
 };
 

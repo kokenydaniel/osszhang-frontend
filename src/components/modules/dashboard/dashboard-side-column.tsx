@@ -3,10 +3,10 @@ import classNames from 'classnames';
 import { formatHUF } from '@/utils';
 import { Section, EmptyState, ProgressBar, DataList, DataRow } from '@/components/design';
 import { Zap, Droplets, Flame, ChevronRight, PiggyBank, Calendar } from 'lucide-react';
-import type { DashboardPageState } from '@/components/modules/dashboard/hooks/use-dashboard-page-state';
+import type { DashboardLogicResult } from '@/components/modules/dashboard/hooks/useDashboardLogic';
 
 type Props = Pick<
-  DashboardPageState,
+  DashboardLogicResult,
   | 'canUse'
   | 'consumptionData'
   | 'investments'

@@ -3,9 +3,9 @@ import { formatHUF } from '@/utils';
 import { HELP } from '@/lib/helpTexts';
 import { ProgressBar, SectionPanel } from '@/components/design';
 import { Tag } from 'lucide-react';
-import type { BudgetPageState } from '@/components/modules/budget/hooks/use-budget-page-state';
+import type { BudgetLogicResult } from '@/components/modules/budget/hooks/useBudgetLogic';
 
-type BudgetCategorySummaryProps = Pick<BudgetPageState, 'categoryData' | 'totalProjectedExpense'>;
+type BudgetCategorySummaryProps = Pick<BudgetLogicResult, 'categoryData' | 'totalProjectedExpense'>;
 
 export function BudgetCategorySummary({ categoryData, totalProjectedExpense }: BudgetCategorySummaryProps) {
   const maxValue = categoryData.length > 0 ? Math.max(...categoryData.map((d) => d.value)) : 0;

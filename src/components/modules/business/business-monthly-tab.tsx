@@ -7,17 +7,17 @@ import { Section } from '@/components/design';
 import { TierGatedButton } from '@/components/subscription/TierGatedButton';
 import { useTierFeature } from '@/components/subscription/TierFeatureGate';
 import { Plus, RefreshCw } from 'lucide-react';
-import type { BusinessPageState } from '@/components/modules/business/hooks/use-business-page-state';
+import type { BusinessLogicResult } from '@/components/modules/business/hooks/useBusinessLogic';
 import { BusinessOrdersTable } from '@/components/modules/business/business-orders-table';
 
 type BusinessMonthlyTabProps = Pick<
-  BusinessPageState,
+  BusinessLogicResult,
   | 'selectedMonth'
   | 'selectedYear'
   | 'filteredOrders'
   | 'shopifyImportEnabled'
   | 'isSyncing'
-  | 'handleShopifySync'
+  | 'syncShopify'
   | 'openForm'
   | 'deleteOrder'
   | 'requestDelete'
@@ -30,7 +30,7 @@ export function BusinessMonthlyTab({
   filteredOrders,
   shopifyImportEnabled,
   isSyncing,
-  handleShopifySync,
+  syncShopify,
   openForm,
   deleteOrder,
   requestDelete,
@@ -53,7 +53,7 @@ export function BusinessMonthlyTab({
                   featureLabel="Shopify import"
                   variant="outline"
                   size="sm"
-                  onClick={handleShopifySync}
+                  onClick={syncShopify}
                   disabled={isSyncing || !shopifyImportEnabled || !shopifyAllowed}
                 >
                   <RefreshCw size={13} className={classNames(isSyncing && 'animate-spin')} />

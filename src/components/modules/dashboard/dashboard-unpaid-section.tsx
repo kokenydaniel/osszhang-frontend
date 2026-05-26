@@ -11,12 +11,10 @@ import {
   type DataTableColumn,
 } from '@/components/design';
 import { Check, Calendar, ReceiptText, Wallet } from 'lucide-react';
-import type {
-  DashboardPageState,
-  DashboardUnpaidItem,
-} from '@/components/modules/dashboard/hooks/use-dashboard-page-state';
+import type { DashboardLogicResult } from '@/components/modules/dashboard/hooks/useDashboardLogic';
+import type { DashboardUnpaidItem } from '@/components/modules/dashboard/lib/dashboardTypes';
 
-type Props = Pick<DashboardPageState, 'unpaidItemsList' | 'todayStr' | 'handlePayItem' | 'isReader'>;
+type Props = Pick<DashboardLogicResult, 'unpaidItemsList' | 'todayStr' | 'handlePayItem' | 'isReader'>;
 
 export function DashboardUnpaidSection({ unpaidItemsList, todayStr, handlePayItem, isReader }: Props) {
   return (

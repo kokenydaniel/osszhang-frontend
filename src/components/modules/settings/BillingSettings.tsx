@@ -238,7 +238,7 @@ export function BillingSettings({ user }: BillingSettingsProps) {
       {betaMode && (
         <InsightBanner tone="info" icon={FlaskConical} title="Béta mód aktív">
           A Stripe számlázás ki van kapcsolva. Minden Pro és Premium funkció szabadon használható fizetés nélkül.
-          Kapcsold ki a béta módot a Platform fülön, ha éles előfizetést szeretnél.
+          Kapcsold ki a béta módot a Platform admin → Rendszer funkciók menüpontban, ha éles előfizetést szeretnél.
         </InsightBanner>
       )}
 

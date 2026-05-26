@@ -12,7 +12,7 @@ import { useBudgetStore } from './useBudgetStore';
 import { useNotificationStore } from './useNotificationStore';
 import type { UserProfile } from '@/types';
 
-export type SettingsTabId = 'profile' | 'household' | 'modules' | 'billing' | 'platform';
+export type SettingsTabId = 'profile' | 'household' | 'modules' | 'billing';
 
 interface SettingsUiState {
   activeTab: SettingsTabId;

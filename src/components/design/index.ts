@@ -23,3 +23,4 @@ export { MiniSwitch } from './MiniSwitch';
 export { AssetCard } from './AssetCard';
 export { ObjectDetails, type DetailGroup, type DetailItem } from './ObjectDetails';
 export { ChoiceCardGroup, type ChoiceCardOption } from './ChoiceCardGroup';
+export { ModulePageSkeleton } from './module-page-skeleton';

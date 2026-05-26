@@ -11,6 +11,8 @@ interface DatePickerProps {
   onChange: (date: string) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
+  required?: boolean;
 }
 
 const CALENDAR_HEIGHT = 340;
@@ -27,6 +29,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   onChange,
   placeholder = 'Válassz dátumot',
   className = '',
+  disabled = false,
+  required = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [openUp, setOpenUp] = useState(false);
@@ -269,8 +273,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         className={classNames(
           'flex w-full items-center gap-2 h-9 px-3 bg-input border border-border rounded-md',
           'hover:border-foreground/20 transition-colors text-sm touch-manipulation',
-          (isOpen || isFocused) && 'border-primary/50 ring-2 ring-primary/20',
+          (isOpen || isFocused) && !disabled && 'border-primary/50 ring-2 ring-primary/20',
           inputInvalid && 'border-destructive ring-2 ring-destructive/20',
+          disabled && 'opacity-50 pointer-events-none cursor-not-allowed',
         )}
       >
         <button
@@ -291,6 +296,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           inputMode="numeric"
           autoComplete="off"
           spellCheck={false}
+          disabled={disabled}
+          required={required}
           aria-invalid={inputInvalid}
           placeholder={placeholder === 'Válassz dátumot' ? INPUT_PLACEHOLDER : placeholder}
           value={inputText}

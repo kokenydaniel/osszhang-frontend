@@ -5,17 +5,12 @@ import { History, Lock, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MiniSwitch } from '@/components/design';
 import { formatHUF } from '@/utils';
-import {
-  formatSavingsGoalDeadline,
-  savingsGoalMonthlyHint,
-  savingsGoalProgress,
-  savingsGoalRemaining,
-} from '@/lib/savingsGoals';
-import { savingsBalance } from '@/lib/mapSavings';
-import type { SavingsPageState } from '@/components/modules/savings/hooks/use-savings-page-state';
+import { SavingsService } from '@/services/SavingsService';
+import type { SavingsLogicResult } from '@/components/modules/savings/hooks/useSavingsLogic';
+import type { SavingsUiContextValue } from '@/components/modules/savings/SavingsUiContext';
 
 type SavingsGoalCardProps = Pick<
-  SavingsPageState,
+  SavingsLogicResult & SavingsUiContextValue,
   | 'updateSavingsAccount'
   | 'deleteSavingsAccount'
   | 'requestDelete'
@@ -24,7 +19,7 @@ type SavingsGoalCardProps = Pick<
   | 'selectedMonth'
   | 'selectedYear'
 > & {
-  goal: SavingsPageState['savings'][number];
+  goal: SavingsLogicResult['savings'][number];
 };
 
 function WalletBadge({ isShared, name }: { isShared: boolean; name: string }) {
@@ -54,10 +49,10 @@ export function SavingsGoalCard({
   selectedMonth,
   selectedYear,
 }: SavingsGoalCardProps) {
-  const saved = savingsBalance(goal);
-  const progress = savingsGoalProgress(saved, goal.goalAmount);
-  const remaining = savingsGoalRemaining(saved, goal.goalAmount);
-  const monthlyHint = savingsGoalMonthlyHint(
+  const saved = SavingsService.computeBalance(goal);
+  const progress = SavingsService.goalProgress(saved, goal.goalAmount);
+  const remaining = SavingsService.goalRemaining(saved, goal.goalAmount);
+  const monthlyHint = SavingsService.goalMonthlyHint(
     goal.ledger,
     goal.goalAmount,
     goal.targetDate,
@@ -121,7 +116,7 @@ export function SavingsGoalCard({
         </p>
         {monthlyHint && <p className="text-foreground/90 leading-relaxed">{monthlyHint}</p>}
         {goal.targetDate && !monthlyHint && (
-          <p className="text-muted-foreground">Határidő: {formatSavingsGoalDeadline(goal.targetDate)}</p>
+          <p className="text-muted-foreground">Határidő: {SavingsService.formatGoalDeadline(goal.targetDate)}</p>
         )}
       </div>
 

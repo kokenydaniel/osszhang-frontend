@@ -8,9 +8,10 @@ import type { Meter } from '@/types';
 interface MetersReadingModalProps {
   meters: Meter[];
   onSubmit: (event: React.FormEvent) => void;
+  saving?: boolean;
 }
 
-export function MetersReadingModal({ meters, onSubmit }: MetersReadingModalProps) {
+export function MetersReadingModal({ meters, onSubmit, saving }: MetersReadingModalProps) {
   const ui = useMetersUi();
 
   return (
@@ -33,6 +34,7 @@ export function MetersReadingModal({ meters, onSubmit }: MetersReadingModalProps
         isOfficial={ui.isOfficial}
         onIsOfficialChange={ui.setIsOfficial}
         onSubmit={onSubmit}
+        saving={saving}
       />
     </Modal>
   );

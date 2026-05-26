@@ -2,11 +2,12 @@
 
 import { Section, EmptyState } from '@/components/design';
 import { Wallet } from 'lucide-react';
-import type { SavingsPageState } from '@/components/modules/savings/hooks/use-savings-page-state';
+import type { SavingsLogicResult } from '@/components/modules/savings/hooks/useSavingsLogic';
+import type { SavingsUiContextValue } from '@/components/modules/savings/SavingsUiContext';
 import { SavingsAccountCard } from '@/components/modules/savings/savings-account-card';
 
 type SavingsAccountsSectionProps = Pick<
-  SavingsPageState,
+  SavingsLogicResult & SavingsUiContextValue,
   | 'personalAccounts'
   | 'wifeAccounts'
   | 'separateOwner'

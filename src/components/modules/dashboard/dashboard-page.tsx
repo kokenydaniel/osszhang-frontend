@@ -7,18 +7,23 @@ import { PageHeader, MetricStrip, AccentPanel } from '@/components/design';
 import { TierGatedAiPanel } from '@/components/subscription/TierGatedAiPanel';
 import { useTierFeature } from '@/components/subscription/TierFeatureGate';
 import { Sparkles } from 'lucide-react';
-import { useDashboardPageState } from '@/components/modules/dashboard/hooks/use-dashboard-page-state';
+import { useDashboardLogic } from '@/components/modules/dashboard/hooks/useDashboardLogic';
 import { DashboardAlertBanners } from '@/components/modules/dashboard/dashboard-alert-banners';
 import { DashboardUnpaidSection } from '@/components/modules/dashboard/dashboard-unpaid-section';
 import { DashboardUtilitiesSnapshot } from '@/components/modules/dashboard/dashboard-utilities-snapshot';
 import { DashboardSideColumn } from '@/components/modules/dashboard/dashboard-side-column';
 import { DashboardBusinessChart } from '@/components/modules/dashboard/dashboard-business-chart';
+import { AiCfoWidget } from '@/components/modules/dashboard/components/ai-cfo-widget';
 import { WalletSwitcher } from '@/components/wallets/WalletSwitcher';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { isPlatformFeatureEnabled } from '@/lib/platformFeatureFlags';
 
 export default function DashboardPage() {
-  const state = useDashboardPageState();
+  const state = useDashboardLogic();
+  const user = useAuthStore((s) => s.user);
   const { GreetingIcon } = state;
   const { allowed: canUseAi } = useTierFeature('ai');
+  const showAiCfo = isPlatformFeatureEnabled(user, 'enable_ai_cfo');
 
   return (
     <div className="flex flex-col gap-7 w-full max-w-[1500px] mx-auto">
@@ -66,6 +71,10 @@ export default function DashboardPage() {
         rezsiBalance={state.rezsiBalance}
         counterpartyLabel={state.counterpartyLabel}
       />
+
+      {showAiCfo ? (
+        <AiCfoWidget context={state.aiCfoContext} financialDataReady={state.financialDataReady} />
+      ) : null}
 
       {state.primaryMetrics.length > 0 && <MetricStrip items={state.primaryMetrics} columns={4} variant="separated" />}
 

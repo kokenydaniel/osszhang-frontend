@@ -23,6 +23,7 @@ interface MetersReadingFormProps {
   isOfficial: boolean;
   onIsOfficialChange: (value: boolean) => void;
   onSubmit: (event: React.FormEvent) => void;
+  saving?: boolean;
 }
 
 export function MetersReadingForm({
@@ -39,6 +40,7 @@ export function MetersReadingForm({
   isOfficial,
   onIsOfficialChange,
   onSubmit,
+  saving,
 }: MetersReadingFormProps) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
@@ -88,8 +90,8 @@ export function MetersReadingForm({
           activeClassName="border-emerald-500/25 ring-emerald-500/10"
         />
       </div>
-      <Button type="submit" className="mt-1">
-        Mentés
+      <Button type="submit" className="mt-1 w-full" loading={saving}>
+        {saving ? 'Feldolgozás…' : 'Mentés'}
       </Button>
     </form>
   );

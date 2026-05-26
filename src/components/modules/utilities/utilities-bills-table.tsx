@@ -1,13 +1,12 @@
 'use client';
 
-import { formatHUF, today, compareDates, hasSettlementDate } from '@/utils';
+import { formatHUF, today, hasSettlementDate } from '@/utils';
 import { UtilitySplitRule, UtilityBill } from '@/types';
-import { isUtilityBillOverdue } from '@/lib/utilityBills';
+import { UtilitiesService } from '@/services/UtilitiesService';
 import { Button } from '@/components/ui/button';
 import { ClickableSelect } from '@/components/ui/clickable-select';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { HELP } from '@/lib/helpTexts';
-import { payerSideLabel, privateRuleOwnerLabel } from '@/lib/utilityViewer';
 import {
   DataTable,
   Section,
@@ -29,33 +28,34 @@ import {
   User,
   XCircle,
 } from 'lucide-react';
-import type { UtilitiesPageState } from '@/components/modules/utilities/hooks/use-utilities-page-state';
+import type { UtilitySplitLabels } from '@/services/UtilitiesService';
+import type { UtilityTemplate } from '@/lib/utilityTemplates';
+import type { UpdateUtilityBillPayload } from '@/mappers/utilities.mapper';
 
-type UtilitiesBillsTableProps = Pick<
-  UtilitiesPageState,
-  | 'sortedBills'
-  | 'filteredBills'
-  | 'selectedMonth'
-  | 'selectedYear'
-  | 'utilitySplitEnabled'
-  | 'utilityLabels'
-  | 'isReader'
-  | 'todayStr'
-  | 'handleEdit'
-  | 'deleteBill'
-  | 'updateBill'
-  | 'requestDelete'
-  | 'wrapBillPending'
-  | 'isBillPending'
-  | 'cloning'
-  | 'runClone'
-  | 'clonePreviousMonth'
-  | 'templating'
-  | 'handleGenerateFromTemplates'
-  | 'utilityTemplates'
->;
+interface UtilitiesBillsTableProps {
+  sortedBills: UtilityBill[];
+  filteredBills: UtilityBill[];
+  selectedMonth: number;
+  selectedYear: number;
+  utilitySplitEnabled: boolean;
+  utilityLabels: UtilitySplitLabels;
+  isReader: boolean;
+  todayStr: string;
+  onEditBill: (bill: UtilityBill) => void;
+  onDeleteBill: (id: number) => void | Promise<void>;
+  onUpdateBill: (id: number, payload: UpdateUtilityBillPayload) => Promise<void>;
+  requestDelete: (options: { title: string; message: string; onConfirm: () => void | Promise<void> }) => void;
+  wrapBillPending: (id: number, fn: () => Promise<void>) => Promise<void>;
+  isBillPending: (id: number) => boolean;
+  cloning: boolean;
+  runClone: (fn: () => Promise<void>) => Promise<void>;
+  onClonePreviousMonth: (month: number, year: number) => Promise<void>;
+  templating: boolean;
+  onGenerateFromTemplates: () => void;
+  utilityTemplates: UtilityTemplate[];
+}
 
-function getRuleBadge(rule: UtilitySplitRule, utilityLabels: UtilitiesPageState['utilityLabels']) {
+function getRuleBadge(rule: UtilitySplitRule, utilityLabels: UtilitySplitLabels) {
   if (rule === 'shared') {
     return (
       <StatusPill status="info" size="xs">
@@ -65,7 +65,7 @@ function getRuleBadge(rule: UtilitySplitRule, utilityLabels: UtilitiesPageState[
   }
   return (
     <StatusPill status="neutral" size="xs">
-      <User size={9} strokeWidth={2.4} /> {privateRuleOwnerLabel(rule, utilityLabels)}
+      <User size={9} strokeWidth={2.4} /> {UtilitiesService.privateRuleOwnerLabel(rule, utilityLabels)}
     </StatusPill>
   );
 }
@@ -79,23 +79,23 @@ export function UtilitiesBillsTable({
   utilityLabels,
   isReader,
   todayStr,
-  handleEdit,
-  deleteBill,
-  updateBill,
+  onEditBill,
+  onDeleteBill,
+  onUpdateBill,
   requestDelete,
   wrapBillPending,
   isBillPending,
   cloning,
   runClone,
-  clonePreviousMonth,
+  onClonePreviousMonth,
   templating,
-  handleGenerateFromTemplates,
+  onGenerateFromTemplates,
   utilityTemplates,
 }: UtilitiesBillsTableProps) {
   const { householdPayerLabel, partnerPayerLabel } = utilityLabels;
 
   const billOverdue = (row: UtilityBill) =>
-    isUtilityBillOverdue(row, { splitEnabled: utilitySplitEnabled, today: todayStr });
+    UtilitiesService.isBillOverdue(row, { splitEnabled: utilitySplitEnabled, today: todayStr });
 
   const columns: DataTableColumn<UtilityBill>[] = [
     {
@@ -153,15 +153,15 @@ export function UtilitiesBillsTable({
               tone={row.paidBy ? 'success' : 'warning'}
               title={
                 row.paidBy
-                  ? `${payerSideLabel(row.paidBy, utilityLabels)} fizette — kattints a módosításhoz`
+                  ? `${UtilitiesService.payerSideLabel(row.paidBy, utilityLabels)} fizette — kattints a módosításhoz`
                   : 'Ki fizette? Válassz a legördülőből'
               }
               disabled={isReader || isBillPending(row.id)}
               onChange={(val) => {
                 void wrapBillPending(row.id, async () => {
-                  if (val === 'Fizetendő') await updateBill(row.id, { paidBy: null, paidDate: null });
+                  if (val === 'Fizetendő') await onUpdateBill(row.id, { paidBy: null, paidDate: null });
                   else
-                    await updateBill(row.id, {
+                    await onUpdateBill(row.id, {
                       paidBy: val as 'Mi' | 'Ildi',
                       paidDate: today(),
                     });
@@ -187,7 +187,7 @@ export function UtilitiesBillsTable({
             pending={isBillPending(row.id)}
             onClick={() =>
               void wrapBillPending(row.id, () =>
-                updateBill(row.id, {
+                onUpdateBill(row.id, {
                   paidDate: hasSettlementDate(row.paidDate) ? null : today(),
                 }),
               )
@@ -218,12 +218,12 @@ export function UtilitiesBillsTable({
       cell: (row) =>
         !isReader ? (
           <RowActions
-            onEdit={() => handleEdit(row)}
+            onEdit={() => onEditBill(row)}
             onDelete={() =>
               requestDelete({
                 title: 'Rezsi tétel törlése',
                 message: `Biztosan törlöd a „${row.type}" számlát? Ez a művelet nem vonható vissza.`,
-                onConfirm: () => deleteBill(row.id),
+                onConfirm: () => void onDeleteBill(row.id),
               })
             }
           />
@@ -248,12 +248,12 @@ export function UtilitiesBillsTable({
                   size="sm"
                   variant="outline"
                   loading={cloning}
-                  onClick={() => void runClone(() => clonePreviousMonth(selectedMonth, selectedYear))}
+                  onClick={() => void runClone(() => onClonePreviousMonth(selectedMonth, selectedYear))}
                 >
                   {!cloning && <Copy size={13} />} {cloning ? 'Másolás…' : 'Múlt havi másolás'}
                 </Button>
                 {utilityTemplates.length > 0 && (
-                  <Button size="sm" loading={templating} onClick={handleGenerateFromTemplates}>
+                  <Button size="sm" loading={templating} onClick={onGenerateFromTemplates}>
                     {!templating && <LayoutTemplate size={13} />} {templating ? 'Generálás…' : 'Sablonból'}
                   </Button>
                 )}

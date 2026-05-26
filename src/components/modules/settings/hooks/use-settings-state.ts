@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import {
   CreditCard,
   Droplets,
-  FlaskConical,
   Gauge,
   Home,
   LayoutGrid,
@@ -17,11 +16,33 @@ import { useSettingsUiStore } from '@/stores/useSettingsUiStore';
 import { useBudgetStore } from '@/stores/useBudgetStore';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import { type ModuleId } from '@/lib/moduleAccess';
+import { BudgetService } from '@/services/BudgetService';
 
 export type { SettingsTabId } from '@/stores/useSettingsUiStore';
 
 export function useSettingsState() {
-  const { categories, addCategory, deleteCategory } = useBudgetStore();
+  const budgetStore = useBudgetStore();
+  const categories = budgetStore.categories;
+
+  const addCategory = async (newCat: string) => {
+    const updated = [...categories, newCat];
+    try {
+      await BudgetService.updateCategories(updated);
+      budgetStore.setCategories(updated);
+    } catch (e) {
+      console.error('Failed to add category', e);
+    }
+  };
+
+  const deleteCategory = async (cat: string) => {
+    const updated = categories.filter((c) => c !== cat);
+    try {
+      await BudgetService.updateCategories(updated);
+      budgetStore.setCategories(updated);
+    } catch (e) {
+      console.error('Failed to delete category', e);
+    }
+  };
   const { user, updateMember, patchMemberLocally, removeMember, fetchMe } = useAuthStore();
   const ui = useSettingsUiStore();
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
@@ -68,9 +89,6 @@ export function useSettingsState() {
     { id: 'household' as const, label: 'Háztartás', icon: Home, hint: 'Név, családtagok, jogosultságok' },
     { id: 'modules' as const, label: 'Modulok', icon: LayoutGrid, hint: 'Bekapcsolható funkciók és beállításaik' },
     { id: 'billing' as const, label: 'Előfizetés', icon: CreditCard, hint: 'Csomag, fizetés, számlák' },
-    ...(user?.lifetimeAdmin
-      ? [{ id: 'platform' as const, label: 'Platform', icon: FlaskConical, hint: 'Béta mód és super admin beállítások' }]
-      : []),
   ];
 
   return {

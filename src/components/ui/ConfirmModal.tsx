@@ -45,15 +45,7 @@ export function ConfirmModal({
             variant={type === 'danger' ? 'destructive' : 'default'}
             loading={confirmLoading}
             disabled={confirmLoading}
-            onClick={() => {
-              void (async () => {
-                try {
-                  await onConfirm();
-                  onClose();
-                } catch {
-                }
-              })();
-            }}
+            onClick={() => void onConfirm()}
           >
             {confirmText}
           </Button>

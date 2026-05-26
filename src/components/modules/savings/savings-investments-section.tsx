@@ -3,11 +3,12 @@
 import { formatHUF } from '@/utils';
 import { Section, EmptyState } from '@/components/design';
 import { Sparkles } from 'lucide-react';
-import type { SavingsPageState } from '@/components/modules/savings/hooks/use-savings-page-state';
+import type { SavingsLogicResult } from '@/components/modules/savings/hooks/useSavingsLogic';
+import type { SavingsUiContextValue } from '@/components/modules/savings/SavingsUiContext';
 import { SavingsInvestmentCard } from '@/components/modules/savings/savings-investment-card';
 
 type SavingsInvestmentsSectionProps = Pick<
-  SavingsPageState,
+  SavingsLogicResult & SavingsUiContextValue,
   | 'investments'
   | 'sumPersonalInvestments'
   | 'sumWifeInvestments'

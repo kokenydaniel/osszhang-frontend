@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { PageHeader, MetricStrip } from '@/components/design';
 import { Copy, Plus } from 'lucide-react';
-import { useBudgetPageState } from '@/components/modules/budget/hooks/use-budget-page-state';
+import { useBudgetLogic } from '@/components/modules/budget/BudgetLogicContext';
 import { BudgetBalancePanel } from '@/components/modules/budget/budget-balance-panel';
 import { BudgetAiOverspendBanner } from '@/components/modules/budget/budget-ai-overspend-banner';
 import { BudgetCategorySummary } from '@/components/modules/budget/budget-category-summary';
@@ -13,9 +13,9 @@ import { BudgetLedgerModal } from '@/components/modules/budget/budget-ledger-mod
 import { BudgetPageGridSkeleton } from '@/components/modules/budget/budget-page-skeleton';
 import { WalletSwitcher } from '@/components/wallets/WalletSwitcher';
 
-export default function BudgetPage() {
-  const state = useBudgetPageState();
-  const { ConfirmDeleteModal } = state;
+export function BudgetPage() {
+  const logic = useBudgetLogic();
+  const { ConfirmDeleteModal } = logic;
 
   return (
     <div className="flex flex-col gap-7 w-full max-w-[1500px] mx-auto">
@@ -26,17 +26,17 @@ export default function BudgetPage() {
         meta={<WalletSwitcher />}
         actions={
           <>
-            {!state.isReader ? (
+            {!logic.isReader ? (
               <>
                 <Button
                   size="sm"
                   variant="outline"
-                  loading={state.cloning}
-                  onClick={() => void state.runClone(() => state.clonePreviousMonth(state.selectedMonth, state.selectedYear))}
+                  loading={logic.cloning}
+                  onClick={() => void logic.runClone(() => logic.clonePreviousMonth(logic.selectedMonth, logic.selectedYear, logic.loadedWalletId!))}
                 >
-                  {!state.cloning && <Copy size={13} />} {state.cloning ? 'Másolás…' : 'Múlt havi'}
+                  {!logic.cloning && <Copy size={13} />} {logic.cloning ? 'Másolás…' : 'Múlt havi'}
                 </Button>
-                <Button size="sm" onClick={() => state.openTxForm(null)}>
+                <Button size="sm" onClick={() => logic.openTxForm(null)}>
                   <Plus size={13} /> Új tétel
                 </Button>
               </>
@@ -46,32 +46,32 @@ export default function BudgetPage() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
-        <BudgetBalancePanel {...state} />
-        <MetricStrip items={state.cashflowMetrics} columns={3} variant="separated" />
+        <BudgetBalancePanel {...logic} />
+        <MetricStrip items={logic.cashflowMetrics} columns={3} variant="separated" />
       </div>
 
-      <BudgetAiOverspendBanner aiOverspend={state.aiOverspend} />
+      <BudgetAiOverspendBanner aiOverspend={logic.aiOverspend} />
 
-      <MetricStrip items={state.summaryMetrics} columns={4} />
+      <MetricStrip items={logic.summaryMetrics} columns={4} />
 
-      {!state.gridLoading ? (
+      {!logic.gridLoading ? (
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-          <BudgetCategorySummary categoryData={state.categoryData} totalProjectedExpense={state.totalProjectedExpense} />
+          <BudgetCategorySummary categoryData={logic.categoryData} totalProjectedExpense={logic.totalProjectedExpense} />
 
           <div className="flex flex-col gap-7">
-            <BudgetTransactionFeed {...state} items={state.incomes} title="Bevételek" type="income" />
-            {state.reserves.length > 0 && (
-              <BudgetTransactionFeed {...state} items={state.reserves} title="Tartalékok" type="expense" />
+            <BudgetTransactionFeed {...logic} items={logic.incomes} title="Bevételek" type="income" />
+            {logic.reserves.length > 0 && (
+              <BudgetTransactionFeed {...logic} items={logic.reserves} title="Tartalékok" type="expense" />
             )}
-            <BudgetTransactionFeed {...state} items={state.expenses} title="Kiadások" type="expense" includeBills />
+            <BudgetTransactionFeed {...logic} items={logic.expenses} title="Kiadások" type="expense" includeBills />
           </div>
         </div>
       ) : (
         <BudgetPageGridSkeleton />
       )}
 
-      <BudgetTransactionModal {...state} />
-      <BudgetLedgerModal {...state} />
+      <BudgetTransactionModal />
+      <BudgetLedgerModal />
       <ConfirmDeleteModal />
     </div>
   );

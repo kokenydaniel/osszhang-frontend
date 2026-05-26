@@ -1,10 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useSavingsStore } from '@/stores/useSavingsStore';
-import { useAuthStore } from '@/stores/useAuthStore';
-import { useWalletStore } from '@/stores/useWalletStore';
-import { resolveSavingsSettings } from '@/lib/savingsSettings';
+import { useEffect, useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Input } from '@/components/ui/input';
@@ -13,131 +9,53 @@ import { HELP } from '@/lib/helpTexts';
 import { today, d } from '@/lib/dates';
 import { SegmentedControl, ModalFormFooter } from '@/components/design';
 import { Target, TrendingUp, Wallet } from 'lucide-react';
+import type { Investment } from '@/types';
+import type { CreateSavingsPayload } from '@/services/SavingsService';
+import type { SavingsSettings } from '@/lib/savingsSettings';
 
 type AssetKind = 'account' | 'goal' | 'investment';
+
+// ─── Props for the Smart Wrapper ──────────────────────────────────────────────
 
 interface NewAssetModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialKind?: AssetKind;
+  /** Injected by the Smart parent (savings-page / useSavingsLogic) */
+  onAddSavingsAccount: (payload: CreateSavingsPayload) => Promise<void>;
+  onAddInvestment: (data: Omit<Investment, 'id'>) => Promise<void>;
+  savingsSettings: SavingsSettings;
+  saving?: boolean;
 }
 
-export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewAssetModalProps) {
-  const { addSavingsAccount, addInvestment } = useSavingsStore();
-  const { user } = useAuthStore();
-  const activeWalletId = useWalletStore((s) => s.activeWalletId);
-  const savingsSettings = useMemo(() => resolveSavingsSettings(user?.household), [user?.household]);
+// ─── Smart Wrapper ────────────────────────────────────────────────────────────
 
+/**
+ * NewAssetModal — Smart Wrapper.
+ *
+ * Manages tab state and delegates to pure Dumb form components.
+ * Reads open/close state and settings from props (injected by savings-page).
+ * Does NOT import any store or context — it is fully controlled externally.
+ */
+export function NewAssetModal({
+  isOpen,
+  onClose,
+  initialKind = 'account',
+  onAddSavingsAccount,
+  onAddInvestment,
+  savingsSettings,
+  saving = false,
+}: NewAssetModalProps) {
   const [kind, setKind] = useState<AssetKind>(initialKind);
 
-  const [savInst, setSavInst] = useState('');
-  const [savCurr, setSavCurr] = useState(savingsSettings.currencies[0] ?? 'HUF');
-  const [savOwner, setSavOwner] = useState(savingsSettings.default_owner);
-
-  const [goalName, setGoalName] = useState('');
-  const [goalAmount, setGoalAmount] = useState('');
-  const [currentAmount, setCurrentAmount] = useState('0');
-  const [targetDate, setTargetDate] = useState(d().add(6, 'month').format('YYYY-MM-DD'));
-
-  const [invName, setInvName] = useState('');
-  const [invType, setInvType] = useState('bond');
-  const [invPrincipal, setInvPrincipal] = useState('');
-  const [invRate, setInvRate] = useState('');
-  const [invPurchaseDate, setInvPurchaseDate] = useState(today());
-  const [invMaturityDate, setInvMaturityDate] = useState('');
-  const [invOwner, setInvOwner] = useState(savingsSettings.default_owner);
-  const [invMaturityValue, setInvMaturityValue] = useState('');
-  const [invNextPayoutAmount, setInvNextPayoutAmount] = useState('');
-  const [invNextPayoutDate, setInvNextPayoutDate] = useState('');
-
   useEffect(() => {
-    if (isOpen) {
-      setKind(initialKind);
-      setSavCurr(savingsSettings.currencies[0] ?? 'HUF');
-      setSavOwner(savingsSettings.default_owner);
-      setInvOwner(savingsSettings.default_owner);
-    }
-  }, [isOpen, initialKind, savingsSettings]);
-
-  const resetAndClose = () => {
-    onClose();
-    setSavInst('');
-    setSavCurr(savingsSettings.currencies[0] ?? 'HUF');
-    setSavOwner(savingsSettings.default_owner);
-    setGoalName('');
-    setGoalAmount('');
-    setCurrentAmount('0');
-    setTargetDate(d().add(6, 'month').format('YYYY-MM-DD'));
-    setInvName('');
-    setInvType('bond');
-    setInvPrincipal('');
-    setInvRate('');
-    setInvPurchaseDate(today());
-    setInvMaturityDate('');
-    setInvOwner(savingsSettings.default_owner);
-    setInvMaturityValue('');
-    setInvNextPayoutAmount('');
-    setInvNextPayoutDate('');
-  };
-
-  const handleAccountSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    void addSavingsAccount({
-      type: 'account',
-      institution: savInst,
-      currency: savCurr,
-      owner: savOwner,
-      count_in_savings: savingsSettings.default_count_in_savings,
-      walletId: activeWalletId,
-    });
-    resetAndClose();
-  };
-
-  const handleGoalSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    void addSavingsAccount({
-      type: 'goal',
-      institution: goalName,
-      goalAmount: Number(goalAmount),
-      currentAmount: Number(currentAmount) || 0,
-      targetDate,
-      walletId: activeWalletId,
-    });
-    resetAndClose();
-  };
-
-  const handleInvestmentSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    let finalRate = Number(invRate);
-    if (invMaturityValue && Number(invMaturityValue) > 0 && invMaturityDate && invPurchaseDate) {
-      const pDate = d(invPurchaseDate);
-      const mDate = d(invMaturityDate);
-      const diffDays = Math.ceil(Math.max(0, mDate.diff(pDate, 'day')));
-      if (diffDays > 0) {
-        const totalReturnRatio = (Number(invMaturityValue) - Number(invPrincipal)) / Number(invPrincipal);
-        finalRate = Math.round(totalReturnRatio * (365.25 / diffDays) * 100 * 100) / 100;
-      }
-    }
-    addInvestment({
-      name: invName,
-      type: invType,
-      principalAmount: Number(invPrincipal),
-      annualInterestRate: finalRate,
-      purchaseDate: invPurchaseDate,
-      maturityDate: invMaturityDate || null,
-      owner: invOwner,
-      countInSavings: savingsSettings.default_count_in_savings,
-      maturityAmount: invMaturityValue ? Number(invMaturityValue) : null,
-      nextPayoutAmount: invNextPayoutAmount ? Number(invNextPayoutAmount) : null,
-      nextPayoutDate: invNextPayoutDate || null,
-    });
-    resetAndClose();
-  };
+    if (isOpen) setKind(initialKind);
+  }, [isOpen, initialKind]);
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={resetAndClose}
+      onClose={onClose}
       title="Új megtakarítás"
       description="Számla, cél vagy állampapír — válaszd ki, mit szeretnél rögzíteni."
       size={kind === 'investment' ? 'lg' : 'md'}
@@ -148,269 +66,293 @@ export function NewAssetModal({ isOpen, onClose, initialKind = 'account' }: NewA
         value={kind}
         onChange={(v) => setKind(v as AssetKind)}
         options={[
-          {
-            value: 'account',
-            label: 'Számla',
-            icon: Wallet,
-            tone: 'primary',
-            description: 'Revolut, készpénz, bankszámla',
-          },
-          {
-            value: 'goal',
-            label: 'Cél',
-            icon: Target,
-            tone: 'accent',
-            description: 'Célösszeg, határidő, progress',
-          },
-          {
-            value: 'investment',
-            label: 'Állampapír',
-            icon: TrendingUp,
-            tone: 'positive',
-            description: 'PMÁP, DKJ, befektetés',
-          },
+          { value: 'account', label: 'Számla', icon: Wallet, tone: 'primary', description: 'Revolut, készpénz, bankszámla' },
+          { value: 'goal', label: 'Cél', icon: Target, tone: 'accent', description: 'Célösszeg, határidő, progress' },
+          { value: 'investment', label: 'Állampapír', icon: TrendingUp, tone: 'positive', description: 'PMÁP, DKJ, befektetés' },
         ]}
         className="mb-4"
         animated={false}
       />
 
-      {kind === 'account' ? (
-        <form onSubmit={handleAccountSubmit} className="flex flex-col gap-4">
-          <div className="space-y-1.5">
-            <FieldLabel info={HELP.savings.accountName}>Intézmény / Megnevezés</FieldLabel>
-            <Input
-              placeholder="pl. Revolut, Széf, OTP"
-              value={savInst}
-              onChange={(e) => setSavInst(e.target.value)}
-              required
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <FieldLabel info={HELP.savings.currency}>Pénznem</FieldLabel>
-              <select
-                className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
-                value={savCurr}
-                onChange={(e) => setSavCurr(e.target.value)}
-              >
-                {savingsSettings.currencies.map((currency) => (
-                  <option key={currency} value={currency}>
-                    {currency}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel info={HELP.savings.owner}>Tulajdonos</FieldLabel>
-              {savingsSettings.owners.length > 0 ? (
-                <>
-                  <select
-                    className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
-                    value={savingsSettings.owners.includes(savOwner) ? savOwner : 'custom'}
-                    onChange={(e) => {
-                      if (e.target.value === 'custom') setSavOwner('');
-                      else setSavOwner(e.target.value);
-                    }}
-                  >
-                    {savingsSettings.owners.map((owner) => (
-                      <option key={owner} value={owner}>
-                        {owner}
-                      </option>
-                    ))}
-                    <option value="custom">Egyedi…</option>
-                  </select>
-                  {!savingsSettings.owners.includes(savOwner) && (
-                    <Input
-                      placeholder="Pl. Szandi, Dani"
-                      value={savOwner}
-                      onChange={(e) => setSavOwner(e.target.value)}
-                      required
-                      className="mt-2"
-                    />
-                  )}
-                </>
-              ) : (
-                <Input
-                  placeholder="Pl. Közös, Szandi…"
-                  value={savOwner}
-                  onChange={(e) => setSavOwner(e.target.value)}
-                  required
-                />
-              )}
-            </div>
-          </div>
-          <ModalFormFooter onCancel={resetAndClose} submitLabel="Számla létrehozása" />
-        </form>
-      ) : kind === 'goal' ? (
-        <form onSubmit={handleGoalSubmit} className="flex flex-col gap-4">
-          <div className="space-y-1.5">
-            <FieldLabel info={HELP.savings.accountName}>Cél neve</FieldLabel>
-            <Input
-              placeholder="pl. Nyaralás, Vésztartalék, Autó"
-              value={goalName}
-              onChange={(e) => setGoalName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <FieldLabel info={HELP.savings.principal}>Célösszeg (Ft)</FieldLabel>
-              <Input
-                type="number"
-                min={1}
-                placeholder="500000"
-                value={goalAmount}
-                onChange={(e) => setGoalAmount(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel hint="Ami már félretettél">Jelenlegi összeg (Ft)</FieldLabel>
-              <Input
-                type="number"
-                min={0}
-                placeholder="0"
-                value={currentAmount}
-                onChange={(e) => setCurrentAmount(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <FieldLabel info={HELP.savings.maturityDate}>Cél határideje</FieldLabel>
-            <DatePicker value={targetDate} onChange={setTargetDate} />
-          </div>
-          <ModalFormFooter onCancel={resetAndClose} submitLabel="Cél létrehozása" />
-        </form>
-      ) : (
-        <form onSubmit={handleInvestmentSubmit} className="flex flex-col gap-4">
-          <div className="space-y-1.5">
-            <FieldLabel info={HELP.savings.invName}>Megnevezés</FieldLabel>
-            <Input
-              placeholder="pl. PMÁP 2032/J, DKJ D260722"
-              value={invName}
-              onChange={(e) => setInvName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <FieldLabel info={HELP.savings.invType}>Típus</FieldLabel>
-              <select
-                className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
-                value={invType}
-                onChange={(e) => setInvType(e.target.value)}
-              >
-                <option value="bond">Állampapír</option>
-                <option value="stock">Részvény</option>
-                <option value="other">Egyéb</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel info={HELP.savings.owner}>Tulajdonos</FieldLabel>
-              {savingsSettings.owners.length > 0 ? (
-                <>
-                  <select
-                    className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
-                    value={savingsSettings.owners.includes(invOwner) ? invOwner : 'custom'}
-                    onChange={(e) => {
-                      if (e.target.value === 'custom') setInvOwner('');
-                      else setInvOwner(e.target.value);
-                    }}
-                  >
-                    {savingsSettings.owners.map((owner) => (
-                      <option key={owner} value={owner}>
-                        {owner}
-                      </option>
-                    ))}
-                    <option value="custom">Egyedi…</option>
-                  </select>
-                  {!savingsSettings.owners.includes(invOwner) && (
-                    <Input
-                      placeholder="Pl. Szandi, Dani"
-                      value={invOwner}
-                      onChange={(e) => setInvOwner(e.target.value)}
-                      required
-                      className="mt-2"
-                    />
-                  )}
-                </>
-              ) : (
-                <Input
-                  placeholder="Pl. Közös, Szandi…"
-                  value={invOwner}
-                  onChange={(e) => setInvOwner(e.target.value)}
-                  required
-                />
-              )}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <FieldLabel info={HELP.savings.principal}>Tőke (Ft)</FieldLabel>
-              <Input
-                type="number"
-                placeholder="0"
-                value={invPrincipal}
-                onChange={(e) => setInvPrincipal(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel info={HELP.savings.maturityAmount}>Lejárati érték (Ft)</FieldLabel>
-              <Input
-                type="number"
-                placeholder="pl. 7 000 000"
-                value={invMaturityValue}
-                onChange={(e) => setInvMaturityValue(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <FieldLabel info={HELP.savings.invRate}>Éves kamat / hozam (%)</FieldLabel>
-            <Input
-              type="number"
-              step="0.01"
-              placeholder="pl. 5.15"
-              value={invRate}
-              onChange={(e) => setInvRate(e.target.value)}
-              required={!invMaturityValue}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <FieldLabel info={HELP.savings.purchaseDate}>Vásárlás dátuma</FieldLabel>
-              <DatePicker value={invPurchaseDate} onChange={setInvPurchaseDate} />
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel info={HELP.savings.maturityDate}>Lejárat (opcionális)</FieldLabel>
-              <DatePicker value={invMaturityDate} onChange={setInvMaturityDate} />
-            </div>
-          </div>
-          <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2.5">
-            <FieldLabel info={HELP.savings.payoutAmount}>Kamatkifizetés (opcionális · pl. FixMÁP)</FieldLabel>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <FieldLabel className="text-[0.7rem] text-muted-foreground" info={HELP.savings.payoutAmount}>
-                  Összeg (Ft)
-                </FieldLabel>
-                <Input
-                  type="number"
-                  placeholder="pl. 72 630"
-                  value={invNextPayoutAmount}
-                  onChange={(e) => setInvNextPayoutAmount(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <FieldLabel className="text-[0.7rem] text-muted-foreground" info={HELP.savings.payoutDate}>
-                  Dátum
-                </FieldLabel>
-                <DatePicker value={invNextPayoutDate} onChange={setInvNextPayoutDate} />
-              </div>
-            </div>
-          </div>
-          <ModalFormFooter onCancel={resetAndClose} submitLabel="Létrehozás" />
-        </form>
+      {kind === 'account' && (
+        <NewAccountForm
+          savingsSettings={savingsSettings}
+          onSubmit={onAddSavingsAccount}
+          onCancel={onClose}
+          saving={saving}
+        />
+      )}
+      {kind === 'goal' && (
+        <NewGoalForm
+          onSubmit={onAddSavingsAccount}
+          onCancel={onClose}
+          saving={saving}
+        />
+      )}
+      {kind === 'investment' && (
+        <NewInvestmentForm
+          savingsSettings={savingsSettings}
+          onSubmit={onAddInvestment}
+          onCancel={onClose}
+          saving={saving}
+        />
       )}
     </Modal>
+  );
+}
+
+// ─── Dumb Form: New Account ───────────────────────────────────────────────────
+
+interface NewAccountFormProps {
+  savingsSettings: SavingsSettings;
+  onSubmit: (payload: CreateSavingsPayload) => Promise<void>;
+  onCancel: () => void;
+  saving?: boolean;
+}
+
+function NewAccountForm({ savingsSettings, onSubmit, onCancel, saving }: NewAccountFormProps) {
+  const [institution, setInstitution] = useState('');
+  const [currency, setCurrency] = useState(savingsSettings.currencies[0] ?? 'HUF');
+  const [owner, setOwner] = useState(savingsSettings.default_owner);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await onSubmit({ type: 'account', institution, currency, owner, count_in_savings: savingsSettings.default_count_in_savings });
+    onCancel();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="space-y-1.5">
+        <FieldLabel info={HELP.savings.accountName}>Intézmény / Megnevezés</FieldLabel>
+        <Input placeholder="pl. Revolut, Széf, OTP" value={institution} onChange={(e) => setInstitution(e.target.value)} required />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <FieldLabel info={HELP.savings.currency}>Pénznem</FieldLabel>
+          <select
+            className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+          >
+            {savingsSettings.currencies.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <FieldLabel info={HELP.savings.owner}>Tulajdonos</FieldLabel>
+          <OwnerSelector owners={savingsSettings.owners} value={owner} onChange={setOwner} />
+        </div>
+      </div>
+      <ModalFormFooter onCancel={onCancel} submitLabel="Számla létrehozása" loading={saving} />
+    </form>
+  );
+}
+
+// ─── Dumb Form: New Goal ──────────────────────────────────────────────────────
+
+interface NewGoalFormProps {
+  onSubmit: (payload: CreateSavingsPayload) => Promise<void>;
+  onCancel: () => void;
+  saving?: boolean;
+}
+
+function NewGoalForm({ onSubmit, onCancel, saving }: NewGoalFormProps) {
+  const [goalName, setGoalName] = useState('');
+  const [goalAmount, setGoalAmount] = useState('');
+  const [currentAmount, setCurrentAmount] = useState('0');
+  const [targetDate, setTargetDate] = useState(d().add(6, 'month').format('YYYY-MM-DD'));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await onSubmit({
+      type: 'goal',
+      institution: goalName,
+      goalAmount: Number(goalAmount),
+      currentAmount: Number(currentAmount) || 0,
+      targetDate,
+    });
+    onCancel();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="space-y-1.5">
+        <FieldLabel info={HELP.savings.accountName}>Cél neve</FieldLabel>
+        <Input placeholder="pl. Nyaralás, Vésztartalék, Autó" value={goalName} onChange={(e) => setGoalName(e.target.value)} required />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <FieldLabel info={HELP.savings.principal}>Célösszeg (Ft)</FieldLabel>
+          <Input type="number" min={1} placeholder="500000" value={goalAmount} onChange={(e) => setGoalAmount(e.target.value)} required />
+        </div>
+        <div className="space-y-1.5">
+          <FieldLabel hint="Ami már félretettél">Jelenlegi összeg (Ft)</FieldLabel>
+          <Input type="number" min={0} placeholder="0" value={currentAmount} onChange={(e) => setCurrentAmount(e.target.value)} />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <FieldLabel info={HELP.savings.maturityDate}>Cél határideje</FieldLabel>
+        <DatePicker value={targetDate} onChange={setTargetDate} />
+      </div>
+      <ModalFormFooter onCancel={onCancel} submitLabel="Cél létrehozása" loading={saving} />
+    </form>
+  );
+}
+
+// ─── Dumb Form: New Investment ────────────────────────────────────────────────
+
+interface NewInvestmentFormProps {
+  savingsSettings: SavingsSettings;
+  onSubmit: (data: Omit<Investment, 'id'>) => Promise<void>;
+  onCancel: () => void;
+  saving?: boolean;
+}
+
+function NewInvestmentForm({ savingsSettings, onSubmit, onCancel, saving }: NewInvestmentFormProps) {
+  const [name, setName] = useState('');
+  const [type, setType] = useState('bond');
+  const [principal, setPrincipal] = useState('');
+  const [rate, setRate] = useState('');
+  const [purchaseDate, setPurchaseDate] = useState(today());
+  const [maturityDate, setMaturityDate] = useState('');
+  const [owner, setOwner] = useState(savingsSettings.default_owner);
+  const [maturityValue, setMaturityValue] = useState('');
+  const [nextPayoutAmount, setNextPayoutAmount] = useState('');
+  const [nextPayoutDate, setNextPayoutDate] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    let finalRate = Number(rate);
+    if (maturityValue && Number(maturityValue) > 0 && maturityDate && purchaseDate) {
+      const pDate = d(purchaseDate);
+      const mDate = d(maturityDate);
+      const diffDays = Math.ceil(Math.max(0, mDate.diff(pDate, 'day')));
+      if (diffDays > 0) {
+        const totalReturnRatio = (Number(maturityValue) - Number(principal)) / Number(principal);
+        finalRate = Math.round(totalReturnRatio * (365.25 / diffDays) * 100 * 100) / 100;
+      }
+    }
+    await onSubmit({
+      name,
+      type,
+      principalAmount: Number(principal),
+      annualInterestRate: finalRate,
+      purchaseDate,
+      maturityDate: maturityDate || null,
+      owner,
+      countInSavings: savingsSettings.default_count_in_savings,
+      maturityAmount: maturityValue ? Number(maturityValue) : null,
+      nextPayoutAmount: nextPayoutAmount ? Number(nextPayoutAmount) : null,
+      nextPayoutDate: nextPayoutDate || null,
+    });
+    onCancel();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="space-y-1.5">
+        <FieldLabel info={HELP.savings.invName}>Megnevezés</FieldLabel>
+        <Input placeholder="pl. PMÁP 2032/J, DKJ D260722" value={name} onChange={(e) => setName(e.target.value)} required />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <FieldLabel info={HELP.savings.invType}>Típus</FieldLabel>
+          <select
+            className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+          >
+            <option value="bond">Állampapír</option>
+            <option value="stock">Részvény</option>
+            <option value="other">Egyéb</option>
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <FieldLabel info={HELP.savings.owner}>Tulajdonos</FieldLabel>
+          <OwnerSelector owners={savingsSettings.owners} value={owner} onChange={setOwner} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <FieldLabel info={HELP.savings.principal}>Tőke (Ft)</FieldLabel>
+          <Input type="number" placeholder="0" value={principal} onChange={(e) => setPrincipal(e.target.value)} required />
+        </div>
+        <div className="space-y-1.5">
+          <FieldLabel info={HELP.savings.maturityAmount}>Lejárati érték (Ft)</FieldLabel>
+          <Input type="number" placeholder="pl. 7 000 000" value={maturityValue} onChange={(e) => setMaturityValue(e.target.value)} />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <FieldLabel info={HELP.savings.invRate}>Éves kamat / hozam (%)</FieldLabel>
+        <Input type="number" step="0.01" placeholder="pl. 5.15" value={rate} onChange={(e) => setRate(e.target.value)} required={!maturityValue} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <FieldLabel info={HELP.savings.purchaseDate}>Vásárlás dátuma</FieldLabel>
+          <DatePicker value={purchaseDate} onChange={setPurchaseDate} />
+        </div>
+        <div className="space-y-1.5">
+          <FieldLabel info={HELP.savings.maturityDate}>Lejárat (opcionális)</FieldLabel>
+          <DatePicker value={maturityDate} onChange={setMaturityDate} />
+        </div>
+      </div>
+      <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2.5">
+        <FieldLabel info={HELP.savings.payoutAmount}>Kamatkifizetés (opcionális · pl. FixMÁP)</FieldLabel>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <FieldLabel className="text-[0.7rem] text-muted-foreground" info={HELP.savings.payoutAmount}>Összeg (Ft)</FieldLabel>
+            <Input type="number" placeholder="pl. 72 630" value={nextPayoutAmount} onChange={(e) => setNextPayoutAmount(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <FieldLabel className="text-[0.7rem] text-muted-foreground" info={HELP.savings.payoutDate}>Dátum</FieldLabel>
+            <DatePicker value={nextPayoutDate} onChange={setNextPayoutDate} />
+          </div>
+        </div>
+      </div>
+      <ModalFormFooter onCancel={onCancel} submitLabel="Létrehozás" loading={saving} />
+    </form>
+  );
+}
+
+// ─── Shared: Owner Selector ────────────────────────────────────────────────────
+
+interface OwnerSelectorProps {
+  owners: string[];
+  value: string;
+  onChange: (v: string) => void;
+}
+
+function OwnerSelector({ owners, value, onChange }: OwnerSelectorProps) {
+  if (owners.length === 0) {
+    return (
+      <Input
+        placeholder="Pl. Közös, Szandi…"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required
+      />
+    );
+  }
+
+  return (
+    <>
+      <select
+        className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
+        value={owners.includes(value) ? value : 'custom'}
+        onChange={(e) => onChange(e.target.value === 'custom' ? '' : e.target.value)}
+      >
+        {owners.map((o) => <option key={o} value={o}>{o}</option>)}
+        <option value="custom">Egyedi…</option>
+      </select>
+      {!owners.includes(value) && (
+        <Input
+          placeholder="Pl. Szandi, Dani"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required
+          className="mt-2"
+        />
+      )}
+    </>
   );
 }

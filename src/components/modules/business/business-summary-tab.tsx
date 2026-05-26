@@ -9,15 +9,15 @@ import { TierGatedAiPanel } from '@/components/subscription/TierGatedAiPanel';
 import { TierGatedButton } from '@/components/subscription/TierGatedButton';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Legend } from 'recharts';
 import { RefreshCw, Cpu, BarChart3, PieChart } from 'lucide-react';
-import type { BusinessPageState } from '@/components/modules/business/hooks/use-business-page-state';
+import type { BusinessLogicResult } from '@/components/modules/business/hooks/useBusinessLogic';
 
 type BusinessSummaryTabProps = Pick<
-  BusinessPageState,
+  BusinessLogicResult,
   | 'businessName'
   | 'selectedYear'
   | 'realAiAdvice'
   | 'isAiLoading'
-  | 'handleRequestAiAdvice'
+  | 'requestAiAdvice'
   | 'aiAdvice'
   | 'chartData'
   | 'channelData'
@@ -31,7 +31,7 @@ export function BusinessSummaryTab({
   selectedYear,
   realAiAdvice,
   isAiLoading,
-  handleRequestAiAdvice,
+  requestAiAdvice,
   aiAdvice,
   chartData,
   channelData,
@@ -54,7 +54,7 @@ export function BusinessSummaryTab({
             featureLabel="AI stratéga"
             variant="ghost"
             size="xs"
-            onClick={handleRequestAiAdvice}
+            onClick={requestAiAdvice}
             disabled={isAiLoading}
           >
             <RefreshCw size={11} className={classNames(isAiLoading && 'animate-spin')} />
@@ -70,7 +70,7 @@ export function BusinessSummaryTab({
           description="Személyre szabott növekedési stratégia"
           glow
           action={
-            <Button variant="ghost" size="xs" onClick={handleRequestAiAdvice} disabled={isAiLoading}>
+            <Button variant="ghost" size="xs" onClick={requestAiAdvice} disabled={isAiLoading}>
               <RefreshCw size={11} className={classNames(isAiLoading && 'animate-spin')} />
               {isAiLoading ? 'Elemzés…' : 'Új elemzés'}
             </Button>

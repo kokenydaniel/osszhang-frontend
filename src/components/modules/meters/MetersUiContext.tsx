@@ -217,9 +217,9 @@ function metersUiReducer(state: MetersUiState, action: MetersUiAction): MetersUi
     case 'CLOSE_AI_MODAL':
       return { ...state, isAiModalOpen: false };
     case 'SET_AI_YEAR':
-      return { ...state, aiYear: action.year };
+      return state.aiYear === action.year ? state : { ...state, aiYear: action.year };
     case 'SET_AI_MONTH':
-      return { ...state, aiMonth: action.month };
+      return state.aiMonth === action.month ? state : { ...state, aiMonth: action.month };
     case 'SET_IS_AI_LOADING':
       return { ...state, isAiLoading: action.value };
 

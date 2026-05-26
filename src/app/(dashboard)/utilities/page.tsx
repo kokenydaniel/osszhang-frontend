@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { UtilitiesUiProvider } from '@/components/modules/utilities/UtilitiesUiContext';
 import UtilitiesPage from '@/components/modules/utilities/utilities-page';
 
 export const metadata: Metadata = {
@@ -6,5 +7,9 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <UtilitiesPage />;
+  return (
+    <UtilitiesUiProvider>
+      <UtilitiesPage />
+    </UtilitiesUiProvider>
+  );
 }

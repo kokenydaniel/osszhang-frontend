@@ -208,22 +208,31 @@ function debtsUiReducer(state: DebtsUiState, action: DebtsUiAction): DebtsUiStat
     case 'SET_IS_AI_LOADING':
       return { ...state, isAiLoading: action.value };
 
-    case 'APPLY_HOUSEHOLD_DEFAULTS':
+    case 'APPLY_HOUSEHOLD_DEFAULTS': {
+      const { default_strategy, default_extra_monthly, pay_add_to_budget_default } = action.settings;
+      if (
+        state.strategy === default_strategy &&
+        state.extraMonthly === default_extra_monthly &&
+        state.payAddToBudget === pay_add_to_budget_default
+      ) {
+        return state;
+      }
       return {
         ...state,
-        strategy: action.settings.default_strategy,
-        extraMonthly: action.settings.default_extra_monthly,
-        payAddToBudget: action.settings.pay_add_to_budget_default,
+        strategy: default_strategy,
+        extraMonthly: default_extra_monthly,
+        payAddToBudget: pay_add_to_budget_default,
       };
+    }
 
     case 'SYNC_PAY_CATEGORY': {
-      if (action.categories.length === 0) return state;
+      if (action.categories.length === 0 || state.payCategory) return state;
       try {
         const regex = new RegExp(action.pattern, 'i');
         const def = action.categories.find((c) => regex.test(c)) ?? action.categories[0];
-        return { ...state, payCategory: state.payCategory || def };
+        return { ...state, payCategory: def };
       } catch {
-        return { ...state, payCategory: state.payCategory || action.categories[0] };
+        return { ...state, payCategory: action.categories[0] };
       }
     }
 

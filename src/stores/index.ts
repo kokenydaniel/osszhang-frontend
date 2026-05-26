@@ -7,10 +7,11 @@ export * from './useMetersStore';
 export * from './useBusinessStore';
 export * from './useDebtsStore';
 export * from './usePreferenceStore';
+export * from './useDashboardStore';
 // useBudgetUiStore removed — replaced by BudgetUiContext (module-scoped React Context)
 // useDebtsUiStore removed — replaced by DebtsUiContext (module-scoped React Context)
 // useMetersUiStore / useMetersPageUiStore removed — replaced by MetersUiContext
-export * from './useUtilitiesUiStore';
+// useUtilitiesUiStore removed — replaced by UtilitiesUiContext (module-scoped React Context)
 // useBusinessUiStore removed — replaced by BusinessUiContext (module-scoped React Context)
 // useSavingsUiStore removed — replaced by SavingsUiContext (module-scoped React Context)
 export * from './useSettingsUiStore';

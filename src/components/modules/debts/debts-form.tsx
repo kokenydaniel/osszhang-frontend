@@ -22,6 +22,7 @@ interface DebtsFormProps {
   onDueDayChange: (value: string) => void;
   onSubmit: (event: React.FormEvent) => void;
   onCancel: () => void;
+  saving?: boolean;
 }
 
 export function DebtsForm({
@@ -40,6 +41,7 @@ export function DebtsForm({
   onDueDayChange,
   onSubmit,
   onCancel,
+  saving,
 }: DebtsFormProps) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
@@ -113,6 +115,7 @@ export function DebtsForm({
       <ModalFormFooter
         onCancel={onCancel}
         submitLabel={editId ? 'Mentés' : 'Létrehozás'}
+        loading={saving}
       />
     </form>
   );

@@ -9,12 +9,11 @@ import { useSettingsState } from '@/components/modules/settings/hooks/use-settin
 import { SettingsProfileTab } from '@/components/modules/settings/settings-profile-tab';
 import { SettingsHouseholdTab } from '@/components/modules/settings/settings-household-tab';
 import { SettingsModulesTab } from '@/components/modules/settings/settings-modules-tab';
-import { BillingSettings } from '@/components/modules/settings/BillingSettings';
-import { SettingsPlatformTab } from '@/components/modules/settings/settings-platform-tab';
 import { SettingsDeleteHouseholdModal } from '@/components/modules/settings/settings-delete-household-modal';
+import { BillingSettings } from '@/components/modules/settings/BillingSettings';
 import { type SettingsTabId, useSettingsUiStore } from '@/stores/useSettingsUiStore';
 
-const VALID_TABS: SettingsTabId[] = ['profile', 'household', 'modules', 'billing', 'platform'];
+const VALID_TABS: SettingsTabId[] = ['profile', 'household', 'modules', 'billing'];
 
 export default function SettingsPage() {
   const searchParams = useSearchParams();
@@ -51,7 +50,6 @@ export default function SettingsPage() {
           {activeTab === 'household' && <SettingsHouseholdTab {...state} />}
           {activeTab === 'modules' && <SettingsModulesTab {...state} />}
           {activeTab === 'billing' && <BillingSettings user={state.user} />}
-          {activeTab === 'platform' && <SettingsPlatformTab />}
         </motion.div>
       </AnimatePresence>
 

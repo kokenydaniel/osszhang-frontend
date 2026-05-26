@@ -1,5 +1,5 @@
 import type { UtilitySplitRule } from '@/types';
-export { splitRuleLabel } from '@/lib/utilityViewer';
+export { splitRuleLabel } from '@/services/UtilitiesService';
 
 export type UtilityTemplate = {
   type: string;

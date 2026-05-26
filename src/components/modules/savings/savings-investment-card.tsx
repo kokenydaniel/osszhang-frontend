@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input';
 import { StatusPill, MiniSwitch, ObjectDetails, type DetailGroup } from '@/components/design';
 import { formatHUF, formatDate } from '@/utils';
 import { Investment } from '@/types';
-import type { SavingsPageState } from '@/components/modules/savings/hooks/use-savings-page-state';
+import type { SavingsLogicResult } from '@/components/modules/savings/hooks/useSavingsLogic';
+import type { SavingsUiContextValue } from '@/components/modules/savings/SavingsUiContext';
 
 type SavingsInvestmentCardProps = Pick<
-  SavingsPageState,
+  SavingsLogicResult & SavingsUiContextValue,
   | 'getInvestmentValue'
   | 'getMaturityAmount'
   | 'updateInvestment'

@@ -15,6 +15,7 @@ import { resolveMetersSettings } from '@/lib/metersSettings';
 import { canUseFeature } from '@/lib/checkAccess';
 import { isHouseholdReader, canEditHousehold } from '@/lib/householdRole';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
+import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { isAbortError } from '@/lib/api-client/abortError';
 import type { Meter, MeterReading } from '@/types';
 
@@ -23,11 +24,14 @@ export function useMetersLogic() {
     useMetersStore();
 
   const ui = useMetersUi();
+  const { setAiYear, setAiMonth } = ui;
   const { user } = useAuthStore();
   const { selectedMonth, selectedYear } = usePreferenceStore();
-  const { aiUtilityAnomalies, fetchAiUtilityAnomalies } = useUtilitiesStore();
+  const { aiUtilityAnomalies, setAiUtilityAnomalies } = useUtilitiesStore();
   const { addNotification } = useNotificationStore();
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
+  const { pending: meterSaving, run: runMeterSave } = useAsyncAction();
+  const { pending: readingSaving, run: runReadingSave } = useAsyncAction();
   const pathname = usePathname();
 
   const metersSettings = useMemo(() => resolveMetersSettings(user?.household), [user?.household]);
@@ -61,15 +65,20 @@ export function useMetersLogic() {
     };
   }, [pathname, isLoaded, isLoading, setLoading, setMeters, setLoaded]);
 
-  useEffect(() => {
-    if (!canUseAi) return;
-    fetchAiUtilityAnomalies(selectedYear, selectedMonth);
-  }, [canUseAi, fetchAiUtilityAnomalies, selectedMonth, selectedYear]);
+  const refreshAiAnomalies = useCallback(async () => {
+    const data = await AiFinanceService.getUtilityAnomalies(selectedYear, selectedMonth);
+    setAiUtilityAnomalies(data);
+  }, [selectedMonth, selectedYear, setAiUtilityAnomalies]);
 
   useEffect(() => {
-    ui.setAiYear(selectedYear);
-    ui.setAiMonth(selectedMonth);
-  }, [selectedMonth, selectedYear, ui]);
+    if (!canUseAi) return;
+    void refreshAiAnomalies();
+  }, [canUseAi, refreshAiAnomalies]);
+
+  useEffect(() => {
+    setAiYear(selectedYear);
+    setAiMonth(selectedMonth);
+  }, [selectedMonth, selectedYear, setAiYear, setAiMonth]);
 
   const getPreviousYearValue = useCallback(
     (mId: number, month: number, year: number): number | null => {
@@ -92,22 +101,24 @@ export function useMetersLogic() {
       event.preventDefault();
       if (!canEditHousehold(user)) return;
 
-      try {
-        const created = await metersService.create(
-          MetersService.buildMeterPayload({
-            name: ui.newMeterName,
-            unit: ui.newMeterUnit,
-            location: ui.newMeterLoc,
-          }),
-        );
-        appendMeter(created);
-        addNotification('Mérőóra létrehozva.', 'success');
-        ui.closeNewMeterModal();
-      } catch {
-        addNotification('A mérőóra mentése nem sikerült.', 'error');
-      }
+      await runMeterSave(async () => {
+        try {
+          const created = await metersService.create(
+            MetersService.buildMeterPayload({
+              name: ui.newMeterName,
+              unit: ui.newMeterUnit,
+              location: ui.newMeterLoc,
+            }),
+          );
+          appendMeter(created);
+          addNotification('Mérőóra létrehozva.', 'success');
+          ui.closeNewMeterModal();
+        } catch {
+          addNotification('A mérőóra mentése nem sikerült.', 'error');
+        }
+      });
     },
-    [addNotification, appendMeter, ui, user],
+    [addNotification, appendMeter, runMeterSave, ui, user],
   );
 
   const saveReading = useCallback(
@@ -116,40 +127,42 @@ export function useMetersLogic() {
       if (!canEditHousehold(user)) return;
       if (!ui.value) return;
 
-      try {
-        if (ui.editingReading) {
-          const updated = await metersService.updateReading(
-            ui.editingReading.meter.id,
-            ui.editingReading.reading.id,
-            {
-              date: ui.date,
-              value: Number(ui.value),
-              isReset: ui.isReset,
-              isOfficial: ui.isOfficial,
-            },
-          );
-          patchMeter(ui.editingReading.meter.id, updated);
-          addNotification('Leolvasás frissítve.', 'success');
-        } else {
-          const updated = await metersService.addReading(
-            ui.meterId,
-            MetersService.buildReadingPayload({
-              meterId: ui.meterId,
-              date: ui.date,
-              value: ui.value,
-              isReset: ui.isReset,
-              isOfficial: ui.isOfficial,
-            }),
-          );
-          patchMeter(ui.meterId, updated);
-          addNotification('Leolvasás rögzítve.', 'success');
+      await runReadingSave(async () => {
+        try {
+          if (ui.editingReading) {
+            const updated = await metersService.updateReading(
+              ui.editingReading.meter.id,
+              ui.editingReading.reading.id,
+              {
+                date: ui.date,
+                value: Number(ui.value),
+                isReset: ui.isReset,
+                isOfficial: ui.isOfficial,
+              },
+            );
+            patchMeter(ui.editingReading.meter.id, updated);
+            addNotification('Leolvasás frissítve.', 'success');
+          } else {
+            const updated = await metersService.addReading(
+              ui.meterId,
+              MetersService.buildReadingPayload({
+                meterId: ui.meterId,
+                date: ui.date,
+                value: ui.value,
+                isReset: ui.isReset,
+                isOfficial: ui.isOfficial,
+              }),
+            );
+            patchMeter(ui.meterId, updated);
+            addNotification('Leolvasás rögzítve.', 'success');
+          }
+          ui.closeReadingModal();
+        } catch {
+          addNotification('A leolvasás mentése nem sikerült.', 'error');
         }
-        ui.closeReadingModal();
-      } catch {
-        addNotification('A leolvasás mentése nem sikerült.', 'error');
-      }
+      });
     },
-    [addNotification, patchMeter, ui, user],
+    [addNotification, patchMeter, runReadingSave, ui, user],
   );
 
   const recordQuickReading = useCallback(
@@ -385,14 +398,19 @@ export function useMetersLogic() {
     [metersSettings, ui],
   );
 
+  const pageLoading = isLoading && !isLoaded;
+
   return {
     isReader,
+    pageLoading,
+    meterSaving,
+    readingSaving,
     metersSettings,
     meters,
     selectedYear,
     selectedMonth,
     aiUtilityAnomalies,
-    fetchAiUtilityAnomalies,
+    refreshAiAnomalies,
     canUseAi,
     locationGroups,
     getPreviousYearValue,

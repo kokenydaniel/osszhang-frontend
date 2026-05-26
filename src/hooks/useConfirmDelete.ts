@@ -12,6 +12,7 @@ export interface ConfirmDeleteOptions {
 
 export function useConfirmDelete() {
   const [pending, setPending] = useState<ConfirmDeleteOptions | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const requestDelete = useCallback((options: ConfirmDeleteOptions) => {
     setPending(options);
@@ -21,9 +22,22 @@ export function useConfirmDelete() {
     if (!pending) return null;
     return createElement(ConfirmDeleteDialog, {
       pending,
-      onClose: () => setPending(null),
+      confirmLoading,
+      onClose: () => {
+        if (confirmLoading) return;
+        setPending(null);
+      },
+      onConfirm: async () => {
+        setConfirmLoading(true);
+        try {
+          await pending.onConfirm();
+          setPending(null);
+        } finally {
+          setConfirmLoading(false);
+        }
+      },
     });
-  }, [pending]);
+  }, [confirmLoading, pending]);
 
-  return { requestDelete, ConfirmDeleteModal };
+  return { requestDelete, ConfirmDeleteModal, confirmLoading };
 }

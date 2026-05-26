@@ -15,10 +15,11 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react';
-import type { SavingsPageState } from '@/components/modules/savings/hooks/use-savings-page-state';
+import type { SavingsLogicResult } from '@/components/modules/savings/hooks/useSavingsLogic';
+import type { SavingsUiContextValue } from '@/components/modules/savings/SavingsUiContext';
 
 type SavingsLedgerModalProps = Pick<
-  SavingsPageState,
+  SavingsLogicResult & SavingsUiContextValue,
   | 'isLedgerModalOpen'
   | 'closeLedgerModal'
   | 'ledgerType'
@@ -34,6 +35,7 @@ type SavingsLedgerModalProps = Pick<
   | 'startEditLedger'
   | 'handleLedgerSubmit'
   | 'handleDeleteLedgerEntry'
+  | 'ledgerSaving'
   | 'formatCurrencyAmount'
   | 'ledgerCurrency'
   | 'ledgerItems'
@@ -56,6 +58,7 @@ export function SavingsLedgerModal({
   startEditLedger,
   handleLedgerSubmit,
   handleDeleteLedgerEntry,
+  ledgerSaving,
   formatCurrencyAmount,
   ledgerCurrency,
   ledgerItems,
@@ -131,9 +134,12 @@ export function SavingsLedgerModal({
           <Button
             className="flex-1"
             disabled={!ledgerAmount.trim() || !ledgerReason.trim()}
+            loading={ledgerSaving}
             onClick={() => void handleLedgerSubmit()}
           >
-            {editingLedgerId ? (
+            {ledgerSaving ? (
+              'Feldolgozás…'
+            ) : editingLedgerId ? (
               <>
                 <Pencil size={13} /> Mentés
               </>

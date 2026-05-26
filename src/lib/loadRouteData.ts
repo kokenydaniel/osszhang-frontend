@@ -1,9 +1,6 @@
 import type { UserProfile } from '@/types';
-import { canUseModuleWithTier, type ModuleId } from '@/lib/moduleAccess';
-import { useBudgetStore } from '@/stores/useBudgetStore';
-import { usePreferenceStore } from '@/stores/usePreferenceStore';
-import { getActiveWalletId } from '@/stores/useWalletStore';
-import { useUtilitiesStore } from '@/stores/useUtilitiesStore';
+import type { ModuleId } from '@/lib/moduleAccess';
+import { enabledModules, preloadModule } from '@/lib/modulePreload';
 
 const ROUTE_MODULES: Record<string, ModuleId[]> = {
   '/': ['budget', 'utilities', 'debts', 'savings', 'meters', 'business'],
@@ -30,88 +27,6 @@ function modulesForPath(pathname: string): ModuleId[] {
   return [];
 }
 
-async function fetchModule(moduleId: ModuleId, options?: { silent?: boolean; walletId?: number | null }): Promise<void> {
-  switch (moduleId) {
-    case 'budget': {
-      const walletId = getActiveWalletId();
-      if (walletId === null) break;
-      const { selectedMonth, selectedYear } = usePreferenceStore.getState();
-      const { BudgetService } = await import('@/services/BudgetService');
-      await Promise.allSettled([
-        BudgetService.fetchAll(walletId, { silent: options?.silent })
-          .then((res) => useBudgetStore.getState().setTransactions(res.data.transactions, walletId))
-          .catch(() => {}),
-        BudgetService.fetchGoalRows(walletId, selectedMonth, selectedYear, { silent: options?.silent })
-          .then((res) => useBudgetStore.getState().setGoalRows(res.data, selectedMonth, selectedYear, walletId))
-          .catch(() => {}),
-      ]);
-      break;
-    }
-    case 'utilities':
-      await useUtilitiesStore.getState().fetchBills();
-      break;
-    case 'meters': {
-      const { metersService } = await import('@/services/MetersService');
-      const { useMetersStore } = await import('@/stores/useMetersStore');
-      await metersService
-        .fetchAll({ silent: options?.silent })
-        .then((meters) => {
-          useMetersStore.getState().setMeters(meters);
-          useMetersStore.getState().setLoaded(true);
-        })
-        .catch(() => {});
-      break;
-    }
-    case 'business': {
-      const { businessService } = await import('@/services/BusinessService');
-      const { useBusinessStore } = await import('@/stores/useBusinessStore');
-      await businessService
-        .fetchAll({ silent: options?.silent })
-        .then((orders) => {
-          useBusinessStore.getState().setOrders(orders);
-          useBusinessStore.getState().setLoaded(true);
-        })
-        .catch(() => {});
-      break;
-    }
-    case 'debts': {
-      const walletId = getActiveWalletId();
-      if (walletId === null) break;
-      const { debtsService } = await import('@/services/DebtsService');
-      const { useDebtsStore } = await import('@/stores/useDebtsStore');
-      await debtsService
-        .fetchAll(walletId, { silent: options?.silent })
-        .then((debts) => {
-          useDebtsStore.getState().setDebts(debts, walletId);
-        })
-        .catch(() => {});
-      break;
-    }
-    case 'savings': {
-      const walletId = getActiveWalletId();
-      if (walletId === null) break;
-      const { savingsService } = await import('@/services/SavingsService');
-      const { useSavingsStore } = await import('@/stores/useSavingsStore');
-      await Promise.allSettled([
-        savingsService
-          .fetchAll(walletId, { silent: options?.silent })
-          .then(({ accounts }) => useSavingsStore.getState().setSavings(accounts, walletId))
-          .catch(() => {}),
-        savingsService
-          .fetchInvestments({ silent: options?.silent })
-          .then((investments) => useSavingsStore.getState().setInvestments(investments))
-          .catch(() => {}),
-      ]);
-      break;
-    }
-  }
-  loadedModules.add(moduleId);
-}
-
-function enabledModules(user: UserProfile, moduleIds: ModuleId[]): ModuleId[] {
-  return moduleIds.filter((id) => canUseModuleWithTier(user, id));
-}
-
 export function resetRouteDataCache() {
   loadedModules.clear();
   inflight = null;
@@ -131,18 +46,23 @@ export async function loadRouteData(pathname: string, user: UserProfile | null |
 
   inflightPath = pathname;
 
+  const markLoaded = async (moduleIds: ModuleId[], options?: { silent?: boolean }) => {
+    await Promise.allSettled(moduleIds.map((id) => preloadModule(id, options)));
+    moduleIds.forEach((id) => loadedModules.add(id));
+  };
+
   if (pathname === '/') {
     const priority = needed.filter((id) => DASHBOARD_PRIORITY.includes(id));
     const deferred = needed.filter((id) => DASHBOARD_DEFERRED.includes(id));
 
     inflight = (async () => {
-      await Promise.allSettled(priority.map((id) => fetchModule(id)));
+      await markLoaded(priority);
       if (deferred.length > 0) {
-        void Promise.allSettled(deferred.map((id) => fetchModule(id, { silent: true })));
+        void markLoaded(deferred, { silent: true });
       }
     })();
   } else {
-    inflight = Promise.allSettled(needed.map((id) => fetchModule(id))).then(() => undefined);
+    inflight = markLoaded(needed).then(() => undefined);
   }
 
   try {

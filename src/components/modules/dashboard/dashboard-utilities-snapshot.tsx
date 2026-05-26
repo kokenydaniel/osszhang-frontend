@@ -1,12 +1,12 @@
 import Link from 'next/link';
 import classNames from 'classnames';
 import { formatHUF, hasSettlementDate } from '@/utils';
-import { isUtilityBillOverdue } from '@/lib/utilityBills';
+import { UtilitiesService } from '@/services/UtilitiesService';
 import { Section, StatusPill, EmptyState, DataList, DataRow } from '@/components/design';
 import { ChevronRight, ReceiptText } from 'lucide-react';
-import type { DashboardPageState } from '@/components/modules/dashboard/hooks/use-dashboard-page-state';
+import type { DashboardLogicResult } from '@/components/modules/dashboard/hooks/useDashboardLogic';
 
-type Props = Pick<DashboardPageState, 'monthBills' | 'todayStr' | 'utilitySplitEnabled'>;
+type Props = Pick<DashboardLogicResult, 'monthBills' | 'todayStr' | 'utilitySplitEnabled'>;
 
 export function DashboardUtilitiesSnapshot({ monthBills, todayStr, utilitySplitEnabled }: Props) {
   const items = monthBills
@@ -30,7 +30,7 @@ export function DashboardUtilitiesSnapshot({ monthBills, todayStr, utilitySplitE
         <DataList className="shadow-soft">
           {items.map((b) => {
             const settled = utilitySplitEnabled ? !!b.paidBy : hasSettlementDate(b.paidDate);
-            const overdue = isUtilityBillOverdue(b, { splitEnabled: utilitySplitEnabled, today: todayStr });
+            const overdue = UtilitiesService.isBillOverdue(b, { splitEnabled: utilitySplitEnabled, today: todayStr });
             return (
               <DataRow
                 key={b.id}

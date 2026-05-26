@@ -5,9 +5,9 @@ import { formatHUF } from '@/utils';
 import { ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
 import { Section } from '@/components/design';
 import { ChevronRight } from 'lucide-react';
-import type { DashboardPageState } from '@/components/modules/dashboard/hooks/use-dashboard-page-state';
+import type { DashboardLogicResult } from '@/components/modules/dashboard/hooks/useDashboardLogic';
 
-type Props = Pick<DashboardPageState, 'businessEnabled' | 'chartData'>;
+type Props = Pick<DashboardLogicResult, 'businessEnabled' | 'chartData'>;
 
 export function DashboardBusinessChart({ businessEnabled, chartData }: Props) {
   if (!businessEnabled || chartData.length === 0) {

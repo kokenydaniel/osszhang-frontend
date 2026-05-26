@@ -8,11 +8,13 @@ import { canAccessModule, isModuleEnabled, type ModuleId } from '@/lib/moduleAcc
 import { canAccessModuleByTier, requiresUpgradeForModule, showTierBadgeForModule } from '@/lib/checkAccess';
 import { useUpgradeModalStore } from '@/stores/useUpgradeModalStore';
 import { resolveAppName } from '@/lib/branding';
+import { isPlatformAdmin } from '@/lib/platformAdmin';
+import { isPlatformFeatureEnabled } from '@/lib/platformFeatureFlags';
 import classNames from 'classnames';
 import {
   LayoutDashboard, Wallet, Home, Settings,
   TrendingUp, Gauge, PanelLeftClose, PanelLeftOpen, X, Command,
-  PiggyBank, TrendingDown,
+  PiggyBank, TrendingDown, Users, ToggleLeft, Megaphone, MapPinned,
 } from 'lucide-react';
 import { TierBadge } from '@/components/subscription/TierBadge';
 
@@ -56,17 +58,45 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       section: 'Vállalkozás',
       items: [{ href: '/business', icon: TrendingUp, label: businessName, id: 'business' as const }],
     },
+    ...(isPlatformFeatureEnabled(user, 'enable_ai_travel_planner')
+      ? [
+          {
+            section: '🛠️ Okos eszközök',
+            items: [
+              {
+                href: '/tools/travel',
+                icon: MapPinned,
+                label: 'Utazástervező',
+                id: 'tools-travel' as const,
+              },
+            ],
+          },
+        ]
+      : []),
     {
       section: 'Rendszer',
       items: [{ href: '/settings', icon: Settings, label: 'Beállítások', id: 'settings' as const }],
     },
+    ...(isPlatformAdmin(user)
+      ? [
+          {
+            section: 'Platform admin',
+            items: [
+              { href: '/admin/users', icon: Users, label: 'Felhasználók', id: 'admin-users' as const },
+              { href: '/admin/features', icon: ToggleLeft, label: 'Rendszer funkciók', id: 'admin-features' as const },
+              { href: '/admin/announcements', icon: Megaphone, label: 'Rendszerüzenetek', id: 'admin-announcements' as const },
+            ],
+          },
+        ]
+      : []),
   ];
 
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
 
   const isNavVisible = (id: string) => {
     if (!user) return false;
-    if (['dashboard', 'settings'].includes(id)) return true;
+    if (id === 'tools-travel') return isPlatformFeatureEnabled(user, 'enable_ai_travel_planner');
+    if (['dashboard', 'settings', 'admin-users', 'admin-features', 'admin-announcements'].includes(id)) return true;
     return isModuleEnabled(user.household, id as ModuleId);
   };
 
@@ -76,7 +106,15 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
     moduleId: string,
     label: string,
   ) => {
-    if (!user || ['dashboard', 'settings'].includes(moduleId)) return;
+    if (
+      !user ||
+      ['dashboard', 'settings', 'admin-users', 'admin-features', 'admin-announcements', 'tools-travel'].includes(
+        moduleId,
+      )
+    ) {
+      onMobileClose?.();
+      return;
+    }
 
     const mod = moduleId as ModuleId;
 
@@ -158,10 +196,14 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                   const mod = item.id as ModuleId;
                   const tierLocked =
                     user &&
-                    !['dashboard', 'settings'].includes(item.id) &&
+                    !['dashboard', 'settings', 'admin-users', 'admin-features', 'admin-announcements', 'tools-travel'].includes(
+                      item.id,
+                    ) &&
                     canAccessModule(user, mod) &&
                     !canAccessModuleByTier(user, mod);
-                  const badgeTier = showTierBadgeForModule(user, mod);
+                  const badgeTier =
+                    !['admin-users', 'admin-features', 'admin-announcements', 'tools-travel'].includes(item.id) &&
+                    showTierBadgeForModule(user, mod);
 
                   return (
                     <Link

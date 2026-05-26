@@ -1,51 +1,52 @@
 'use client';
 
-import { useEffect } from 'react';
-import {
-  PageHeader,
-  MetricStrip,
-  SegmentedControl,
-} from '@/components/design';
-import { APP_NAME } from '@/lib/branding';
+import { PageHeader, MetricStrip, SegmentedControl, ModulePageSkeleton } from '@/components/design';
 import { List, BarChart3 } from 'lucide-react';
-import { useBusinessPageState } from '@/components/modules/business/hooks/use-business-page-state';
+import { useBusinessLogic } from '@/components/modules/business/hooks/useBusinessLogic';
+import { useBusinessUi } from '@/components/modules/business/BusinessUiContext';
 import { BusinessMonthlyTab } from '@/components/modules/business/business-monthly-tab';
 import { BusinessSummaryTab } from '@/components/modules/business/business-summary-tab';
 import { BusinessOrderModal } from '@/components/modules/business/business-order-modal';
 
 export default function BusinessPage() {
-  const state = useBusinessPageState();
-  const { ConfirmDeleteModal, businessName } = state;
-
-  useEffect(() => {
-    document.title = `${businessName} | ${APP_NAME}`;
-  }, [businessName]);
+  const logic = useBusinessLogic();
+  const ui = useBusinessUi();
+  const { ConfirmDeleteModal } = logic;
 
   return (
     <div className="flex flex-col gap-7 w-full max-w-[1500px] mx-auto">
       <PageHeader
-        breadcrumbs={[{ label: 'Vállalkozás' }, { label: businessName }]}
-        title={`${businessName} CRM`}
-        description={`${state.selectedYear}. ${String(state.selectedMonth).padStart(2, '0')}. havi rendelések, kintlévőségek és éves trendek`}
+        breadcrumbs={[{ label: 'Vállalkozás' }, { label: logic.businessName }]}
+        title={`${logic.businessName} CRM`}
+        description={`${logic.selectedYear}. ${String(logic.selectedMonth).padStart(2, '0')}. havi rendelések, kintlévőségek és éves trendek`}
         actions={
           <SegmentedControl
-            value={state.activeTab}
-            onChange={(v) => state.setActiveTab(v as 'monthly' | 'summary')}
+            value={ui.activeTab}
+            onChange={(value) => ui.setActiveTab(value as 'monthly' | 'summary')}
             options={[
-              { value: 'monthly', label: 'Rendelések', icon: List, count: state.filteredOrders.length },
+              { value: 'monthly', label: 'Rendelések', icon: List, count: logic.filteredOrders.length },
               { value: 'summary', label: 'Éves trendek', icon: BarChart3 },
             ]}
           />
         }
       />
 
-      <MetricStrip items={state.activeTab === 'monthly' ? state.monthlyMetrics : state.summaryMetrics} columns={4} variant="separated" />
+      {logic.pageLoading ? (
+        <ModulePageSkeleton />
+      ) : (
+        <>
+      <MetricStrip
+        items={ui.activeTab === 'monthly' ? logic.monthlyMetrics : logic.summaryMetrics}
+        columns={4}
+        variant="separated"
+      />
 
-      {state.activeTab === 'monthly' && <BusinessMonthlyTab {...state} />}
+      {ui.activeTab === 'monthly' && <BusinessMonthlyTab {...logic} />}
+      {ui.activeTab === 'summary' && <BusinessSummaryTab {...logic} />}
+        </>
+      )}
 
-      {state.activeTab === 'summary' && <BusinessSummaryTab {...state} />}
-
-      <BusinessOrderModal {...state} />
+      <BusinessOrderModal bizOptions={logic.bizOptions} onSubmit={logic.saveOrder} saving={logic.orderSaving} />
       <ConfirmDeleteModal />
     </div>
   );

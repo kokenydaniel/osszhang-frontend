@@ -17,8 +17,8 @@ interface PreferenceState {
 
   setSelectedMonth: (m: number) => void;
   setSelectedYear: (y: number) => void;
-  updatePreferences: (p: Partial<PreferenceState['userPreferences']>) => Promise<void>;
-  refreshRates: () => Promise<void>;
+  updatePreferences: (p: Partial<PreferenceState['userPreferences']>) => void;
+  setExchangeRates: (rates: Record<string, number>) => void;
 }
 
 export const usePreferenceStore = create<PreferenceState>()(
@@ -37,50 +37,11 @@ export const usePreferenceStore = create<PreferenceState>()(
 
       setSelectedMonth: (m) => set({ selectedMonth: m }),
       setSelectedYear: (y) => set({ selectedYear: y }),
-      
-      updatePreferences: async (p) => {
-        set({ userPreferences: { ...get().userPreferences, ...p } });
-      },
 
-      refreshRates: async () => {
-        try {
-          const [fiatRes, btcRes, ethRes] = await Promise.all([
-            fetch('https://open.er-api.com/v6/latest/USD').then(r => r.json()),
-            fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT').then(r => r.json()),
-            fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT').then(r => r.json())
-          ]);
+      updatePreferences: (p) =>
+        set({ userPreferences: { ...get().userPreferences, ...p } }),
 
-          const usdToHuf = fiatRes.rates?.HUF || 365;
-          const eurToHuf = fiatRes.rates?.HUF && fiatRes.rates?.EUR ? (fiatRes.rates.HUF / fiatRes.rates.EUR) : 395;
-          
-          const btcPriceUsd = Number(btcRes?.price) || 66000;
-          const ethPriceUsd = Number(ethRes?.price) || 3000;
-
-          const btcToHuf = btcPriceUsd * usdToHuf;
-          const ethToHuf = ethPriceUsd * usdToHuf;
-
-          set({
-            exchangeRates: {
-              USD: usdToHuf,
-              EUR: eurToHuf,
-              BTC: btcToHuf,
-              ETH: ethToHuf,
-              HUF: 1
-            }
-          });
-        } catch (err) {
-          console.error('Error fetching exchange rates:', err);
-          set({
-            exchangeRates: {
-              USD: 365,
-              EUR: 395,
-              BTC: 24000000,
-              ETH: 1200000,
-              HUF: 1
-            }
-          });
-        }
-      },
+      setExchangeRates: (exchangeRates) => set({ exchangeRates }),
     }),
     {
       name: 'osszhang-preferences',

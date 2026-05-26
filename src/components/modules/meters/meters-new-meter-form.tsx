@@ -16,6 +16,7 @@ interface MetersNewMeterFormProps {
   onNewMeterLocChange: (value: string) => void;
   onApplyTemplate: (template: MetersSettings['templates'][number]) => void;
   onSubmit: (event: React.FormEvent) => void;
+  saving?: boolean;
 }
 
 export function MetersNewMeterForm({
@@ -28,6 +29,7 @@ export function MetersNewMeterForm({
   onNewMeterLocChange,
   onApplyTemplate,
   onSubmit,
+  saving,
 }: MetersNewMeterFormProps) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
@@ -78,8 +80,8 @@ export function MetersNewMeterForm({
           <Input value={newMeterLoc} onChange={(e) => onNewMeterLocChange(e.target.value)} />
         </div>
       </div>
-      <Button type="submit" className="mt-1">
-        Mérőóra létrehozása
+      <Button type="submit" className="mt-1 w-full" loading={saving}>
+        {saving ? 'Feldolgozás…' : 'Mérőóra létrehozása'}
       </Button>
     </form>
   );

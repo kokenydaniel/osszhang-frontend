@@ -19,10 +19,10 @@ import {
   FileText,
   Calendar,
 } from 'lucide-react';
-import type { BusinessPageState } from '@/components/modules/business/hooks/use-business-page-state';
+import type { BusinessLogicResult } from '@/components/modules/business/hooks/useBusinessLogic';
 
 type BusinessOrdersTableProps = Pick<
-  BusinessPageState,
+  BusinessLogicResult,
   'filteredOrders' | 'openForm' | 'deleteOrder' | 'requestDelete' | 'isReader'
 >;
 

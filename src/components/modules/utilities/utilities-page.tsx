@@ -9,6 +9,7 @@ import {
   MetricStrip,
   InsightBanner,
   AccentPanel,
+  ModulePageSkeleton,
 } from '@/components/design';
 import {
   AlertTriangle,
@@ -19,7 +20,7 @@ import {
   Sparkles,
   UserCheck,
 } from 'lucide-react';
-import { useUtilitiesPageState } from '@/components/modules/utilities/hooks/use-utilities-page-state';
+import { useUtilitiesLogic } from '@/components/modules/utilities/hooks/useUtilitiesLogic';
 import {
   SettleDebtButton,
   UnsettleDebtButton,
@@ -30,26 +31,26 @@ import { UtilitiesBillsTable } from '@/components/modules/utilities/utilities-bi
 import { UtilitiesBillModal } from '@/components/modules/utilities/utilities-bill-modal';
 
 export default function UtilitiesPage() {
-  const state = useUtilitiesPageState();
-  const { ConfirmDeleteModal } = state;
+  const logic = useUtilitiesLogic();
+  const { ConfirmDeleteModal } = logic;
 
   const metrics = useMemo(() => {
-    if (state.balanceMetricAction === null) return state.metrics;
-    const [first, ...rest] = state.metrics;
+    if (logic.balanceMetricAction === null) return logic.metrics;
+    const [first, ...rest] = logic.metrics;
     const action =
-      state.balanceMetricAction === 'unsettle' ? (
-        <UnsettleDebtButton loading={state.unsettling} onClick={state.handleUnsettle} />
+      logic.balanceMetricAction === 'unsettle' ? (
+        <UnsettleDebtButton loading={logic.unsettling} onClick={logic.unsettleMonth} />
       ) : (
-        <SettleDebtButton loading={state.settling} onClick={state.handleSettlement} />
+        <SettleDebtButton loading={logic.settling} onClick={logic.settleMonth} />
       );
     return [{ ...first, action }, ...rest];
   }, [
-    state.balanceMetricAction,
-    state.handleSettlement,
-    state.handleUnsettle,
-    state.metrics,
-    state.settling,
-    state.unsettling,
+    logic.balanceMetricAction,
+    logic.metrics,
+    logic.settleMonth,
+    logic.settling,
+    logic.unsettleMonth,
+    logic.unsettling,
   ]);
 
   return (
@@ -59,22 +60,24 @@ export default function UtilitiesPage() {
         title="Rezsi menedzsment"
         description="Automatikus elszámolás, megosztás és kiegyenlítés."
         actions={
-          !state.isReader ? (
+          !logic.isReader ? (
             <>
               <Button
                 variant="outline"
                 size="sm"
-                loading={state.cloning}
-                onClick={() => void state.runClone(() => state.clonePreviousMonth(state.selectedMonth, state.selectedYear))}
+                loading={logic.cloning}
+                onClick={() =>
+                  void logic.runClone(() => logic.clonePreviousMonth(logic.selectedMonth, logic.selectedYear))
+                }
               >
-                {!state.cloning && <Copy size={13} />} {state.cloning ? 'Másolás…' : 'Múlt havi'}
+                {!logic.cloning && <Copy size={13} />} {logic.cloning ? 'Másolás…' : 'Múlt havi'}
               </Button>
-              {state.utilityTemplates.length > 0 && (
-                <Button variant="outline" size="sm" loading={state.templating} onClick={state.handleGenerateFromTemplates}>
-                  {!state.templating && <LayoutTemplate size={13} />} {state.templating ? 'Generálás…' : 'Sablonból'}
+              {logic.utilityTemplates.length > 0 && (
+                <Button variant="outline" size="sm" loading={logic.templating} onClick={logic.generateFromTemplates}>
+                  {!logic.templating && <LayoutTemplate size={13} />} {logic.templating ? 'Generálás…' : 'Sablonból'}
                 </Button>
               )}
-              <Button size="sm" onClick={state.openNewBillModal}>
+              <Button size="sm" onClick={logic.openNewBillModal}>
                 <Plus size={13} /> Új rögzítés
               </Button>
             </>
@@ -82,43 +85,47 @@ export default function UtilitiesPage() {
         }
       />
 
-      {state.monthSettlement && state.utilitySplitEnabled && (
+      {logic.pageLoading ? (
+        <ModulePageSkeleton />
+      ) : (
+        <>
+      {logic.monthSettlement && logic.utilitySplitEnabled && (
         <AccentPanel
           tone="success"
           icon={UserCheck}
           title="Havi tartozás rendezve"
           titleInfo={HELP.utilities.settlementRecord}
-          description={state.monthSettlement.summary}
+          description={logic.monthSettlement.summary}
           action={
-            state.isAdmin ? (
-              <UnsettleDebtButton loading={state.unsettling} onClick={state.handleUnsettle} />
+            logic.isAdmin ? (
+              <UnsettleDebtButton loading={logic.unsettling} onClick={logic.unsettleMonth} />
             ) : undefined
           }
         >
           <div className="text-sm text-foreground/90 space-y-1">
             <p>
               <span className="text-muted-foreground">Dátum:</span>{' '}
-              <span className="font-medium tabular-nums">{formatDate(state.monthSettlement.settledAt)}</span>
+              <span className="font-medium tabular-nums">{formatDate(logic.monthSettlement.settledAt)}</span>
             </p>
             <p>
               <span className="text-muted-foreground">Költségvetésben:</span>{' '}
               <span className="font-medium">
-                {state.monthSettlement.direction === 'partner_pays_household' ? 'bevétel' : 'kiadás'}
+                {logic.monthSettlement.direction === 'partner_pays_household' ? 'bevétel' : 'kiadás'}
               </span>
               {' · '}
-              <span className="tabular-nums">{formatHUF(state.monthSettlement.amount)}</span>
+              <span className="tabular-nums">{formatHUF(logic.monthSettlement.amount)}</span>
             </p>
             <p>
               <span className="text-muted-foreground">Aktuális egyenleg:</span>{' '}
               <span className="font-medium">
-                {state.monthSettlement.direction === 'partner_pays_household' ? 'nőtt' : 'csökkent'} ezzel az összeggel
+                {logic.monthSettlement.direction === 'partner_pays_household' ? 'nőtt' : 'csökkent'} ezzel az összeggel
               </span>
             </p>
           </div>
         </AccentPanel>
       )}
 
-      {state.utilitySplitEnabled && !state.splitPartnerUser && (
+      {logic.utilitySplitEnabled && !logic.splitPartnerUser && (
         <InsightBanner tone="warning" icon={AlertTriangle} title="A rezsimegosztás be van kapcsolva">
           Nincs másik tag regisztrálva. Hívj meg egy családtagot a Beállítások oldalon. A felület most a fallback{' '}
           <i>&quot;Családtag&quot;</i> nevet használja.
@@ -127,7 +134,7 @@ export default function UtilitiesPage() {
 
       <MetricStrip items={metrics} columns={4} variant="separated" />
 
-      {state.canUseAi && state.aiUtilityAnomalies?.anomalies && state.aiUtilityAnomalies.anomalies.length > 0 ? (
+      {logic.canUseAi && logic.aiUtilityAnomalies?.anomalies && logic.aiUtilityAnomalies.anomalies.length > 0 ? (
         <AccentPanel
           tone="ai"
           icon={Sparkles}
@@ -135,13 +142,13 @@ export default function UtilitiesPage() {
           titleInfo={HELP.utilities.aiAnomaly}
           description="A modell az alábbi szokatlan értékeket észlelte"
           action={
-            <Button variant="ghost" size="xs" onClick={() => state.fetchAiUtilityAnomalies(state.selectedYear, state.selectedMonth)}>
+            <Button variant="ghost" size="xs" onClick={() => void logic.refreshAiAnomalies()}>
               <RefreshCw size={11} /> Frissítés
             </Button>
           }
         >
           <ul className="space-y-1.5">
-            {state.aiUtilityAnomalies.anomalies.map(
+            {logic.aiUtilityAnomalies.anomalies.map(
               (an: { meter_id: number; meter_name: string; actual: number; expected: number; reason: string }) => (
                 <li key={`${an.meter_id}-${an.actual}`} className="text-foreground/80 flex items-start gap-2">
                   <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
@@ -156,7 +163,7 @@ export default function UtilitiesPage() {
             )}
           </ul>
         </AccentPanel>
-      ) : !state.canUseAi ? (
+      ) : !logic.canUseAi ? (
         <TierGatedAiPanel
           featureLabel="AI anomáliafigyelés"
           icon={Sparkles}
@@ -173,8 +180,38 @@ export default function UtilitiesPage() {
         </TierGatedAiPanel>
       ) : null}
 
-      <UtilitiesBillsTable {...state} />
-      <UtilitiesBillModal {...state} />
+      <UtilitiesBillsTable
+        sortedBills={logic.sortedBills}
+        filteredBills={logic.filteredBills}
+        selectedMonth={logic.selectedMonth}
+        selectedYear={logic.selectedYear}
+        utilitySplitEnabled={logic.utilitySplitEnabled}
+        utilityLabels={logic.utilityLabels}
+        isReader={logic.isReader}
+        todayStr={logic.todayStr}
+        onEditBill={logic.openEditBill}
+        onDeleteBill={logic.deleteBill}
+        onUpdateBill={logic.updateBill}
+        requestDelete={logic.requestDelete}
+        wrapBillPending={logic.wrapBillPending}
+        isBillPending={logic.isBillPending}
+        cloning={logic.cloning}
+        runClone={logic.runClone}
+        onClonePreviousMonth={logic.clonePreviousMonth}
+        templating={logic.templating}
+        onGenerateFromTemplates={logic.generateFromTemplates}
+        utilityTemplates={logic.utilityTemplates}
+      />
+        </>
+      )}
+      <UtilitiesBillModal
+        utilitySplitEnabled={logic.utilitySplitEnabled}
+        settlementOptions={logic.settlementOptions}
+        householdSideLabel={logic.householdSideLabel}
+        partnerSideLabel={logic.partnerSideLabel}
+        onSubmit={logic.saveBill}
+        saving={logic.billSaving}
+      />
       <ConfirmDeleteModal />
     </div>
   );

@@ -1,60 +1,37 @@
 import { create } from 'zustand';
-import { BusinessOrder } from '@/types';
-import { businessClient } from '@/lib/api-client';
-import { useNotificationStore } from './useNotificationStore';
+import type { BusinessOrder } from '@/types/business';
 
 interface BusinessState {
   orders: BusinessOrder[];
   isLoading: boolean;
+  isLoaded: boolean;
 
-  fetchOrders: () => Promise<void>;
-  addOrder: (o: Omit<BusinessOrder, 'id'>) => Promise<void>;
-  updateOrder: (id: number, o: Partial<Omit<BusinessOrder, 'id'>>) => Promise<void>;
-  deleteOrder: (id: number) => Promise<void>;
-  shopifyImport: () => Promise<void>;
+  setOrders: (orders: BusinessOrder[]) => void;
+  setLoading: (loading: boolean) => void;
+  setLoaded: (loaded: boolean) => void;
+  appendOrder: (order: BusinessOrder) => void;
+  patchOrder: (id: number, updated: BusinessOrder) => void;
+  removeOrder: (id: number) => void;
+  reset: () => void;
 }
 
-export const useBusinessStore = create<BusinessState>((set, get) => ({
-  orders: [],
+const INITIAL_STATE = {
+  orders: [] as BusinessOrder[],
   isLoading: false,
+  isLoaded: false,
+};
 
-  fetchOrders: async () => {
-    set({ isLoading: true });
-    try {
-      const res = await businessClient.getAll();
-      set({ orders: res.data });
-    } catch (e) {
-      console.error('Failed to fetch business orders', e);
-    } finally {
-      set({ isLoading: false });
-    }
-  },
+export const useBusinessStore = create<BusinessState>((set) => ({
+  ...INITIAL_STATE,
 
-  addOrder: async (o) => {
-    const res = await businessClient.create(o);
-    set({ orders: [...get().orders, res.data] });
-  },
-
-  updateOrder: async (id, o) => {
-    const res = await businessClient.update(id, o);
-    set({ orders: get().orders.map((order) => (order.id === id ? res.data : order)) });
-  },
-
-  deleteOrder: async (id) => {
-    await businessClient.delete(id);
-    set({ orders: get().orders.filter((o) => o.id !== id) });
-  },
-
-  shopifyImport: async () => {
-    const { addNotification } = useNotificationStore.getState();
-    addNotification('Shopify rendelések importálása elindult...', 'info');
-    try {
-      await businessClient.shopifyImport();
-      const res = await businessClient.getAll();
-      set({ orders: res.data });
-      addNotification('Shopify rendelések sikeresen szinkronizálva!', 'success');
-    } catch (e) {
-      addNotification('Shopify importálás sikertelen volt.', 'error');
-    }
-  },
+  setOrders: (orders) => set({ orders, isLoading: false }),
+  setLoading: (isLoading) => set({ isLoading }),
+  setLoaded: (isLoaded) => set({ isLoaded }),
+  appendOrder: (order) => set((state) => ({ orders: [...state.orders, order] })),
+  patchOrder: (id, updated) =>
+    set((state) => ({
+      orders: state.orders.map((order) => (order.id === id ? updated : order)),
+    })),
+  removeOrder: (id) => set((state) => ({ orders: state.orders.filter((order) => order.id !== id) })),
+  reset: () => set(INITIAL_STATE),
 }));

@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { UserProfile, RawApiUser } from '@/types';
-import { authClient, getApiErrorMessage, householdClient, walletClient, platformClient } from '@/lib/api-client';
+import { authClient, getApiErrorMessage, householdClient, walletClient, ApiClientError } from '@/lib/api-client';
+import { isTimeoutError } from '@/lib/api-client/abortError';
+import { isMaintenanceModeResponse } from '@/lib/api-client/response';
 import { getAuthToken, removeAuthToken, setAuthToken as persistAuthToken } from '@/lib/authToken';
 import { LoadableStatus } from '@/lib/loadableStatus';
 import { resetRouteDataCache } from '@/lib/loadRouteData';
@@ -25,6 +27,7 @@ interface AuthState {
   setAuthToken: (token: string | null) => void;
   setStatus: (status: LoadableStatus) => void;
   fetchMe: () => Promise<UserProfile | null> | null;
+  refreshSessionQuiet: () => Promise<void>;
   login: (credentials: { username: string; password?: string }) => Promise<UserProfile | null>;
   register: (data: {
     username: string;
@@ -83,7 +86,6 @@ interface AuthState {
     business_settings?: import('@/lib/businessSettings').BusinessSettings;
     utility_templates?: import('@/lib/utilityTemplates').UtilityTemplate[];
   }) => Promise<void>;
-  updateBetaMode: (enabled: boolean) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -128,7 +130,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         useWalletStore.getState().syncFromUser(mappedUser.wallets, mappedUser.household?.id);
         return mappedUser;
       })
-      .catch(() => {
+      .catch((error) => {
+        if (error instanceof ApiClientError && isMaintenanceModeResponse(error.status, error.data)) {
+          set({ status: LoadableStatus.Loaded });
+          return null;
+        }
         removeAuthToken();
         set({ user: null, authToken: null, status: LoadableStatus.Error });
         return null;
@@ -138,6 +144,47 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
 
     return fetchUserPromise;
+  },
+
+  refreshSessionQuiet: async () => {
+    const token = get().authToken ?? getAuthToken();
+    if (!token) return;
+
+    try {
+      const res = await authClient.me();
+      const mappedUser = mapUserFromApi(res.data);
+      const prev = get().user;
+
+      const announcementId = mappedUser.systemAnnouncement?.id ?? null;
+      const prevAnnouncementId = prev?.systemAnnouncement?.id ?? null;
+      const flagsChanged =
+        JSON.stringify(mappedUser.platformFeatureFlags ?? null) !==
+        JSON.stringify(prev?.platformFeatureFlags ?? null);
+      const walletsChanged =
+        JSON.stringify(mappedUser.wallets?.map((w) => w.id) ?? []) !==
+        JSON.stringify(prev?.wallets?.map((w) => w.id) ?? []);
+
+      if (
+        prev &&
+        prev.id === mappedUser.id &&
+        announcementId === prevAnnouncementId &&
+        !flagsChanged &&
+        !walletsChanged
+      ) {
+        return;
+      }
+
+      set({ user: mappedUser });
+      useWalletStore.getState().syncFromUser(mappedUser.wallets, mappedUser.household?.id);
+    } catch (error) {
+      if (error instanceof ApiClientError && isMaintenanceModeResponse(error.status, error.data)) {
+        return;
+      }
+      if (isTimeoutError(error)) {
+        return;
+      }
+      console.error('[useAuthStore] refreshSessionQuiet failed', error);
+    }
   },
 
   login: async (credentials) => {
@@ -167,7 +214,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         authToken: null,
         status: LoadableStatus.Loaded,
       });
-      return null;
+      throw e;
     }
   },
 
@@ -387,15 +434,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updateHouseholdSettings: async (data) => {
     await householdClient.update(data);
     await get().fetchMe();
-  },
-
-  updateBetaMode: async (enabled) => {
-    const res = await platformClient.updateBetaMode(enabled);
-    const betaMode = Boolean(res.data.betaMode ?? res.data.beta_mode);
-    const user = get().user;
-    if (user) {
-      set({ user: { ...user, betaMode } });
-    }
   },
 
   logout: async () => {

@@ -1,4 +1,4 @@
-export type { UserProfile, RawApiUser } from './auth';
+export type { UserProfile, RawApiUser, PlatformFeatureFlagKey, PlatformFeatureFlags } from './auth';
 export type { HouseholdProfile, RawApiHousehold } from './household';
 export type { WalletProfile, RawApiWallet, SubscriptionTier, SubscriptionStatus } from './wallet';
 export type { LedgerEntry, CashTransaction, BudgetListResponse } from './budget';
@@ -23,6 +23,11 @@ export type {
   AiUtilityAnomalies,
   AiWeeklyBriefing,
   AiDebtPlan,
+  AiCfoBrief,
+  AiCfoContextPayload,
+  AiTravelPlan,
+  AiTravelDayPlan,
+  AiTravelCostBreakdown,
 } from './ai';
 export type { BillingSummary, BillingInvoice, BillingPaymentMethod } from './billing';
 export type { PaymentStatus, Notification, Currency, Month } from './system';

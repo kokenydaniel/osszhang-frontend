@@ -9,9 +9,10 @@ interface MetersNewMeterModalProps {
   metersSettings: MetersSettings;
   onSubmit: (event: React.FormEvent) => void;
   onApplyTemplate: (template: MetersSettings['templates'][number]) => void;
+  saving?: boolean;
 }
 
-export function MetersNewMeterModal({ metersSettings, onSubmit, onApplyTemplate }: MetersNewMeterModalProps) {
+export function MetersNewMeterModal({ metersSettings, onSubmit, onApplyTemplate, saving }: MetersNewMeterModalProps) {
   const ui = useMetersUi();
 
   return (
@@ -30,6 +31,7 @@ export function MetersNewMeterModal({ metersSettings, onSubmit, onApplyTemplate 
         onNewMeterLocChange={ui.setNewMeterLoc}
         onApplyTemplate={onApplyTemplate}
         onSubmit={onSubmit}
+        saving={saving}
       />
     </Modal>
   );

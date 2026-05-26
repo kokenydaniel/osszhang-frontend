@@ -7,10 +7,10 @@ import { FieldLabel } from '@/components/ui/FieldLabel';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { HELP } from '@/lib/helpTexts';
 import classNames from 'classnames';
-import type { BudgetPageState } from '@/components/modules/budget/hooks/use-budget-page-state';
+import type { BudgetLogicResult } from '@/components/modules/budget/hooks/useBudgetLogic';
 
 type BudgetBalancePanelProps = Pick<
-  BudgetPageState,
+  BudgetLogicResult,
   | 'manualBalance'
   | 'setManualBalance'
   | 'setBalanceSaved'

@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { PageHeader, MetricStrip } from '@/components/design';
+import { PageHeader, MetricStrip, ModulePageSkeleton } from '@/components/design';
 import { Plus, Info } from 'lucide-react';
 import { useDebtsLogic } from '@/components/modules/debts/hooks/useDebtsLogic';
 import { DebtsTable } from '@/components/modules/debts/debts-table';
@@ -30,6 +30,10 @@ export default function DebtsPage() {
         }
       />
 
+      {logic.pageLoading ? (
+        <ModulePageSkeleton />
+      ) : (
+        <>
       <MetricStrip items={logic.metrics} columns={4} variant="separated" />
 
       {logic.debtsWithPayoff.length > 0 && (
@@ -50,8 +54,10 @@ export default function DebtsPage() {
       {logic.debtsWithPayoff.length > 0 && <DebtsStrategySection {...logic} />}
 
       <DebtsTable {...logic} />
+        </>
+      )}
 
-      <DebtsFormModal onSubmit={logic.saveDebt} />
+      <DebtsFormModal onSubmit={logic.saveDebt} saving={logic.debtSaving} />
       <DebtsPayModal
         categories={logic.categories}
         selectedYear={logic.selectedYear}

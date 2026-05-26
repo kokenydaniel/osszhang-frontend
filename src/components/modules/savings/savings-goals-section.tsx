@@ -2,11 +2,12 @@
 
 import { Section, EmptyState } from '@/components/design';
 import { Target } from 'lucide-react';
-import type { SavingsPageState } from '@/components/modules/savings/hooks/use-savings-page-state';
+import type { SavingsLogicResult } from '@/components/modules/savings/hooks/useSavingsLogic';
+import type { SavingsUiContextValue } from '@/components/modules/savings/SavingsUiContext';
 import { SavingsGoalCard } from '@/components/modules/savings/savings-goal-card';
 
 type SavingsGoalsSectionProps = Pick<
-  SavingsPageState,
+  SavingsLogicResult & SavingsUiContextValue,
   | 'goals'
   | 'updateSavingsAccount'
   | 'deleteSavingsAccount'

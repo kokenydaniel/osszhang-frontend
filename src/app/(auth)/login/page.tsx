@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { getApiErrorMessage } from '@/lib/api-client';
 import { Mail, Lock, Loader2, ArrowRight, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,7 +39,7 @@ export default function LoginPage() {
       });
       router.replace('/');
     } catch (err) {
-      setError(typeof err === 'string' ? err : 'Hiba történt a bejelentkezés során.');
+      setError(getApiErrorMessage(err, 'Hiba történt a bejelentkezés során.'));
     } finally {
       setLoading(false);
     }

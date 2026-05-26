@@ -16,6 +16,7 @@ import { BudgetService } from '@/services/BudgetService';
 import { matchPaymentCategory, resolveDebtsSettings } from '@/lib/debtsSettings';
 import { isHouseholdReader, canEditHousehold } from '@/lib/householdRole';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
+import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { isAbortError } from '@/lib/api-client/abortError';
 import { formatHUF } from '@/utils';
 import type { Debt } from '@/types';
@@ -37,12 +38,14 @@ export function useDebtsLogic() {
   } = useDebtsStore();
 
   const ui = useDebtsUi();
+  const { syncPayCategory, applyHouseholdDefaults } = ui;
   const { user } = useAuthStore();
   const activeWalletId = useWalletStore((s) => s.activeWalletId);
   const { categories } = useBudgetStore();
   const { selectedYear, selectedMonth } = usePreferenceStore();
   const { addNotification } = useNotificationStore();
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
+  const { pending: debtSaving, run: runDebtSave } = useAsyncAction();
   const pathname = usePathname();
 
   const debtsSettings = useMemo(() => resolveDebtsSettings(user?.household), [user?.household]);
@@ -76,12 +79,18 @@ export function useDebtsLogic() {
   }, [activeWalletId, isLoading, loadedWalletId, pathname, setDebts, setLoading]);
 
   useEffect(() => {
-    ui.syncPayCategory(categories, debtsSettings.payment_category_pattern);
-  }, [categories, debtsSettings.payment_category_pattern, ui]);
+    syncPayCategory(categories, debtsSettings.payment_category_pattern);
+  }, [categories, debtsSettings.payment_category_pattern, syncPayCategory]);
 
   useEffect(() => {
-    ui.applyHouseholdDefaults(debtsSettings);
-  }, [debtsSettings, ui]);
+    applyHouseholdDefaults(debtsSettings);
+  }, [
+    applyHouseholdDefaults,
+    debtsSettings.default_extra_monthly,
+    debtsSettings.default_strategy,
+    debtsSettings.pay_add_to_budget_default,
+    debtsSettings.payment_category_pattern,
+  ]);
 
   const debtsWithPayoff = useMemo(() => DebtsService.enrichWithPayoff(debts), [debts]);
 
@@ -144,31 +153,33 @@ export function useDebtsLogic() {
       event.preventDefault();
       if (!canEditHousehold(user)) return;
 
-      const payload = DebtsService.buildDebtFormPayload({
-        name: ui.name,
-        targetAmount: ui.targetAmount,
-        paidAmount: ui.paidAmount,
-        annualInterestRate: ui.annualInterestRate,
-        minimumPayment: ui.minimumPayment,
-        dueDay: ui.dueDay,
-      });
+      await runDebtSave(async () => {
+        const payload = DebtsService.buildDebtFormPayload({
+          name: ui.name,
+          targetAmount: ui.targetAmount,
+          paidAmount: ui.paidAmount,
+          annualInterestRate: ui.annualInterestRate,
+          minimumPayment: ui.minimumPayment,
+          dueDay: ui.dueDay,
+        });
 
-      try {
-        if (ui.editId) {
-          const updated = await debtsService.update(ui.editId, payload);
-          patchDebt(ui.editId, updated);
-          addNotification('Tartozás frissítve.', 'success');
-        } else {
-          const created = await debtsService.create(payload, activeWalletId);
-          appendDebt(created);
-          addNotification('Tartozás létrehozva.', 'success');
+        try {
+          if (ui.editId) {
+            const updated = await debtsService.update(ui.editId, payload);
+            patchDebt(ui.editId, updated);
+            addNotification('Tartozás frissítve.', 'success');
+          } else {
+            const created = await debtsService.create(payload, activeWalletId);
+            appendDebt(created);
+            addNotification('Tartozás létrehozva.', 'success');
+          }
+          ui.closeDebtForm();
+        } catch {
+          addNotification('A tartozás mentése nem sikerült.', 'error');
         }
-        ui.closeDebtForm();
-      } catch {
-        addNotification('A tartozás mentése nem sikerült.', 'error');
-      }
+      });
     },
-    [activeWalletId, addNotification, appendDebt, patchDebt, ui, user],
+    [activeWalletId, addNotification, appendDebt, patchDebt, runDebtSave, ui, user],
   );
 
   const recordPayment = useCallback(
@@ -255,8 +266,13 @@ export function useDebtsLogic() {
     }
   }, [activeWalletId, addNotification, setAiDebtPlan, ui]);
 
+  const pageLoading =
+    activeWalletId !== null && (isLoading || loadedWalletId !== activeWalletId);
+
   return {
     isReader,
+    pageLoading,
+    debtSaving,
     debtsWithPayoff,
     totalDebt: summary.totalDebt,
     monthlyMinimum: summary.monthlyMinimum,

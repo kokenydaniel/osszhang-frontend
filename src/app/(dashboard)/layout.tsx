@@ -19,6 +19,8 @@ import { openUpgradeModal } from '@/stores/useUpgradeModalStore';
 import { needsHouseholdOnboarding } from '@/lib/householdOnboarding';
 import { loadRouteData } from '@/lib/loadRouteData';
 import { formatDisplayName } from '@/lib/personName';
+import { ImpersonationBanner } from '@/components/modules/admin/ImpersonationBanner';
+import { SystemAnnouncementBanner } from '@/components/layout/SystemAnnouncementBanner';
 import classNames from 'classnames';
 
 function SkeletonCard({ className }: { className?: string }) {
@@ -68,13 +70,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const { user, status } = useAuthStore();
+  const { user, status, refreshSessionQuiet } = useAuthStore();
   const { selectedMonth, selectedYear, setSelectedMonth, setSelectedYear } = usePreferenceStore();
+  const isMaintenanceRoute = pathname.startsWith('/maintenance');
 
   useEffect(() => {
-    if (isStoreLoading(status) || !user) return;
-    void loadRouteData(pathname, user);
-  }, [pathname, status, user]);
+    if (isMaintenanceRoute) return;
+    if (isStoreLoading(status)) return;
+    const currentUser = useAuthStore.getState().user;
+    if (!currentUser) return;
+    void loadRouteData(pathname, currentUser);
+  }, [isMaintenanceRoute, pathname, status]);
+
+  useEffect(() => {
+    if (isMaintenanceRoute) return;
+    if (isStoreLoading(status)) return;
+    void refreshSessionQuiet();
+  }, [isMaintenanceRoute, pathname, refreshSessionQuiet, status]);
 
   useEffect(() => {
     if (isStoreLoading(status) || !user) return;
@@ -165,13 +177,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const showOnboarding = needsHouseholdOnboarding(user);
 
   useEffect(() => {
+    if (isMaintenanceRoute) return;
     if (!isStoreLoading(status) && !user) {
       router.replace('/login');
     }
-  }, [router, status, user]);
+  }, [isMaintenanceRoute, router, status, user]);
 
   if (isStoreLoading(status)) {
     return <DashboardSkeleton />;
+  }
+
+  if (isMaintenanceRoute) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <main className="flex-1 p-4 md:p-8 w-full overflow-x-hidden">{children}</main>
+      </div>
+    );
   }
 
   if (!user) {
@@ -179,10 +200,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className={classNames('flex min-h-screen bg-background', showOnboarding && 'overflow-hidden')}>
+    <div className={classNames('flex min-h-screen flex-col bg-background', showOnboarding && 'overflow-hidden')}>
       <ChangePasswordModal />
       <UpgradeModal />
-      <div className={classNames('flex min-h-screen w-full', showOnboarding && 'pointer-events-none select-none blur-[6px] opacity-60')}>
+      <SystemAnnouncementBanner />
+      <div className={classNames('flex min-h-0 flex-1', showOnboarding && 'pointer-events-none select-none blur-[6px] opacity-60')}>
       <Sidebar
         collapsed={collapsed}
         onToggle={handleToggle}
@@ -190,6 +212,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onMobileClose={() => setMobileOpen(false)}
       />
       <div className="flex-1 flex flex-col min-w-0">
+        <ImpersonationBanner />
         <Header
           pathname={pathname}
           month={selectedMonth}

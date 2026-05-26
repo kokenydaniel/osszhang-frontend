@@ -1,11 +1,12 @@
 import type { ApiClient } from '../api-client';
+import type { RequestOptions } from '../response';
 import type { BusinessOrder } from '@/types';
 
 export class BusinessClient {
   constructor(protected apiClient: ApiClient, protected baseEndpoint = 'business-orders') {}
 
-  getAll() {
-    return this.apiClient.getJson<BusinessOrder[]>(this.baseEndpoint);
+  getAll(options?: RequestOptions) {
+    return this.apiClient.getJson<BusinessOrder[]>(this.baseEndpoint, options);
   }
 
   create(data: Omit<BusinessOrder, 'id'>) {

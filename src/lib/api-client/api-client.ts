@@ -3,6 +3,7 @@ import { getAuthToken, removeAuthToken } from '@/lib/authToken';
 import { isAbortError, isTimeoutError, mergeAbortSignals } from '@/lib/api-client/abortError';
 import { API_URL } from './public-env';
 import type { ApiResponse, RequestOptions } from './response';
+import { isMaintenanceModeResponse, redirectToMaintenanceIfNeeded } from './response';
 
 export { isAbortError, isTimeoutError } from '@/lib/api-client/abortError';
 
@@ -93,21 +94,42 @@ export class ApiClient {
     }
   }
 
+  protected shouldBypassMaintenanceRedirect(): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+      // Lazy require avoids circular import: useAuthStore -> api-client -> useAuthStore
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { useAuthStore } = require('@/stores/useAuthStore') as typeof import('@/stores/useAuthStore');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { isPlatformAdmin } = require('@/lib/platformAdmin') as typeof import('@/lib/platformAdmin');
+      return isPlatformAdmin(useAuthStore.getState().user);
+    } catch {
+      return false;
+    }
+  }
+
   protected handleHttpError(status: number, data: unknown, silent?: boolean): never {
+    if (isMaintenanceModeResponse(status, data) && !this.shouldBypassMaintenanceRedirect()) {
+      redirectToMaintenanceIfNeeded(status, data);
+    }
+
     const { addNotification } = useNotificationStore.getState();
-    const payload = (data ?? {}) as { errors?: Record<string, string[]>; message?: string };
+    const payload = (data ?? {}) as { errors?: Record<string, string[]>; message?: string; code?: string };
 
     if (!silent) {
       switch (status) {
-        case 401:
-          if (typeof window !== 'undefined') {
+        case 401: {
+          const onAuthPage =
+            typeof window !== 'undefined' &&
+            (window.location.pathname.includes('/login') ||
+              window.location.pathname.includes('/register'));
+          if (typeof window !== 'undefined' && !onAuthPage) {
             removeAuthToken();
             addNotification('A munkamenet lejárt. Kérjük, jelentkezz be újra.', 'error');
-            if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
-              window.location.href = '/login';
-            }
+            window.location.href = '/login';
           }
           break;
+        }
         case 403:
           addNotification('Nincs jogosultságod a művelethez!', 'error');
           break;
@@ -118,6 +140,11 @@ export class ApiClient {
         }
         case 429:
           addNotification('Túl sok kérés! Próbáld újra később.', 'info');
+          break;
+        case 503:
+          if (!isMaintenanceModeResponse(status, data)) {
+            addNotification(payload.message || 'A szolgáltatás átmenetileg nem elérhető.', 'error');
+          }
           break;
         case 500:
           addNotification('Szerver hiba történt. Dolgozunk a javításon!', 'error');
@@ -138,10 +165,11 @@ export class ApiClient {
   ): Promise<ApiResponse<T>> {
     const timeoutController = new AbortController();
     let timeout: ReturnType<typeof setTimeout> | undefined;
+    const timeoutMs = options?.timeoutMs ?? 45000;
     if (typeof window !== 'undefined') {
       timeout = setTimeout(() => {
         timeoutController.abort(new DOMException('The request timed out.', 'TimeoutError'));
-      }, 30000);
+      }, timeoutMs);
     }
 
     const signals = [timeoutController.signal];
@@ -201,6 +229,10 @@ export class ApiClient {
 
   putJson<T>(endpoint: string, body?: unknown, options?: RequestOptions) {
     return this.request<T>('PUT', endpoint, body, options);
+  }
+
+  patchJson<T>(endpoint: string, body?: unknown, options?: RequestOptions) {
+    return this.request<T>('PATCH', endpoint, body, options);
   }
 
   deleteJson<T>(endpoint: string, body?: unknown, options?: RequestOptions) {

@@ -6,9 +6,10 @@ import { DebtsForm } from '@/components/modules/debts/debts-form';
 
 interface DebtsFormModalProps {
   onSubmit: (event: React.FormEvent) => void;
+  saving?: boolean;
 }
 
-export function DebtsFormModal({ onSubmit }: DebtsFormModalProps) {
+export function DebtsFormModal({ onSubmit, saving }: DebtsFormModalProps) {
   const ui = useDebtsUi();
 
   return (
@@ -34,6 +35,7 @@ export function DebtsFormModal({ onSubmit }: DebtsFormModalProps) {
         onDueDayChange={ui.setDueDay}
         onSubmit={onSubmit}
         onCancel={ui.closeDebtForm}
+        saving={saving}
       />
     </Modal>
   );

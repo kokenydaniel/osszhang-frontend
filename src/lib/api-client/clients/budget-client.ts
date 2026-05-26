@@ -15,6 +15,18 @@ export class BudgetClient {
     });
   }
 
+  getForPeriod(walletId: number, month: number, year: number, options?: RequestOptions) {
+    return this.apiClient.getJson<BudgetListResponse>(this.baseEndpoint, {
+      ...options,
+      params: {
+        ...options?.params,
+        walletId,
+        month,
+        year,
+      },
+    });
+  }
+
   getGoalRows(walletId: number | null | undefined, month: number, year: number, options?: RequestOptions) {
     return this.apiClient.getJson<CashTransaction[]>(`${this.baseEndpoint}/goal-rows`, {
       ...options,

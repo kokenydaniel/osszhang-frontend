@@ -8,41 +8,17 @@ import { FieldLabel } from '@/components/ui/FieldLabel';
 import { LedgerHistoryPanel } from '@/components/design';
 import { HELP } from '@/lib/helpTexts';
 import { Check, Plus } from 'lucide-react';
-import type { BudgetPageState } from '@/components/modules/budget/hooks/use-budget-page-state';
+import { useBudgetLogic } from '@/components/modules/budget/BudgetLogicContext';
 
-type BudgetLedgerModalProps = Pick<
-  BudgetPageState,
-  | 'isLedgerModalOpen'
-  | 'closeLedgerModal'
-  | 'ledgerAmount'
-  | 'setLedgerAmount'
-  | 'ledgerReason'
-  | 'setLedgerReason'
-  | 'handleLedgerSubmit'
-  | 'activeLedgerItems'
-  | 'ledgerIsGoalPayment'
-  | 'ledgerGoalTitle'
->;
-
-export function BudgetLedgerModal({
-  isLedgerModalOpen,
-  closeLedgerModal,
-  ledgerAmount,
-  setLedgerAmount,
-  ledgerReason,
-  setLedgerReason,
-  handleLedgerSubmit,
-  activeLedgerItems,
-  ledgerIsGoalPayment,
-  ledgerGoalTitle,
-}: BudgetLedgerModalProps) {
-  const isGoal = ledgerIsGoalPayment;
+export function BudgetLedgerModal() {
+  const logic = useBudgetLogic();
+  const isGoal = logic.ledgerIsGoalPayment;
 
   return (
     <Modal
-      isOpen={isLedgerModalOpen}
-      onClose={closeLedgerModal}
-      title={isGoal ? `Befizetés: ${ledgerGoalTitle}` : 'Költés rögzítése (ledger)'}
+      isOpen={logic.isLedgerModalOpen}
+      onClose={logic.closeLedgerModal}
+      title={isGoal ? `Befizetés: ${logic.ledgerGoalTitle}` : 'Költés rögzítése (ledger)'}
       description={
         isGoal
           ? 'A tervezett havi összeg előre kitöltve — ellenőrizd, majd mentsd a befizetést.'
@@ -64,8 +40,8 @@ export function BudgetLedgerModal({
           <Input
             type="number"
             placeholder="0"
-            value={ledgerAmount}
-            onChange={(e) => setLedgerAmount(e.target.value)}
+            value={logic.ledgerAmount}
+            onChange={(e) => logic.setLedgerAmount({ type: 'SET_LEDGER_FIELD', field: 'ledgerAmount', value: e.target.value } as any)}
             step="any"
           />
         </div>
@@ -79,14 +55,19 @@ export function BudgetLedgerModal({
           </FieldLabel>
           <Input
             placeholder={isGoal ? 'Költségvetés – cél neve' : 'pl. Heti bevásárlás'}
-            value={ledgerReason}
-            onChange={(e) => setLedgerReason(e.target.value)}
+            value={logic.ledgerReason}
+            onChange={(e) => logic.setLedgerReason({ type: 'SET_LEDGER_FIELD', field: 'ledgerReason', value: e.target.value } as any)}
           />
         </div>
 
         <Button
-          onClick={() => void handleLedgerSubmit()}
-          disabled={!ledgerAmount.trim() || Number(ledgerAmount.replace(',', '.')) <= 0}
+          onClick={() => void logic.handleLedgerSubmit()}
+          loading={logic.ledgerSaving}
+          disabled={
+            logic.ledgerSaving ||
+            !logic.ledgerAmount.trim() ||
+            Number(logic.ledgerAmount.replace(',', '.')) <= 0
+          }
         >
           {isGoal ? (
             <>
@@ -99,7 +80,7 @@ export function BudgetLedgerModal({
           )}
         </Button>
 
-        <LedgerHistoryPanel items={activeLedgerItems as LedgerEntry[] | undefined} />
+        <LedgerHistoryPanel items={logic.activeLedgerItems as LedgerEntry[] | undefined} />
       </div>
     </Modal>
   );

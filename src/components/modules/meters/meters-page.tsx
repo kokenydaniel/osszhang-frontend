@@ -7,6 +7,7 @@ import {
   Section,
   AccentPanel,
   EmptyState,
+  ModulePageSkeleton,
 } from '@/components/design';
 import {
   MapPin,
@@ -42,6 +43,10 @@ export default function MetersPage() {
         }
       />
 
+      {logic.pageLoading ? (
+        <ModulePageSkeleton metrics={0} tableRows={4} />
+      ) : (
+        <>
       {logic.canUseAi && !!logic.aiUtilityAnomalies?.anomalies?.length ? (
         <AccentPanel
           tone="warning"
@@ -50,7 +55,7 @@ export default function MetersPage() {
           titleInfo={HELP.meters.aiAnomaly}
           description="A modell az alábbi szokatlan értékeket észlelte"
           action={
-            <Button variant="ghost" size="xs" onClick={() => logic.fetchAiUtilityAnomalies(logic.selectedYear, logic.selectedMonth)}>
+            <Button variant="ghost" size="xs" onClick={() => void logic.refreshAiAnomalies()}>
               <RefreshCw size={11} /> Frissítés
             </Button>
           }
@@ -134,13 +139,16 @@ export default function MetersPage() {
           </Section>
         ))
       )}
+        </>
+      )}
 
-      <MetersReadingModal meters={logic.meters} onSubmit={logic.saveReading} />
+      <MetersReadingModal meters={logic.meters} onSubmit={logic.saveReading} saving={logic.readingSaving} />
       <MetersAiModal onSubmit={logic.estimateAiMonth} onFillAllGaps={logic.fillAllGaps} />
       <MetersNewMeterModal
         metersSettings={logic.metersSettings}
         onSubmit={logic.saveMeter}
         onApplyTemplate={logic.applyMeterTemplate}
+        saving={logic.meterSaving}
       />
       <ConfirmDeleteModal />
     </div>

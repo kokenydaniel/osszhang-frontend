@@ -4,7 +4,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { UtilityTemplate } from '@/lib/utilityTemplates';
-import { splitRuleLabel } from '@/lib/utilityViewer';
+import { splitRuleLabel } from '@/lib/utilityTemplates';
 import type { UtilitySplitRule } from '@/types';
 
 const SPLIT_RULES: UtilitySplitRule[] = ['shared', 'dani-private', 'ildi-private'];

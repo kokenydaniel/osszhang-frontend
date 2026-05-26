@@ -12,7 +12,7 @@ import {
   UtilitiesClient,
   WalletClient,
   SubscriptionClient,
-  PlatformClient,
+  AdminClient,
 } from './clients';
 import { API_URL } from './public-env';
 
@@ -29,7 +29,7 @@ export class ApiClientFacade extends ApiClient {
   readonly aiFinance: AiFinanceClient;
   readonly wallets: WalletClient;
   readonly subscription: SubscriptionClient;
-  readonly platform: PlatformClient;
+  readonly admin: AdminClient;
 
   constructor(baseUrl: string = API_URL) {
     super(baseUrl);
@@ -45,7 +45,7 @@ export class ApiClientFacade extends ApiClient {
     this.aiFinance = new AiFinanceClient(this);
     this.wallets = new WalletClient(this);
     this.subscription = new SubscriptionClient(this);
-    this.platform = new PlatformClient(this);
+    this.admin = new AdminClient(this);
   }
 }
 

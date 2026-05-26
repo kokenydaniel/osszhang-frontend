@@ -1,19 +1,57 @@
 import { aiFinanceClient } from '@/lib/api-client';
+import { isTimeoutError } from '@/lib/api-client/abortError';
 import { unwrapApiData } from '@/lib/unwrapApiData';
 import { MetersService } from '@/services/MetersService';
-import type { AiOverspendAnalysis, AiCashflowForecast, AiWeeklyBriefing, AiDebtPlan } from '@/types';
+import type {
+  AiOverspendAnalysis,
+  AiCashflowForecast,
+  AiWeeklyBriefing,
+  AiDebtPlan,
+  AiUtilityAnomalies,
+  AiCfoBrief,
+  AiTravelPlan,
+  AiCfoContextPayload,
+} from '@/types';
 
 class AiFinanceServiceImpl {
-  async getOverspendRootCause(year: number, month: number, walletId: number | null): Promise<AiOverspendAnalysis | null> {
+  async getOverspendRootCause(
+    year: number,
+    month: number,
+    walletId: number | null,
+    options?: { silent?: boolean },
+  ): Promise<AiOverspendAnalysis | null> {
     if (walletId === null) return null;
-    const res = await aiFinanceClient.getOverspendRootCause(year, month, walletId);
-    return unwrapApiData<AiOverspendAnalysis>(res.data);
+    try {
+      const res = await aiFinanceClient.getOverspendRootCause(year, month, walletId, {
+        silent: options?.silent,
+      });
+      return unwrapApiData<AiOverspendAnalysis>(res.data);
+    } catch (error) {
+      if (!options?.silent || !isTimeoutError(error)) {
+        console.error('[AiFinanceService] getOverspendRootCause failed', error);
+      }
+      return null;
+    }
   }
 
-  async getCashflowForecast(year: number, month: number, walletId: number | null): Promise<AiCashflowForecast | null> {
+  async getCashflowForecast(
+    year: number,
+    month: number,
+    walletId: number | null,
+    options?: { silent?: boolean },
+  ): Promise<AiCashflowForecast | null> {
     if (walletId === null) return null;
-    const res = await aiFinanceClient.getCashflowForecast(year, month, walletId);
-    return unwrapApiData<AiCashflowForecast>(res.data);
+    try {
+      const res = await aiFinanceClient.getCashflowForecast(year, month, walletId, {
+        silent: options?.silent,
+      });
+      return unwrapApiData<AiCashflowForecast>(res.data);
+    } catch (error) {
+      if (!options?.silent || !isTimeoutError(error)) {
+        console.error('[AiFinanceService] getCashflowForecast failed', error);
+      }
+      return null;
+    }
   }
 
   async getWeeklyBriefing(weekStart: string | undefined, walletId: number | null): Promise<AiWeeklyBriefing | null> {
@@ -65,6 +103,51 @@ class AiFinanceServiceImpl {
     } catch (error) {
       console.error('[AiFinanceService] estimateMeterConsumption failed', error);
       return null;
+    }
+  }
+
+  async getUtilityAnomalies(year: number, month: number): Promise<AiUtilityAnomalies | null> {
+    try {
+      const res = await aiFinanceClient.getUtilitiesAnomalies(year, month);
+      return unwrapApiData<AiUtilityAnomalies>(res.data);
+    } catch (error) {
+      console.error('[AiFinanceService] getUtilityAnomalies failed', error);
+      return null;
+    }
+  }
+
+  async getAiCfo(
+    payload: AiCfoContextPayload,
+    options?: { silent?: boolean },
+  ): Promise<AiCfoBrief | null> {
+    try {
+      const res = await aiFinanceClient.getAiCfo(payload, {
+        silent: options?.silent,
+      });
+      return unwrapApiData<AiCfoBrief>(res.data);
+    } catch (error) {
+      console.error('[AiFinanceService] getAiCfo failed', error);
+      return null;
+    }
+  }
+
+  async planTravel(
+    payload: { destination: string; durationDays: number; totalBudget: number },
+    options?: { silent?: boolean },
+  ): Promise<AiTravelPlan | null> {
+    try {
+      const res = await aiFinanceClient.planTravel(
+        {
+          destination: payload.destination,
+          duration_days: payload.durationDays,
+          total_budget: payload.totalBudget,
+        },
+        { silent: options?.silent },
+      );
+      return unwrapApiData<AiTravelPlan>(res.data);
+    } catch (error) {
+      console.error('[AiFinanceService] planTravel failed', error);
+      throw error;
     }
   }
 }

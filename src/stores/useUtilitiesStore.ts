@@ -1,102 +1,49 @@
 import { create } from 'zustand';
-import { UtilityBill, UtilitySettlement, AiUtilityAnomalies } from '@/types';
-import { utilitiesClient, aiFinanceClient } from '@/lib/api-client';
-import { parseUtilitiesIndexResponse } from '@/lib/parseUtilitiesResponse';
-import { unwrapApiData } from '@/lib/unwrapApiData';
+import type { AiUtilityAnomalies } from '@/types';
+import type { UtilitiesIndex } from '@/mappers/utilities.mapper';
+import type { UtilityBill, UtilitySettlement } from '@/types';
 
 interface UtilitiesState {
   bills: UtilityBill[];
   settlements: UtilitySettlement[];
   aiUtilityAnomalies: AiUtilityAnomalies | null;
   isLoading: boolean;
+  isLoaded: boolean;
 
-  fetchBills: () => Promise<void>;
-  addBill: (b: Omit<UtilityBill, 'id'>) => Promise<void>;
-  updateBill: (id: number, b: Partial<Omit<UtilityBill, 'id'>>) => Promise<void>;
-  deleteBill: (id: number) => Promise<void>;
-  clonePreviousMonth: (month: number, year: number) => Promise<void>;
-  settleMonth: (month: number, year: number) => Promise<UtilitySettlement>;
-  unsettleMonth: (month: number, year: number) => Promise<void>;
-
-  fetchAiUtilityAnomalies: (year: number, month: number) => Promise<void>;
+  setUtilities: (data: UtilitiesIndex) => void;
+  setBills: (bills: UtilityBill[]) => void;
+  setSettlements: (settlements: UtilitySettlement[]) => void;
+  setAiUtilityAnomalies: (data: AiUtilityAnomalies | null) => void;
+  setLoading: (loading: boolean) => void;
+  setLoaded: (loaded: boolean) => void;
+  patchBill: (id: number, updated: UtilityBill) => void;
+  appendBill: (bill: UtilityBill) => void;
+  removeBill: (id: number) => void;
+  reset: () => void;
 }
 
-export const useUtilitiesStore = create<UtilitiesState>((set, get) => ({
-  bills: [],
-  settlements: [],
-  aiUtilityAnomalies: null,
+const INITIAL_STATE = {
+  bills: [] as UtilityBill[],
+  settlements: [] as UtilitySettlement[],
+  aiUtilityAnomalies: null as AiUtilityAnomalies | null,
   isLoading: false,
+  isLoaded: false,
+};
 
-  fetchBills: async () => {
-    set({ isLoading: true });
-    try {
-      const res = await utilitiesClient.getAll();
-      const parsed = parseUtilitiesIndexResponse(res.data);
-      set({ bills: parsed.bills, settlements: parsed.settlements });
-    } catch (e) {
-      console.error('Failed to fetch bills', e);
-    } finally {
-      set({ isLoading: false });
-    }
-  },
+export const useUtilitiesStore = create<UtilitiesState>((set) => ({
+  ...INITIAL_STATE,
 
-  addBill: async (b) => {
-    const res = await utilitiesClient.create(b);
-    set({ bills: [...get().bills, res.data] });
-  },
-
-  updateBill: async (id, b) => {
-    const previous = get().bills;
-    const current = previous.find((bill) => bill.id === id);
-    if (!current) return;
-
-    const optimistic = { ...current, ...b };
-    set({ bills: previous.map((bill) => (bill.id === id ? optimistic : bill)) });
-
-    try {
-      const res = await utilitiesClient.update(id, b);
-      set({ bills: get().bills.map((bill) => (bill.id === id ? res.data : bill)) });
-    } catch (e) {
-      set({ bills: previous });
-      console.error('Failed to update bill', e);
-      throw e;
-    }
-  },
-
-  clonePreviousMonth: async (m, y) => {
-    const res = await utilitiesClient.cloneMonth(m, y);
-    const parsed = parseUtilitiesIndexResponse(res.data);
-    set({ bills: parsed.bills, settlements: parsed.settlements });
-  },
-
-  settleMonth: async (m, y) => {
-    const res = await utilitiesClient.settleMonth(m, y);
-    const parsed = parseUtilitiesIndexResponse(res.data);
-    set({ bills: parsed.bills, settlements: parsed.settlements });
-    const settlement = (res.data as { settlement?: UtilitySettlement }).settlement;
-    if (!settlement) {
-      throw new Error('Missing settlement in API response');
-    }
-    return settlement;
-  },
-
-  unsettleMonth: async (m, y) => {
-    const res = await utilitiesClient.unsettleMonth(m, y);
-    const parsed = parseUtilitiesIndexResponse(res.data);
-    set({ bills: parsed.bills, settlements: parsed.settlements });
-  },
-
-  deleteBill: async (id) => {
-    await utilitiesClient.delete(id);
-    set({ bills: get().bills.filter((b) => b.id !== id) });
-  },
-
-  fetchAiUtilityAnomalies: async (y, m) => {
-    try {
-      const res = await aiFinanceClient.getUtilitiesAnomalies(y, m);
-      set({ aiUtilityAnomalies: unwrapApiData<AiUtilityAnomalies>(res.data) });
-    } catch (e) {
-      console.error('Failed to fetch AI Utility anomalies', e);
-    }
-  },
+  setUtilities: ({ bills, settlements }) => set({ bills, settlements, isLoading: false, isLoaded: true }),
+  setBills: (bills) => set({ bills }),
+  setSettlements: (settlements) => set({ settlements }),
+  setAiUtilityAnomalies: (aiUtilityAnomalies) => set({ aiUtilityAnomalies }),
+  setLoading: (isLoading) => set({ isLoading }),
+  setLoaded: (isLoaded) => set({ isLoaded }),
+  patchBill: (id, updated) =>
+    set((state) => ({
+      bills: state.bills.map((bill) => (bill.id === id ? updated : bill)),
+    })),
+  appendBill: (bill) => set((state) => ({ bills: [...state.bills, bill] })),
+  removeBill: (id) => set((state) => ({ bills: state.bills.filter((b) => b.id !== id) })),
+  reset: () => set(INITIAL_STATE),
 }));

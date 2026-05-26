@@ -2,10 +2,10 @@ import Link from 'next/link';
 import { formatHUF } from '@/utils';
 import { AccentPanel } from '@/components/design';
 import { AlertCircle, ChevronRight, Users } from 'lucide-react';
-import type { DashboardPageState } from '@/components/modules/dashboard/hooks/use-dashboard-page-state';
+import type { DashboardLogicResult } from '@/components/modules/dashboard/hooks/useDashboardLogic';
 
 type Props = Pick<
-  DashboardPageState,
+  DashboardLogicResult,
   'unpaidBills' | 'canUse' | 'utilitySplitEnabled' | 'rezsiBalance' | 'counterpartyLabel'
 >;
 

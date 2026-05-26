@@ -1,13 +1,20 @@
 import type { ApiClient } from '../api-client';
 import type {
   AiCashflowForecast,
+  AiCfoBrief,
+  AiCfoContextPayload,
   AiDebtPlan,
   AiEnvelope,
   AiOverspendAnalysis,
   AiSavingsPlan,
+  AiTravelPlan,
   AiUtilityAnomalies,
   AiWeeklyBriefing,
 } from '@/types';
+
+import type { RequestOptions } from '@/lib/api-client/response';
+
+const AI_REQUEST_TIMEOUT_MS = 120_000;
 
 export class AiFinanceClient {
   constructor(protected apiClient: ApiClient, protected baseEndpoint = 'ai') {}
@@ -32,10 +39,12 @@ export class AiFinanceClient {
     );
   }
 
-  getOverspendRootCause(year: number, month: number, walletId?: number | null) {
+  getOverspendRootCause(year: number, month: number, walletId?: number | null, options?: RequestOptions) {
     return this.apiClient.getJson<AiEnvelope<AiOverspendAnalysis>>(
       `${this.baseEndpoint}/v1/budget/overspend-root-cause`,
       {
+        ...options,
+        timeoutMs: options?.timeoutMs ?? AI_REQUEST_TIMEOUT_MS,
         params: {
           year,
           month,
@@ -45,10 +54,12 @@ export class AiFinanceClient {
     );
   }
 
-  getCashflowForecast(year: number, month: number, walletId?: number | null) {
+  getCashflowForecast(year: number, month: number, walletId?: number | null, options?: RequestOptions) {
     return this.apiClient.getJson<AiEnvelope<AiCashflowForecast>>(
       `${this.baseEndpoint}/v1/budget/cashflow-forecast`,
       {
+        ...options,
+        timeoutMs: options?.timeoutMs ?? AI_REQUEST_TIMEOUT_MS,
         params: {
           year,
           month,
@@ -90,5 +101,19 @@ export class AiFinanceClient {
 
   optimizeDebts(data: { strategy?: 'avalanche' | 'snowball'; wallet_id?: number | null }) {
     return this.apiClient.postJson<AiEnvelope<AiDebtPlan>>(`${this.baseEndpoint}/v1/debts/optimize`, data);
+  }
+
+  getAiCfo(payload: AiCfoContextPayload, options?: RequestOptions) {
+    return this.apiClient.postJson<AiEnvelope<AiCfoBrief>>('dashboard/ai-cfo', payload, {
+      ...options,
+      timeoutMs: options?.timeoutMs ?? AI_REQUEST_TIMEOUT_MS,
+    });
+  }
+
+  planTravel(data: { destination: string; duration_days: number; total_budget: number }, options?: RequestOptions) {
+    return this.apiClient.postJson<AiEnvelope<AiTravelPlan>>('tools/travel/plan', data, {
+      ...options,
+      timeoutMs: options?.timeoutMs ?? AI_REQUEST_TIMEOUT_MS,
+    });
   }
 }

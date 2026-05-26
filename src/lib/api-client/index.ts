@@ -18,4 +18,4 @@ export const investmentsClient = apiClient.investments;
 export const aiFinanceClient = apiClient.aiFinance;
 export const walletClient = apiClient.wallets;
 export const subscriptionClient = apiClient.subscription;
-export const platformClient = apiClient.platform;
+export const adminClient = apiClient.admin;

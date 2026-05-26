@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { WalletProfile } from '@/types';
+import { syncWalletDomainCaches } from '@/lib/syncWalletDomains';
 
 interface WalletState {
   activeWalletId: number | null;
@@ -18,29 +19,7 @@ export const useWalletStore = create<WalletState>()(
       setActiveWalletId: (walletId) => {
         if (get().activeWalletId === walletId) return;
         set({ activeWalletId: walletId });
-        void import('@/services/BudgetService').then(({ BudgetService }) => {
-          if (walletId !== null) {
-            void BudgetService.fetchAll(walletId, { silent: true }).then((res) => {
-              void import('@/stores/useBudgetStore').then(({ useBudgetStore }) => {
-                useBudgetStore.getState().setTransactions(res.data.transactions, walletId);
-              });
-            }).catch(console.error);
-          }
-        });
-        void import('@/lib/walletDataSync').then(({ syncSavingsForWallet }) => {
-          void syncSavingsForWallet(walletId);
-        });
-        void import('@/services/DebtsService').then(({ debtsService }) => {
-          if (walletId === null) return;
-          void debtsService
-            .fetchAll(walletId, { silent: true })
-            .then((debts) => {
-              void import('@/stores/useDebtsStore').then(({ useDebtsStore }) => {
-                useDebtsStore.getState().setDebts(debts, walletId);
-              });
-            })
-            .catch(console.error);
-        });
+        void syncWalletDomainCaches(walletId, { silent: true });
       },
 
       syncFromUser: (wallets, householdId) => {
@@ -66,6 +45,7 @@ export const useWalletStore = create<WalletState>()(
 
         if (prevWalletId !== nextWalletId || prevHousehold !== householdId) {
           set({ activeWalletId: nextWalletId, activeHouseholdId: householdId });
+          void syncWalletDomainCaches(nextWalletId, { silent: true });
         }
       },
     }),

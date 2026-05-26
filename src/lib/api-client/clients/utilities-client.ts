@@ -1,11 +1,12 @@
 import type { ApiClient } from '../api-client';
+import type { RequestOptions } from '../response';
 import type { UtilitiesIndexResponse, UtilityBill, UtilitySettlement } from '@/types';
 
 export class UtilitiesClient {
   constructor(protected apiClient: ApiClient, protected baseEndpoint = 'utilities') {}
 
-  getAll() {
-    return this.apiClient.getJson<UtilitiesIndexResponse>(this.baseEndpoint);
+  getAll(options?: RequestOptions) {
+    return this.apiClient.getJson<UtilitiesIndexResponse>(this.baseEndpoint, options);
   }
 
   create(data: Omit<UtilityBill, 'id'>) {
