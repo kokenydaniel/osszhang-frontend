@@ -16,6 +16,37 @@ interface AdminUserDetailPanelProps {
   onImpersonate: () => void;
 }
 
+function buildDetailItems(user: AdminUser) {
+  const items = [
+    { label: 'Háztartás', value: user.householdName?.trim() || '—' },
+  ];
+
+  if (user.businessName?.trim()) {
+    items.push({ label: 'Vállalkozás', value: user.businessName.trim() });
+  }
+
+  items.push({
+    label: 'Háztartás csomag',
+    value: AdminService.formatTierLabel(user.effectiveTier),
+  });
+
+  if (user.householdSubscriptionTier !== user.effectiveTier) {
+    items.push({
+      label: 'Fizetős előfizetés',
+      value: AdminService.formatTierLabel(user.householdSubscriptionTier),
+    });
+  }
+
+  items.push(
+    { label: 'Háztartás szerep', value: AdminService.formatHouseholdRole(user.role) },
+    { label: 'Utolsó belépés', value: user.lastLoginAt ? formatDate(user.lastLoginAt) : '—' },
+    { label: 'Regisztráció', value: user.createdAt ? formatDate(user.createdAt) : '—' },
+    { label: 'Felhasználó ID', value: String(user.id) },
+  );
+
+  return items;
+}
+
 export function AdminUserDetailPanel({
   user,
   canManage,
@@ -27,8 +58,8 @@ export function AdminUserDetailPanel({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h3 className="text-lg font-semibold text-foreground">{displayName}</h3>
+      <div className="rounded-lg border border-border bg-card p-4">
+        <h3 className="text-base font-semibold text-foreground">{displayName}</h3>
         <p className="text-sm text-muted-foreground mt-1">@{user.username}</p>
         <div className="flex flex-wrap gap-2 mt-3">
           <StatusPill status={user.isActive ? 'success' : 'danger'} size="xs">
@@ -48,13 +79,7 @@ export function AdminUserDetailPanel({
       <ObjectDetails
         groups={[
           {
-            items: [
-              { label: 'Háztartás', value: user.householdName ?? '—' },
-              { label: 'Háztartás szerep', value: AdminService.formatHouseholdRole(user.role) },
-              { label: 'Utolsó belépés', value: user.lastLoginAt ? formatDate(user.lastLoginAt) : '—' },
-              { label: 'Regisztráció', value: user.createdAt ? formatDate(user.createdAt) : '—' },
-              { label: 'Felhasználó ID', value: String(user.id) },
-            ],
+            items: buildDetailItems(user),
           },
         ]}
       />

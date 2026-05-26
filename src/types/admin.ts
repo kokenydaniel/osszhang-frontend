@@ -10,6 +10,8 @@ export interface AdminUser {
   isActive: boolean;
   householdId: number | null;
   householdName: string | null;
+  businessName: string | null;
+  householdSubscriptionTier: SubscriptionTier;
   effectiveTier: SubscriptionTier;
   lastLoginAt: string | null;
   createdAt: string | null;

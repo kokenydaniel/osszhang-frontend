@@ -27,13 +27,15 @@ export function AdminUserDetailDrawer({ user, canManageUser }: AdminUserDetailDr
           <SheetDescription>Platform szintű felhasználói adatok és műveletek.</SheetDescription>
         </SheetHeader>
         {user ? (
-          <AdminUserDetailPanel
-            user={user}
-            canManage={canManageUser(user)}
-            onActivate={() => ui.openActivateModal(user)}
-            onDeactivate={() => ui.openDeactivateModal(user)}
-            onImpersonate={() => ui.openImpersonateModal(user)}
-          />
+          <div className="px-4 pb-6">
+            <AdminUserDetailPanel
+              user={user}
+              canManage={canManageUser(user)}
+              onActivate={() => ui.openActivateModal(user)}
+              onDeactivate={() => ui.openDeactivateModal(user)}
+              onImpersonate={() => ui.openImpersonateModal(user)}
+            />
+          </div>
         ) : null}
       </SheetContent>
     </Sheet>

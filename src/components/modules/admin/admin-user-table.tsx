@@ -46,7 +46,7 @@ export function AdminUserTable({ users, onRowClick }: AdminUserTableProps) {
     },
     {
       key: 'tier',
-      header: 'Csomag',
+      header: 'Háztartás csomag',
       cell: (row) => (
         <StatusPill status={row.effectiveTier === 'free' ? 'neutral' : 'info'} size="xs">
           {AdminService.formatTierLabel(row.effectiveTier)}

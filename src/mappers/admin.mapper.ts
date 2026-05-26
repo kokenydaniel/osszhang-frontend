@@ -17,6 +17,10 @@ export interface RawAdminUser {
   householdId?: number | null;
   household_name?: string | null;
   householdName?: string | null;
+  business_name?: string | null;
+  businessName?: string | null;
+  household_subscription_tier?: SubscriptionTier;
+  householdSubscriptionTier?: SubscriptionTier;
   effective_tier?: SubscriptionTier;
   effectiveTier?: SubscriptionTier;
   last_login_at?: string | null;
@@ -46,6 +50,10 @@ export function mapAdminUserFromApi(raw: RawAdminUser): AdminUser {
     isActive: Boolean(raw.isActive ?? raw.is_active ?? true),
     householdId: raw.householdId ?? raw.household_id ?? null,
     householdName: raw.householdName ?? raw.household_name ?? null,
+    businessName: raw.businessName ?? raw.business_name ?? null,
+    householdSubscriptionTier: (raw.householdSubscriptionTier ??
+      raw.household_subscription_tier ??
+      'free') as SubscriptionTier,
     effectiveTier: (raw.effectiveTier ?? raw.effective_tier ?? 'free') as SubscriptionTier,
     lastLoginAt: raw.lastLoginAt ?? raw.last_login_at ?? null,
     createdAt: raw.createdAt ?? raw.created_at ?? null,
