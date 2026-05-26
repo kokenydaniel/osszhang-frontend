@@ -85,3 +85,8 @@ export async function ensureAiCfoAdviceLoaded(
 export function clearAiCfoAdviceCache(): void {
   useDashboardStore.getState().clearAiCfoAdvice();
 }
+
+export function clearAiCfoLoaderCache(): void {
+  inflightLoads.clear();
+  clearAiCfoAdviceCache();
+}

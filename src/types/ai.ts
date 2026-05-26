@@ -14,7 +14,11 @@ export interface AiEnvelope<T> {
 export interface AiOverspendAnalysis {
   status: 'ok' | 'overspent';
   overspend_amount: number;
+  monthly_balance?: number;
+  income_received?: number;
+  spent_this_month?: number;
   top_drivers: Array<{ category: string; amount: number }>;
+  actions?: string[];
 }
 
 export interface AiCashflowForecast {

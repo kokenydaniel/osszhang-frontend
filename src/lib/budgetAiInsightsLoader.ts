@@ -12,6 +12,11 @@ export function clearBudgetAiInsightsCache(): void {
   loadedKeys.clear();
 }
 
+export function clearBudgetAiInsightsLoaderCache(): void {
+  inflightLoads.clear();
+  clearBudgetAiInsightsCache();
+}
+
 /**
  * Loads budget AI insights once per wallet/period. Deduplicates concurrent callers
  * (e.g. when multiple components previously each invoked useBudgetLogic).

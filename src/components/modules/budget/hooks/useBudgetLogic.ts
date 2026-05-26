@@ -18,9 +18,11 @@ import type { MetricItem } from '@/components/design';
 import { BudgetService } from '@/services/BudgetService';
 import { AiFinanceService } from '@/services/AiFinanceService';
 import { ensureBudgetPeriodLoaded } from '@/lib/budgetDataLoader';
+import { ensureUtilitiesLoaded } from '@/lib/utilitiesDataLoader';
 import { ensureBudgetAiInsightsLoaded } from '@/lib/budgetAiInsightsLoader';
 import { syncSavingsForWallet } from '@/lib/walletDataSync';
 import { isAbortError } from '@/lib/api-client/abortError';
+import { canAccessModule } from '@/lib/moduleAccess';
 import { isSavingsGoalTransaction, CashTransaction } from '@/types';
 import { useBudgetCashflowMetrics } from '@/hooks/useBudgetCashflowMetrics';
 
@@ -72,6 +74,15 @@ export function useBudgetLogicState() {
       value: String(walletManualBalance),
     });
   }, [activeWalletId, dispatch, walletManualBalance]);
+
+  useEffect(() => {
+    if (!canAccessModule(user, 'utilities')) return;
+    void ensureUtilitiesLoaded({ silent: true }).catch((error) => {
+      if (!isAbortError(error)) {
+        console.error('[useBudgetLogic] utilities fetch failed', error);
+      }
+    });
+  }, [user?.id]);
 
   useEffect(() => {
     if (activeWalletId === null) return;
@@ -310,11 +321,7 @@ export function useBudgetLogicState() {
       
       if (tx?.category === 'Rezsi elszámolás') {
         void Promise.all([
-          import('@/services/UtilitiesService').then(({ utilitiesService }) =>
-            utilitiesService.fetchAll({ silent: true }).then((index) => {
-              useUtilitiesStore.getState().setUtilities(index);
-            }),
-          ),
+          ensureUtilitiesLoaded({ silent: true, force: true }).catch(() => undefined),
           useAuthStore.getState().fetchMe(),
         ]);
       }

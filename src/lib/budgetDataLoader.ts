@@ -4,6 +4,10 @@ import { isWalletTransactionsReady, useBudgetStore } from '@/stores/useBudgetSto
 
 const inflightLoads = new Map<string, Promise<void>>();
 
+export function clearBudgetDataLoaderCache(): void {
+  inflightLoads.clear();
+}
+
 function loadKey(walletId: number, year: number, month: number, scope: 'full' | 'goals') {
   return `${scope}:${walletId}:${year}:${month}`;
 }

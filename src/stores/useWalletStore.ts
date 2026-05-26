@@ -8,6 +8,7 @@ interface WalletState {
   activeHouseholdId: number | null;
   setActiveWalletId: (walletId: number | null) => void;
   syncFromUser: (wallets: WalletProfile[] | undefined, householdId: number | undefined) => void;
+  reset: () => void;
 }
 
 export const useWalletStore = create<WalletState>()(
@@ -48,6 +49,8 @@ export const useWalletStore = create<WalletState>()(
           void syncWalletDomainCaches(nextWalletId, { silent: true });
         }
       },
+
+      reset: () => set({ activeWalletId: null, activeHouseholdId: null }),
     }),
     {
       name: 'osszhang-active-wallet',

@@ -77,10 +77,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (isMaintenanceRoute) return;
     if (isStoreLoading(status)) return;
-    const currentUser = useAuthStore.getState().user;
-    if (!currentUser) return;
-    void loadRouteData(pathname, currentUser);
-  }, [isMaintenanceRoute, pathname, status]);
+    if (!user) return;
+    void loadRouteData(pathname, user);
+  }, [isMaintenanceRoute, pathname, status, user?.id]);
 
   useEffect(() => {
     if (isMaintenanceRoute) return;

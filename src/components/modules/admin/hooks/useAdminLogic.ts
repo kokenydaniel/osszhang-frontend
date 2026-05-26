@@ -12,7 +12,7 @@ import { getApiErrorMessage } from '@/lib/api-client';
 import { isAbortError } from '@/lib/api-client/abortError';
 import { getAuthToken } from '@/lib/authToken';
 import { startImpersonationSession } from '@/lib/impersonationSession';
-import { resetRouteDataCache } from '@/lib/loadRouteData';
+import { resetSessionData } from '@/lib/resetSessionData';
 import { formatDisplayName } from '@/lib/personName';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import type { AdminUser, CreateSystemAnnouncementPayload } from '@/types/admin';
@@ -285,7 +285,7 @@ export function useAdminLogic() {
 
         startImpersonationSession(originToken, label);
         setAuthToken(result.accessToken);
-        resetRouteDataCache();
+        resetSessionData();
         useAdminStore.getState().reset();
         await fetchMe();
         ui.closeImpersonateModal();

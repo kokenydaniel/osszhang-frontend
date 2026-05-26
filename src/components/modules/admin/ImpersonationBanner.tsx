@@ -12,7 +12,7 @@ import {
   getImpersonationTargetLabel,
   isImpersonating,
 } from '@/lib/impersonationSession';
-import { resetRouteDataCache } from '@/lib/loadRouteData';
+import { resetSessionData } from '@/lib/resetSessionData';
 import { useAdminStore } from '@/stores/useAdminStore';
 
 export function ImpersonationBanner() {
@@ -40,7 +40,7 @@ export function ImpersonationBanner() {
     try {
       clearImpersonationSession();
       setAuthToken(originToken);
-      resetRouteDataCache();
+      resetSessionData();
       useAdminStore.getState().reset();
       await fetchMe();
       setActive(false);

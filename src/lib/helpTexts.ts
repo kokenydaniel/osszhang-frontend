@@ -39,7 +39,7 @@ export const HELP = {
     remaining: 'Becsült szabad keret: jelenlegi egyenleg mínusz a még fizetendő összeg.',
     overdue: 'Lejárt határidőjű, még nyitott tételek — sürgősségi lista.',
     aiOverspend:
-      'Összehasonlítja a tárgyhavi költést a korábbi hónapokkal, és kiemeli a legnagyobb eltéréseket.',
+      'Túlköltés = negatív havi egyenleg (befolyt bevétel − kifizetett kiadások, rezsivel együtt). A chip-ek a legnagyobb kiadási kategóriákat mutatják, nem magát a túlköltés összeget.',
     categorySummary: 'Kategóriánkénti összesítés — hol mennyit költöttél eddig ebben a hónapban.',
     description: 'Rövid megnevezés a tételről (pl. „Lidl”, „Netflix”).',
     category: 'Költségkategória — a beállításokban szerkeszthető lista.',

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { useAuthStore } from './useAuthStore';
-import { resetRouteDataCache } from '@/lib/loadRouteData';
+import { resetSessionData } from '@/lib/resetSessionData';
 import { syncBudgetCategories } from '@/lib/sessionBootstrap';
 
 interface InitState {
@@ -9,7 +9,7 @@ interface InitState {
 
 export const useInitStore = create<InitState>(() => ({
   initialize: async () => {
-    resetRouteDataCache();
+    resetSessionData();
     const user = await useAuthStore.getState().fetchMe();
     syncBudgetCategories(user);
   },

@@ -88,8 +88,6 @@ const emptyBalance: UtilityBalanceResult = {
 
 export class UtilitiesService {
   private static _instance: UtilitiesService | null = null;
-  private abortController: AbortController | null = null;
-  private fetchSeq = 0;
 
   private constructor() {}
 
@@ -101,18 +99,10 @@ export class UtilitiesService {
   }
 
   async fetchAll(options?: UtilitiesFetchOptions): Promise<UtilitiesIndex> {
-    this.abortController?.abort();
-    this.abortController = new AbortController();
-    const seq = ++this.fetchSeq;
-
     try {
       const res = await utilitiesClient.getAll({
-        signal: this.abortController.signal,
         silent: options?.silent,
       });
-      if (seq !== this.fetchSeq) {
-        throw new DOMException('Aborted', 'AbortError');
-      }
       return mapUtilitiesIndexFromApi(res.data);
     } catch (error) {
       if (isAbortError(error)) throw error;

@@ -5,7 +5,7 @@ import { isTimeoutError } from '@/lib/api-client/abortError';
 import { isMaintenanceModeResponse } from '@/lib/api-client/response';
 import { getAuthToken, removeAuthToken, setAuthToken as persistAuthToken } from '@/lib/authToken';
 import { LoadableStatus } from '@/lib/loadableStatus';
-import { resetRouteDataCache } from '@/lib/loadRouteData';
+import { resetSessionData } from '@/lib/resetSessionData';
 import { syncBudgetCategories } from '@/lib/sessionBootstrap';
 import { useNotificationStore } from './useNotificationStore';
 import { mapUserFromApi } from '@/lib/mapUser';
@@ -189,6 +189,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (credentials) => {
     fetchUserPromise = null;
+    resetSessionData();
     set({
       loginStatus: LoadableStatus.Loading,
       user: null,
@@ -221,6 +222,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   register: async (data) => {
     fetchUserPromise = null;
     removeAuthToken();
+    resetSessionData();
     set({
       loginStatus: LoadableStatus.Loading,
       user: null,
@@ -424,7 +426,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await householdClient.destroy(confirmName);
     fetchUserPromise = null;
     removeAuthToken();
-    resetRouteDataCache();
+    resetSessionData();
     set({ user: null, authToken: null, status: LoadableStatus.Loaded });
     if (typeof window !== 'undefined') {
       window.location.href = '/login';
@@ -444,12 +446,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.error('Logout API failed', e);
     } finally {
       removeAuthToken();
-      resetRouteDataCache();
+      resetSessionData();
       set({
         user: null,
         authToken: null,
         status: LoadableStatus.Loaded,
         loginStatus: LoadableStatus.Unloaded,
+        aiDashboardAdvice: null,
+        lastAiFingerprint: null,
       });
     }
   },

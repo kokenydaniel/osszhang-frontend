@@ -4,7 +4,7 @@ import { enabledModules, preloadModule } from '@/lib/modulePreload';
 
 const ROUTE_MODULES: Record<string, ModuleId[]> = {
   '/': ['budget', 'utilities', 'debts', 'savings', 'meters', 'business'],
-  '/budget': ['budget'],
+  '/budget': ['budget', 'utilities'],
   '/utilities': ['utilities'],
   '/debts': ['debts'],
   '/savings': ['savings'],
@@ -47,8 +47,12 @@ export async function loadRouteData(pathname: string, user: UserProfile | null |
   inflightPath = pathname;
 
   const markLoaded = async (moduleIds: ModuleId[], options?: { silent?: boolean }) => {
-    await Promise.allSettled(moduleIds.map((id) => preloadModule(id, options)));
-    moduleIds.forEach((id) => loadedModules.add(id));
+    const results = await Promise.all(moduleIds.map((id) => preloadModule(id, options)));
+    moduleIds.forEach((id, index) => {
+      if (results[index]) {
+        loadedModules.add(id);
+      }
+    });
   };
 
   if (pathname === '/') {

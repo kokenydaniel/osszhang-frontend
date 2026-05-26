@@ -26,7 +26,22 @@ interface BudgetState {
   setIsLoadingGoals: (isLoadingGoals: boolean) => void;
   
   resetWalletState: (walletId: number) => void;
+  reset: () => void;
 }
+
+const INITIAL_BUDGET_STATE = {
+  transactions: [] as CashTransaction[],
+  goalBudgetRows: [] as CashTransaction[],
+  categories: [] as string[],
+  aiOverspend: null as AiOverspendAnalysis | null,
+  aiCashflowForecast: null as AiCashflowForecast | null,
+  aiWeeklyBriefing: null as AiWeeklyBriefing | null,
+  isLoading: false,
+  isLoadingGoals: false,
+  loadedWalletId: null as number | null,
+  loadedMonth: null as number | null,
+  loadedYear: null as number | null,
+};
 
 export function isWalletTransactionsReady(
   activeWalletId: number | null,
@@ -37,17 +52,7 @@ export function isWalletTransactionsReady(
 }
 
 export const useBudgetStore = create<BudgetState>((set, get) => ({
-  transactions: [],
-  goalBudgetRows: [],
-  categories: [],
-  aiOverspend: null,
-  aiCashflowForecast: null,
-  aiWeeklyBriefing: null,
-  isLoading: false,
-  isLoadingGoals: false,
-  loadedWalletId: null,
-  loadedMonth: null,
-  loadedYear: null,
+  ...INITIAL_BUDGET_STATE,
 
   setTransactions: (transactions, walletId) => set({
     transactions,
@@ -84,4 +89,6 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
     aiOverspend: null,
     aiCashflowForecast: null,
   }),
+
+  reset: () => set(INITIAL_BUDGET_STATE),
 }));

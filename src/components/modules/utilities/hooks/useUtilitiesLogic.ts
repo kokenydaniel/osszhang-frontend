@@ -10,6 +10,7 @@ import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useUtilitiesUi } from '@/components/modules/utilities/UtilitiesUiContext';
 import { utilitiesService, UtilitiesService } from '@/services/UtilitiesService';
+import { ensureUtilitiesLoaded } from '@/lib/utilitiesDataLoader';
 import { AiFinanceService } from '@/services/AiFinanceService';
 import { BudgetService } from '@/services/BudgetService';
 import { today } from '@/lib/dates';
@@ -44,8 +45,6 @@ export function useUtilitiesLogic() {
     setBills,
     setSettlements,
     setAiUtilityAnomalies,
-    setLoading,
-    setLoaded,
     patchBill,
     appendBill,
     removeBill,
@@ -94,30 +93,12 @@ export function useUtilitiesLogic() {
 
   useEffect(() => {
     if (!pathname.startsWith('/utilities')) return;
-    if (isLoaded || isLoading) return;
-
-    let cancelled = false;
-    const loadUtilities = async () => {
-      setLoading(true);
-      try {
-        const index = await utilitiesService.fetchAll({ silent: true });
-        if (!cancelled) {
-          setUtilities(index);
-          setLoaded(true);
-        }
-      } catch (error) {
-        if (!isAbortError(error) && !cancelled) {
-          console.error('[useUtilitiesLogic] fetch failed', error);
-          setLoading(false);
-        }
+    void ensureUtilitiesLoaded({ silent: true }).catch((error) => {
+      if (!isAbortError(error)) {
+        console.error('[useUtilitiesLogic] fetch failed', error);
       }
-    };
-
-    void loadUtilities();
-    return () => {
-      cancelled = true;
-    };
-  }, [pathname, isLoaded, isLoading, setLoading, setLoaded, setUtilities]);
+    });
+  }, [pathname, user?.id]);
 
   const refreshAiAnomalies = useCallback(async () => {
     const data = await AiFinanceService.getUtilityAnomalies(selectedYear, selectedMonth);
@@ -125,9 +106,9 @@ export function useUtilitiesLogic() {
   }, [selectedMonth, selectedYear, setAiUtilityAnomalies]);
 
   useEffect(() => {
-    if (!canUseAi) return;
+    if (!canUseAi || !isLoaded) return;
     void refreshAiAnomalies();
-  }, [canUseAi, refreshAiAnomalies]);
+  }, [canUseAi, isLoaded, refreshAiAnomalies]);
 
   const filteredBills = useMemo(
     () => UtilitiesService.filterBillsByMonth(bills, selectedMonth, selectedYear),
