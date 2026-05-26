@@ -1,9 +1,5 @@
 import { create } from 'zustand';
-import { Debt, AiDebtPlan } from '@/types';
-import { debtsClient, aiFinanceClient } from '@/lib/api-client';
-import { isAbortError } from '@/lib/api-client/abortError';
-import { unwrapApiData } from '@/lib/unwrapApiData';
-import { getActiveWalletId } from './useWalletStore';
+import type { Debt, AiDebtPlan } from '@/types';
 
 interface DebtsState {
   debts: Debt[];
@@ -12,21 +8,22 @@ interface DebtsState {
   loadedWalletId: number | null;
   loadingWalletId: number | null;
 
-  fetchDebts: (walletId?: number | null) => Promise<void>;
-  addDebt: (d: Omit<Debt, 'id'>) => Promise<void>;
-  updateDebt: (id: number, d: Partial<Omit<Debt, 'id'>>) => Promise<void>;
-  deleteDebt: (id: number) => Promise<void>;
-
-  fetchAiDebtPlan: (strategy?: 'avalanche' | 'snowball', walletId?: number | null) => Promise<void>;
+  setDebts: (debts: Debt[], walletId: number) => void;
+  setAiDebtPlan: (plan: AiDebtPlan | null) => void;
+  setLoading: (loading: boolean, walletId?: number) => void;
+  patchDebt: (id: number, updated: Debt) => void;
+  appendDebt: (debt: Debt) => void;
+  removeDebt: (id: number) => void;
+  reset: () => void;
 }
 
-function resolveWalletId(explicit?: number | null): number | null {
-  if (explicit !== undefined) return explicit;
-  return getActiveWalletId();
-}
-
-let debtsAbortController: AbortController | null = null;
-let debtsFetchSeq = 0;
+const INITIAL_STATE = {
+  debts: [] as Debt[],
+  aiDebtPlan: null as AiDebtPlan | null,
+  isLoading: false,
+  loadedWalletId: null as number | null,
+  loadingWalletId: null as number | null,
+};
 
 export function isWalletDebtsReady(
   activeWalletId: number | null,
@@ -36,78 +33,36 @@ export function isWalletDebtsReady(
   return activeWalletId !== null && !isLoading && loadedWalletId === activeWalletId;
 }
 
-export const useDebtsStore = create<DebtsState>((set, get) => ({
-  debts: [],
-  aiDebtPlan: null,
-  isLoading: false,
-  loadedWalletId: null,
-  loadingWalletId: null,
+export const useDebtsStore = create<DebtsState>((set) => ({
+  ...INITIAL_STATE,
 
-  fetchDebts: async (walletId) => {
-    const resolved = resolveWalletId(walletId);
-    if (resolved === null) return;
-
-    const current = get();
-    if (current.loadingWalletId === resolved && current.isLoading) return;
-    if (!current.isLoading && current.loadedWalletId === resolved) return;
-
-    debtsAbortController?.abort();
-    debtsAbortController = new AbortController();
-    const signal = debtsAbortController.signal;
-    const seq = ++debtsFetchSeq;
-    const walletChanged = current.loadedWalletId !== resolved;
-
+  setDebts: (debts, walletId) =>
     set({
-      isLoading: true,
-      loadingWalletId: resolved,
-      ...(walletChanged ? { debts: [], loadedWalletId: null, aiDebtPlan: null } : {}),
-    });
+      debts,
+      loadedWalletId: walletId,
+      loadingWalletId: null,
+      isLoading: false,
+    }),
 
-    try {
-      const res = await debtsClient.getAll(resolved, { signal });
-      if (seq !== debtsFetchSeq) return;
+  setAiDebtPlan: (aiDebtPlan) => set({ aiDebtPlan }),
 
-      set({
-        debts: res.data,
-        loadedWalletId: resolved,
-        loadingWalletId: null,
-        isLoading: false,
-      });
-    } catch (error) {
-      if (seq !== debtsFetchSeq) return;
-      if (isAbortError(error)) return;
+  setLoading: (isLoading, walletId) =>
+    set((state) => ({
+      isLoading,
+      loadingWalletId: isLoading ? (walletId ?? state.loadingWalletId) : null,
+      ...(isLoading && walletId !== undefined && state.loadedWalletId !== walletId
+        ? { debts: [], loadedWalletId: null, aiDebtPlan: null }
+        : {}),
+    })),
 
-      console.error('Failed to fetch debts', error);
-      set({ isLoading: false, loadingWalletId: null });
-    }
-  },
+  patchDebt: (id, updated) =>
+    set((state) => ({
+      debts: state.debts.map((debt) => (debt.id === id ? updated : debt)),
+    })),
 
-  addDebt: async (d) => {
-    const walletId = d.walletId ?? getActiveWalletId() ?? undefined;
-    const res = await debtsClient.create({ ...d, walletId });
-    set({ debts: [...get().debts, res.data] });
-  },
+  appendDebt: (debt) => set((state) => ({ debts: [...state.debts, debt] })),
 
-  updateDebt: async (id, d) => {
-    const res = await debtsClient.update(id, d);
-    set({ debts: get().debts.map((debt) => (debt.id === id ? res.data : debt)) });
-  },
+  removeDebt: (id) => set((state) => ({ debts: state.debts.filter((d) => d.id !== id) })),
 
-  deleteDebt: async (id) => {
-    await debtsClient.delete(id);
-    set({ debts: get().debts.filter((d) => d.id !== id) });
-  },
-
-  fetchAiDebtPlan: async (strategy, walletId) => {
-    try {
-      const resolvedWalletId = walletId ?? getActiveWalletId();
-      const res = await aiFinanceClient.optimizeDebts({
-        strategy,
-        ...(resolvedWalletId != null ? { wallet_id: resolvedWalletId } : {}),
-      });
-      set({ aiDebtPlan: unwrapApiData<AiDebtPlan>(res.data) });
-    } catch (e) {
-      console.error('Failed to fetch AI Debt optimization strategy', e);
-    }
-  },
+  reset: () => set(INITIAL_STATE),
 }));

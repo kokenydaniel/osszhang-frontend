@@ -2,181 +2,47 @@
 
 import { formatHUF } from '@/utils';
 import { Modal } from '@/components/ui/Modal';
-import { DatePicker } from '@/components/ui/DatePicker';
-import { ModalFormFooter, ObjectDetails } from '@/components/design';
-import { Input } from '@/components/ui/input';
-import { FieldLabel } from '@/components/ui/FieldLabel';
-import { InfoTooltip } from '@/components/ui/InfoTooltip';
-import { HELP } from '@/lib/helpTexts';
-import { Banknote, RefreshCw, Wallet } from 'lucide-react';
-import type { DebtsPageState } from '@/components/modules/debts/hooks/use-debts-page-state';
+import { useDebtsUi } from '@/components/modules/debts/DebtsUiContext';
+import { DebtsPayForm } from '@/components/modules/debts/debts-pay-form';
+import { DebtsService } from '@/services/DebtsService';
 
-type DebtsPayModalProps = Pick<
-  DebtsPageState,
-  | 'isPayModalOpen'
-  | 'setIsPayModalOpen'
-  | 'payDebt'
-  | 'payAmount'
-  | 'setPayAmount'
-  | 'payDate'
-  | 'setPayDate'
-  | 'payNote'
-  | 'setPayNote'
-  | 'payAddToBudget'
-  | 'setPayAddToBudget'
-  | 'payCategory'
-  | 'setPayCategory'
-  | 'paySaving'
-  | 'handlePaySubmit'
-  | 'categories'
-  | 'selectedYear'
-  | 'selectedMonth'
->;
+interface DebtsPayModalProps {
+  categories: string[];
+  selectedYear: number;
+  selectedMonth: number;
+  onSubmit: (event: React.FormEvent) => void;
+}
 
-export function DebtsPayModal({
-  isPayModalOpen,
-  setIsPayModalOpen,
-  payDebt,
-  payAmount,
-  setPayAmount,
-  payDate,
-  setPayDate,
-  payNote,
-  setPayNote,
-  payAddToBudget,
-  setPayAddToBudget,
-  payCategory,
-  setPayCategory,
-  paySaving,
-  handlePaySubmit,
-  categories,
-  selectedYear,
-  selectedMonth,
-}: DebtsPayModalProps) {
+export function DebtsPayModal({ categories, selectedYear, selectedMonth, onSubmit }: DebtsPayModalProps) {
+  const ui = useDebtsUi();
+  const remaining = ui.payDebt ? DebtsService.remaining(ui.payDebt) : 0;
+
   return (
     <Modal
-      isOpen={isPayModalOpen}
-      onClose={() => setIsPayModalOpen(false)}
+      isOpen={ui.isPayModalOpen}
+      onClose={ui.closePayModal}
       title="Törlesztés rögzítése"
-      description={
-        payDebt
-          ? `${payDebt.name} · ${formatHUF(Math.max(0, Number(payDebt.targetAmount) - Number(payDebt.paidAmount)))} van hátra`
-          : ''
-      }
+      description={ui.payDebt ? `${ui.payDebt.name} · ${formatHUF(remaining)} van hátra` : ''}
     >
-      <form onSubmit={handlePaySubmit} className="flex flex-col gap-4">
-        {payDebt ? (
-          <ObjectDetails
-            compact
-            columns={2}
-            groups={[
-              {
-                items: [
-                  {
-                    label: 'Hátralévő',
-                    value: formatHUF(Math.max(0, Number(payDebt.targetAmount) - Number(payDebt.paidAmount))),
-                  },
-                  { label: 'Eredeti összeg', value: formatHUF(Number(payDebt.targetAmount)) },
-                  {
-                    label: 'Havi minimum',
-                    value: payDebt.minimumPayment ? formatHUF(Number(payDebt.minimumPayment)) : '—',
-                  },
-                  {
-                    label: 'Kamat',
-                    value: payDebt.annualInterestRate ? `${payDebt.annualInterestRate}% / év` : '—',
-                  },
-                ],
-              },
-            ]}
-            className="rounded-md border border-border bg-muted/20 px-3 py-3"
-          />
-        ) : null}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <FieldLabel info={HELP.debts.payAmount}>Összeg (Ft)</FieldLabel>
-            <Input
-              type="number"
-              step="any"
-              placeholder="0"
-              value={payAmount}
-              onChange={(e) => setPayAmount(e.target.value)}
-              required
-            />
-            {payDebt?.minimumPayment && Number(payAmount) > 0 && Number(payAmount) !== Number(payDebt.minimumPayment) && (
-              <p className="text-[0.7rem] text-muted-foreground">
-                Eltér a havi részlettől ({formatHUF(payDebt.minimumPayment)})
-              </p>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <FieldLabel info={HELP.debts.payDate}>Dátum</FieldLabel>
-            <DatePicker value={payDate} onChange={setPayDate} />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <FieldLabel info={HELP.debts.payNote}>Megjegyzés</FieldLabel>
-          <Input
-            placeholder="pl. Júniusi részlet"
-            value={payNote}
-            onChange={(e) => setPayNote(e.target.value)}
-          />
-        </div>
-
-        <div className="rounded-md border border-border bg-gradient-to-br from-primary/[0.04] to-card p-3.5 space-y-3">
-          <p className="text-[0.72rem] text-muted-foreground leading-snug">
-            {HELP.debts.payBudget}
-          </p>
-          <label className="flex items-center gap-2.5 text-sm text-foreground cursor-pointer">
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-primary"
-              checked={payAddToBudget}
-              onChange={(e) => setPayAddToBudget(e.target.checked)}
-            />
-            <span className="inline-flex items-center gap-1.5">
-              <Wallet size={14} className="text-primary" />
-              <span className="font-medium">Költségvetésbe is rögzítem</span>
-              <InfoTooltip content={HELP.debts.payBudget} />
-            </span>
-          </label>
-          {payAddToBudget && (
-            <div className="space-y-1.5 pl-7">
-              <FieldLabel className="text-[0.7rem] text-muted-foreground" info={HELP.debts.payCategory}>
-                Kategória
-              </FieldLabel>
-              {categories.length === 0 ? (
-                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5">
-                  Még nincs kategória. Hozz létre egyet a Beállításokban.
-                </p>
-              ) : (
-                <select
-                  className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
-                  value={payCategory}
-                  onChange={(e) => setPayCategory(e.target.value)}
-                >
-                  {categories.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <p className="text-[0.7rem] text-muted-foreground">
-                Egy „kifizetve" státuszú kiadás-tételt rögzít a {selectedYear}.{' '}
-                {String(selectedMonth).padStart(2, '0')}. hónapra.
-              </p>
-            </div>
-          )}
-        </div>
-
-        <ModalFormFooter
-          onCancel={() => setIsPayModalOpen(false)}
-          submitLabel="Befizetés rögzítése"
-          submitIcon={paySaving ? <RefreshCw size={13} className="animate-spin" /> : <Banknote size={13} />}
-          loading={paySaving}
-        />
-      </form>
+      <DebtsPayForm
+        payDebt={ui.payDebt}
+        payAmount={ui.payAmount}
+        onPayAmountChange={ui.setPayAmount}
+        payDate={ui.payDate}
+        onPayDateChange={ui.setPayDate}
+        payNote={ui.payNote}
+        onPayNoteChange={ui.setPayNote}
+        payAddToBudget={ui.payAddToBudget}
+        onPayAddToBudgetChange={ui.setPayAddToBudget}
+        payCategory={ui.payCategory}
+        onPayCategoryChange={ui.setPayCategory}
+        paySaving={ui.paySaving}
+        categories={categories}
+        selectedYear={selectedYear}
+        selectedMonth={selectedMonth}
+        onSubmit={onSubmit}
+        onCancel={ui.closePayModal}
+      />
     </Modal>
   );
 }

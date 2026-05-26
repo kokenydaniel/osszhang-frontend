@@ -5,9 +5,6 @@ import { usePreferenceStore } from '@/stores/usePreferenceStore';
 import { getActiveWalletId } from '@/stores/useWalletStore';
 import { useUtilitiesStore } from '@/stores/useUtilitiesStore';
 import { useMetersStore } from '@/stores/useMetersStore';
-import { useBusinessStore } from '@/stores/useBusinessStore';
-import { useDebtsStore } from '@/stores/useDebtsStore';
-import { useSavingsStore } from '@/stores/useSavingsStore';
 
 const ROUTE_MODULES: Record<string, ModuleId[]> = {
   '/': ['budget', 'utilities', 'debts', 'savings', 'meters', 'business'],
@@ -38,10 +35,16 @@ async function fetchModule(moduleId: ModuleId, options?: { silent?: boolean; wal
   switch (moduleId) {
     case 'budget': {
       const walletId = getActiveWalletId();
+      if (walletId === null) break;
       const { selectedMonth, selectedYear } = usePreferenceStore.getState();
-      await Promise.all([
-        useBudgetStore.getState().fetchTransactions(walletId),
-        useBudgetStore.getState().fetchGoalRows(walletId, selectedMonth, selectedYear),
+      const { BudgetService } = await import('@/services/BudgetService');
+      await Promise.allSettled([
+        BudgetService.fetchAll(walletId, { silent: options?.silent })
+          .then((res) => useBudgetStore.getState().setTransactions(res.data.transactions, walletId))
+          .catch(() => {}),
+        BudgetService.fetchGoalRows(walletId, selectedMonth, selectedYear, { silent: options?.silent })
+          .then((res) => useBudgetStore.getState().setGoalRows(res.data, selectedMonth, selectedYear, walletId))
+          .catch(() => {}),
       ]);
       break;
     }
@@ -51,18 +54,48 @@ async function fetchModule(moduleId: ModuleId, options?: { silent?: boolean; wal
     case 'meters':
       await useMetersStore.getState().fetchMeters();
       break;
-    case 'business':
-      await useBusinessStore.getState().fetchOrders();
+    case 'business': {
+      const { businessService } = await import('@/services/BusinessService');
+      const { useBusinessStore } = await import('@/stores/useBusinessStore');
+      await businessService
+        .fetchAll({ silent: options?.silent })
+        .then((orders) => {
+          useBusinessStore.getState().setOrders(orders);
+          useBusinessStore.getState().setLoaded(true);
+        })
+        .catch(() => {});
       break;
-    case 'debts':
-      await useDebtsStore.getState().fetchDebts(getActiveWalletId());
+    }
+    case 'debts': {
+      const walletId = getActiveWalletId();
+      if (walletId === null) break;
+      const { debtsService } = await import('@/services/DebtsService');
+      const { useDebtsStore } = await import('@/stores/useDebtsStore');
+      await debtsService
+        .fetchAll(walletId, { silent: options?.silent })
+        .then((debts) => {
+          useDebtsStore.getState().setDebts(debts, walletId);
+        })
+        .catch(() => {});
       break;
-    case 'savings':
+    }
+    case 'savings': {
+      const walletId = getActiveWalletId();
+      if (walletId === null) break;
+      const { savingsService } = await import('@/services/SavingsService');
+      const { useSavingsStore } = await import('@/stores/useSavingsStore');
       await Promise.allSettled([
-        useSavingsStore.getState().fetchSavings(getActiveWalletId(), { silent: options?.silent }),
-        useSavingsStore.getState().fetchInvestments({ silent: options?.silent }),
+        savingsService
+          .fetchAll(walletId, { silent: options?.silent })
+          .then(({ accounts }) => useSavingsStore.getState().setSavings(accounts, walletId))
+          .catch(() => {}),
+        savingsService
+          .fetchInvestments({ silent: options?.silent })
+          .then((investments) => useSavingsStore.getState().setInvestments(investments))
+          .catch(() => {}),
       ]);
       break;
+    }
   }
   loadedModules.add(moduleId);
 }

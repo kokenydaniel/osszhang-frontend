@@ -2,7 +2,7 @@
 
 import classNames from 'classnames';
 import { formatHUF } from '@/utils';
-import { formatPayoffDate, formatTerm } from '@/utils/debt';
+import { DebtsService } from '@/services/DebtsService';
 import { TierGatedButton } from '@/components/subscription/TierGatedButton';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { HELP } from '@/lib/helpTexts';
@@ -18,14 +18,14 @@ import {
   AlertTriangle,
   Zap,
 } from 'lucide-react';
-import type { DebtsPageState } from '@/components/modules/debts/hooks/use-debts-page-state';
+import type { DebtsLogicResult } from '@/components/modules/debts/hooks/useDebtsLogic';
 
 type DebtsStrategySectionProps = Pick<
-  DebtsPageState,
+  DebtsLogicResult,
   | 'strategy'
   | 'setStrategy'
   | 'isAiLoading'
-  | 'handleAiOptimize'
+  | 'requestAiOptimize'
   | 'aiDebtPlan'
   | 'orderedDebts'
   | 'farthestPayoff'
@@ -40,7 +40,7 @@ export function DebtsStrategySection({
   strategy,
   setStrategy,
   isAiLoading,
-  handleAiOptimize,
+  requestAiOptimize,
   aiDebtPlan,
   orderedDebts,
   farthestPayoff,
@@ -84,7 +84,7 @@ export function DebtsStrategySection({
           featureLabel="Tartozás-visszafizetési sorrend"
           variant={aiDebtPlan ? 'outline' : 'default'}
           size="sm"
-          onClick={handleAiOptimize}
+          onClick={requestAiOptimize}
           disabled={isAiLoading}
         >
           <RefreshCw size={12} className={classNames(isAiLoading && 'animate-spin')} />
@@ -140,7 +140,7 @@ export function DebtsStrategySection({
                     Utolsó hitel lejárta
                   </p>
                   <p className="text-sm font-semibold text-foreground tabular-nums">
-                    {formatPayoffDate(farthestPayoff.date)}
+                    {DebtsService.formatPayoffDate(farthestPayoff.date)}
                   </p>
                 </div>
               </div>
@@ -215,9 +215,9 @@ export function DebtsStrategySection({
                   ) : (
                     <>
                       <div className="text-sm font-medium text-foreground">
-                        {formatPayoffDate(d.payoff.payoffDate)}
+                        {DebtsService.formatPayoffDate(d.payoff.payoffDate)}
                       </div>
-                      <div className="text-[0.65rem] text-muted-foreground">{formatTerm(d.payoff.months)}</div>
+                      <div className="text-[0.65rem] text-muted-foreground">{DebtsService.formatTerm(d.payoff.months)}</div>
                     </>
                   )}
                 </div>
@@ -259,14 +259,14 @@ export function DebtsStrategySection({
                   <div className="rounded-md border border-border bg-card px-3 py-3">
                     <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">Új lejárat</p>
                     <p className="text-base font-semibold text-foreground tabular-nums mt-0.5">
-                      {formatPayoffDate(acceleration.newPayoffDate)}
+                      {DebtsService.formatPayoffDate(acceleration.newPayoffDate)}
                     </p>
-                    <p className="text-[0.7rem] text-muted-foreground">{formatTerm(acceleration.newTotalMonths)}</p>
+                    <p className="text-[0.7rem] text-muted-foreground">{DebtsService.formatTerm(acceleration.newTotalMonths)}</p>
                   </div>
                   <div className="rounded-md border border-emerald-200 bg-emerald-50/50 px-3 py-3">
                     <p className="text-[0.65rem] font-medium uppercase tracking-wider text-emerald-700">Megspórolt idő</p>
                     <p className="text-base font-semibold text-emerald-700 tabular-nums mt-0.5">
-                      {formatTerm(acceleration.monthsSaved)}
+                      {DebtsService.formatTerm(acceleration.monthsSaved)}
                     </p>
                     <p className="text-[0.7rem] text-emerald-700/80">
                       ennyivel hamarabb fizeted le

@@ -2,7 +2,7 @@
 
 import classNames from 'classnames';
 import { formatHUF } from '@/utils';
-import { formatPayoffDate, formatTerm } from '@/utils/debt';
+import { DebtsService } from '@/services/DebtsService';
 import { Button } from '@/components/ui/button';
 import {
   DataTable,
@@ -19,10 +19,10 @@ import {
   Sparkles,
   AlertTriangle,
 } from 'lucide-react';
-import type { DebtsPageState, DebtWithPayoff } from '@/components/modules/debts/hooks/use-debts-page-state';
+import type { DebtsLogicResult, DebtWithPayoff } from '@/components/modules/debts/hooks/useDebtsLogic';
 
 type DebtsTableProps = Pick<
-  DebtsPageState,
+  DebtsLogicResult,
   | 'debtsWithPayoff'
   | 'totalDebt'
   | 'monthlyMinimum'
@@ -150,9 +150,9 @@ export function DebtsTable({
         return (
           <div className="flex flex-col items-end">
             <span className="text-sm font-medium text-foreground tabular-nums">
-              {formatPayoffDate(d.payoff.payoffDate)}
+              {DebtsService.formatPayoffDate(d.payoff.payoffDate)}
             </span>
-            <span className="text-[0.65rem] text-muted-foreground">{formatTerm(d.payoff.months)}</span>
+            <span className="text-[0.65rem] text-muted-foreground">{DebtsService.formatTerm(d.payoff.months)}</span>
           </div>
         );
       },

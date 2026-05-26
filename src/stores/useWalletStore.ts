@@ -18,14 +18,28 @@ export const useWalletStore = create<WalletState>()(
       setActiveWalletId: (walletId) => {
         if (get().activeWalletId === walletId) return;
         set({ activeWalletId: walletId });
-        void import('@/stores/useBudgetStore').then(({ useBudgetStore }) => {
-          void useBudgetStore.getState().fetchTransactions(walletId);
+        void import('@/services/BudgetService').then(({ BudgetService }) => {
+          if (walletId !== null) {
+            void BudgetService.fetchAll(walletId, { silent: true }).then((res) => {
+              void import('@/stores/useBudgetStore').then(({ useBudgetStore }) => {
+                useBudgetStore.getState().setTransactions(res.data.transactions, walletId);
+              });
+            }).catch(console.error);
+          }
         });
-        void import('@/stores/useSavingsStore').then(({ useSavingsStore }) => {
-          void useSavingsStore.getState().fetchSavings(walletId);
+        void import('@/lib/walletDataSync').then(({ syncSavingsForWallet }) => {
+          void syncSavingsForWallet(walletId);
         });
-        void import('@/stores/useDebtsStore').then(({ useDebtsStore }) => {
-          void useDebtsStore.getState().fetchDebts(walletId);
+        void import('@/services/DebtsService').then(({ debtsService }) => {
+          if (walletId === null) return;
+          void debtsService
+            .fetchAll(walletId, { silent: true })
+            .then((debts) => {
+              void import('@/stores/useDebtsStore').then(({ useDebtsStore }) => {
+                useDebtsStore.getState().setDebts(debts, walletId);
+              });
+            })
+            .catch(console.error);
         });
       },
 
