@@ -31,6 +31,7 @@ export type SingleEntityResponse<T> = Promise<
   Nullable<
     | ApiClientResponse<StatusCodes.Http200, T>
     | ApiClientResponse<StatusCodes.Http201, T>
+    | ApiClientResponse<StatusCodes.Http503, object | null>
   >
 >;
 

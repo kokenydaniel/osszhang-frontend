@@ -27,6 +27,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import type { UserProfile } from '@/types';
 import type { BillingInvoice, BillingSummary } from '@/types/billing';
+import { isMaintenanceModeResponse, redirectToMaintenanceIfNeeded } from '@/lib/api-client/response';
 
 interface BillingSettingsProps {
   user: UserProfile | null;
@@ -145,6 +146,10 @@ export function BillingSettings({ user }: BillingSettingsProps) {
     setLoading(true);
     try {
       const res = await subscriptionClient.getBilling();
+      if (res && isMaintenanceModeResponse(res[0], res[1])) {
+        redirectToMaintenanceIfNeeded(res[0], res[1]);
+        return;
+      }
       if (!res || res[0] !== StatusCodes.Http200) throw new Error('API Error');
       setBilling(res[1] as BillingSummary);
     } catch (e) {

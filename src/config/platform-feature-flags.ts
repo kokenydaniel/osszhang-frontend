@@ -7,6 +7,15 @@ export function isPlatformFeatureEnabled(
   key: PlatformFeatureFlagKey,
 ): boolean {
   if (!user) return false;
+  if (key === 'maintenance_mode') {
+    return Boolean(user.platform_feature_flags?.maintenance_mode);
+  }
   if (user.lifetime_admin) return true;
   return Boolean(user.platform_feature_flags?.[key]);
+}
+
+/** True when the app is in maintenance and this user must not use the API. */
+export function isMaintenanceBlockedForUser(user: UserProfile | null | undefined): boolean {
+  if (!user || user.lifetime_admin) return false;
+  return isPlatformFeatureEnabled(user, 'maintenance_mode');
 }

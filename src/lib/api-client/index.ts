@@ -17,6 +17,11 @@ export class ApiClientError extends Error {
   }
 }
 export function getApiErrorMessage(error: unknown, fallback: string = 'Hiba történt'): string {
+  if (error instanceof ApiClientError) {
+    const data = error.data as { message?: string } | undefined;
+    if (data?.message) return data.message;
+    return error.message;
+  }
   if (error instanceof Error) return error.message;
   return fallback;
 }

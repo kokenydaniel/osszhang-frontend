@@ -3,7 +3,7 @@ import { StatusCodes } from '@/types/api';
 import { UserProfile, RawApiUser, type HouseholdProfile } from '@/types';
 import { authClient, getApiErrorMessage, householdClient, walletClient, ApiClientError } from '@/lib/api-client';
 import { isTimeoutError } from '@/lib/api-client/abortError';
-import { isMaintenanceModeResponse } from '@/lib/api-client/response';
+import { isMaintenanceModeResponse, redirectToMaintenanceIfNeeded } from '@/lib/api-client/response';
 import { getAuthToken, removeAuthToken, setAuthToken as persistAuthToken } from '@/helpers/auth-token';
 import { LoadableStatus } from '@/utils/loadable-status';
 import { resetSessionData } from '@/helpers/reset-session-data';
@@ -82,6 +82,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     fetchUserPromise = authClient
       .me()
       .then((res) => {
+        if (res && isMaintenanceModeResponse(res[0], res[1])) {
+          set({ status: LoadableStatus.Loaded });
+          redirectToMaintenanceIfNeeded(res[0], res[1]);
+          return get().user;
+        }
         if (!res || res[0] !== StatusCodes.Http200) throw new Error('API Error');
         const user = res[1] as UserProfile;
         set({ user, authToken: token, status: LoadableStatus.Loaded });
@@ -91,7 +96,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       .catch((error: unknown) => {
         if (error instanceof ApiClientError && isMaintenanceModeResponse(error.status as number, error.data)) {
           set({ status: LoadableStatus.Loaded });
-          return null;
+          redirectToMaintenanceIfNeeded(error.status as number, error.data);
+          return get().user;
         }
         removeAuthToken();
         set({ user: null, authToken: null, status: LoadableStatus.Error });
@@ -110,6 +116,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const res = await authClient.me();
+      if (res && isMaintenanceModeResponse(res[0], res[1])) {
+        redirectToMaintenanceIfNeeded(res[0], res[1]);
+        return;
+      }
       if (!res || res[0] !== StatusCodes.Http200) return;
       const user = res[1] as UserProfile;
       const prev = get().user;
@@ -137,6 +147,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       useWalletStore.getState().syncFromUser(user.wallets, user.household?.id);
     } catch (error: unknown) {
       if (error instanceof ApiClientError && isMaintenanceModeResponse(error.status as number, error.data)) {
+        redirectToMaintenanceIfNeeded(error.status as number, error.data);
         return;
       }
       if (isTimeoutError(error)) {
@@ -158,6 +169,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const res = await authClient.login(credentials);
+      if (res && isMaintenanceModeResponse(res[0], res[1])) {
+        removeAuthToken();
+        set({
+          loginStatus: LoadableStatus.Error,
+          user: null,
+          authToken: null,
+          status: LoadableStatus.Loaded,
+        });
+        const payload = (res[1] ?? {}) as { message?: string };
+        throw new ApiClientError(
+          payload.message ?? 'Karbantartás alatt. Az alkalmazás pillanatnyilag nem elérhető.',
+          503,
+          res[1],
+        );
+      }
       if (!res || (res[0] !== StatusCodes.Http200 && res[0] !== StatusCodes.Http201)) {
         throw new Error('API Error');
       }

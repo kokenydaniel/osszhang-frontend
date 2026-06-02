@@ -1,5 +1,11 @@
 import type { ApiClient } from '../api-client';
-import { StatusCodes, SingleEntityResponse, EmptyResponse, isSingleEntityApiResponse } from '../response';
+import {
+  StatusCodes,
+  SingleEntityResponse,
+  EmptyResponse,
+  isSingleEntityApiResponse,
+  isMaintenanceModeResponse,
+} from '../response';
 import type { RawApiUser } from '@/types';
 
 export class AuthClient {
@@ -12,6 +18,9 @@ export class AuthClient {
         credentials,
         { silent: true },
       );
+      if (isMaintenanceModeResponse(status, response)) {
+        return this.apiClient.response(StatusCodes.Http503, response);
+      }
       if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ access_token: string; token: string; user: RawApiUser }>(response, ['access_token', 'user'])) {
         return this.apiClient.response(status, response);
       }
@@ -37,6 +46,9 @@ export class AuthClient {
         data,
         { silent: true },
       );
+      if (isMaintenanceModeResponse(status, response)) {
+        return this.apiClient.response(StatusCodes.Http503, response);
+      }
       if ((status === StatusCodes.Http200 || status === StatusCodes.Http201) && isSingleEntityApiResponse<{ access_token: string; token: string; user: RawApiUser }>(response, ['access_token', 'user'])) {
         return this.apiClient.response(status as StatusCodes.Http200 | StatusCodes.Http201, response);
       }
@@ -61,6 +73,9 @@ export class AuthClient {
   async me(): SingleEntityResponse<RawApiUser> {
     try {
       const [status, response] = await this.apiClient.getJson(`${this.baseEndpoint}/me`);
+      if (isMaintenanceModeResponse(status, response)) {
+        return this.apiClient.response(StatusCodes.Http503, response);
+      }
       if (status === StatusCodes.Http200 && isSingleEntityApiResponse<RawApiUser>(response, ['id'])) {
         return this.apiClient.response(status, response);
       }

@@ -14,6 +14,7 @@ import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { HouseholdOnboardingWizard } from '@/components/onboarding/HouseholdOnboardingWizard';
 import { canAccessModule, type ModuleId } from '@/helpers/module-access';
+import { isMaintenanceBlockedForUser } from '@/config/platform-feature-flags';
 import { resolveRouteTierUpgradeRequirement } from '@/helpers/route-tier-guard';
 import { openUpgradeModal } from '@/stores/useUpgradeModalStore';
 import { needsHouseholdOnboarding } from '@/helpers/household-onboarding';
@@ -86,6 +87,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (isStoreLoading(status)) return;
     void refreshSessionQuiet();
   }, [isMaintenanceRoute, pathname, refreshSessionQuiet, status]);
+
+  useEffect(() => {
+    if (isMaintenanceRoute) return;
+    if (isStoreLoading(status) || !user) return;
+    if (isMaintenanceBlockedForUser(user)) {
+      router.replace('/maintenance');
+    }
+  }, [isMaintenanceRoute, router, status, user]);
 
   useEffect(() => {
     if (isStoreLoading(status) || !user) return;
