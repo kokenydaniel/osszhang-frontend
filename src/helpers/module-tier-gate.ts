@@ -5,6 +5,7 @@ import {
   canUseFeature,
   requiredTierForFeature,
   requiredTierForModule,
+  toUpgradeTier,
   type PremiumFeatureId,
 } from '@/helpers/check-access';
 import type { UserProfile } from '@/types';
@@ -22,7 +23,11 @@ export function blockModuleEnable(
 
   const requiredTier = requiredTierForModule(moduleId);
   if (requiredTier) {
-    openUpgradeModal({ requiredTier, featureLabel: MODULE_LABELS[moduleId], moduleId });
+    openUpgradeModal({
+      requiredTier: toUpgradeTier(requiredTier),
+      featureLabel: MODULE_LABELS[moduleId],
+      moduleId,
+    });
   }
 
   return true;
@@ -40,7 +45,7 @@ export function blockFeatureEnable(
   }
 
   openUpgradeModal({
-    requiredTier: requiredTierForFeature(featureId),
+    requiredTier: toUpgradeTier(requiredTierForFeature(featureId)),
     featureLabel,
     featureId,
   });

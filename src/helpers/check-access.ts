@@ -15,8 +15,13 @@ export const PRO_MODULES: ModuleId[] = [...sub.proModules];
 export const PREMIUM_MODULES: ModuleId[] = [...sub.premiumModules];
 
 import type { PremiumFeatureId } from '@/config/subscription';
+import type { UpgradeTier } from '@/stores/useUpgradeModalStore';
 
 export type { PremiumFeatureId };
+
+export function toUpgradeTier(tier: SubscriptionTier): UpgradeTier {
+  return tier === sub.tiers.premium ? 'premium' : 'pro';
+}
 
 export const PRO_FEATURES = [...sub.proFeatures];
 export const PREMIUM_FEATURES = [...sub.premiumFeatures];

@@ -143,7 +143,7 @@ export function SettingsModulesTab() {
     res: Awaited<ReturnType<typeof householdClient.update>>,
   ) => {
     if (!res || res[0] !== StatusCodes.Http200) throw new Error();
-    useAuthStore.getState().patchHousehold(res[1] as HouseholdProfile);
+    useAuthStore.getState().patchHousehold(res[1] as Partial<HouseholdProfile>);
     await useAuthStore.getState().fetchMe();
   };
 

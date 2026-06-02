@@ -8,10 +8,12 @@ import {
   requiresUpgradeForModule,
 } from '@/helpers/check-access';
 import type { PremiumFeatureId } from '@/config/subscription';
-import type { SubscriptionTier, UserProfile } from '@/types';
+import type { UserProfile } from '@/types';
+import { toUpgradeTier } from '@/helpers/check-access';
+import type { UpgradeTier } from '@/stores/useUpgradeModalStore';
 
 export type RouteTierUpgradeRequirement = {
-  requiredTier: SubscriptionTier;
+  requiredTier: UpgradeTier;
   featureLabel?: string;
   moduleId?: ModuleId;
   featureId?: PremiumFeatureId;
@@ -27,7 +29,7 @@ export function resolveRouteTierUpgradeRequirement(
     if (!pathname.startsWith(prefix)) continue;
     const requiredTier = requiresUpgradeForModule(user, moduleId);
     if (requiredTier) {
-      return { requiredTier, moduleId };
+      return { requiredTier: toUpgradeTier(requiredTier), moduleId };
     }
   }
 
@@ -35,7 +37,7 @@ export function resolveRouteTierUpgradeRequirement(
     if (!pathname.startsWith(prefix)) continue;
     const requiredTier = requiresUpgradeForFeature(user, featureId);
     if (requiredTier) {
-      return { requiredTier, featureLabel, featureId };
+      return { requiredTier: toUpgradeTier(requiredTier), featureLabel, featureId };
     }
   }
 
