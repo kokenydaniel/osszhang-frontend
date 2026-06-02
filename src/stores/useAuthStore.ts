@@ -1,7 +1,15 @@
 import { create } from 'zustand';
 import { StatusCodes } from '@/types/api';
 import { UserProfile, RawApiUser, type HouseholdProfile } from '@/types';
-import { authClient, getApiErrorMessage, householdClient, walletClient, ApiClientError } from '@/lib/api-client';
+import {
+  authClient,
+  getApiErrorMessage,
+  householdClient,
+  walletClient,
+  ApiClientError,
+  isValidationErrorApiResponse,
+  isGeneralErrorApiResponse,
+} from '@/lib/api-client';
 import { isTimeoutError } from '@/lib/api-client/abortError';
 import { isMaintenanceBlockedForUser } from '@/config/platform-feature-flags';
 import { isMaintenanceModeResponse, redirectToMaintenanceIfNeeded } from '@/lib/api-client/response';
@@ -173,7 +181,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const res = await authClient.login(credentials);
       if (!res || (res[0] !== StatusCodes.Http200 && res[0] !== StatusCodes.Http201)) {
-        throw new Error('API Error');
+        const body = res?.[1];
+        if (body && isValidationErrorApiResponse(body)) {
+          const first = Object.values(body.errors)[0]?.[0];
+          throw new ApiClientError(first ?? 'Érvénytelen bejelentkezési adatok.', Number(res[0]), body);
+        }
+        if (body && isGeneralErrorApiResponse(body)) {
+          throw new ApiClientError(body.message, Number(res?.[0] ?? 500), body);
+        }
+        throw new ApiClientError('A bejelentkezés sikertelen. Próbáld újra később.', Number(res?.[0] ?? 500), body);
       }
       const token = res[1].access_token;
       get().setAuthToken(token);

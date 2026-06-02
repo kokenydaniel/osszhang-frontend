@@ -3,9 +3,9 @@ import {
   StatusCodes,
   SingleEntityResponse,
   EmptyResponse,
-  isSingleEntityApiResponse,
   isMaintenanceModeResponse,
 } from '../response';
+import { isSingleEntityApiResponse, unwrapApiEntity } from '../type-guards';
 import type { RawApiUser } from '@/types';
 
 export class AuthClient {
@@ -21,8 +21,12 @@ export class AuthClient {
       if (isMaintenanceModeResponse(status, response)) {
         return this.apiClient.response(StatusCodes.Http503, response);
       }
-      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ access_token: string; token: string; user: RawApiUser }>(response, ['access_token', 'user'])) {
-        return this.apiClient.response(status, response);
+      const entity = unwrapApiEntity<{ access_token: string; token: string; user: RawApiUser }>(
+        response,
+        ['access_token', 'user'],
+      );
+      if (status === StatusCodes.Http200 && entity) {
+        return this.apiClient.response(status, entity);
       }
     } catch (err) {
       console.log('err', err);
@@ -49,8 +53,12 @@ export class AuthClient {
       if (isMaintenanceModeResponse(status, response)) {
         return this.apiClient.response(StatusCodes.Http503, response);
       }
-      if ((status === StatusCodes.Http200 || status === StatusCodes.Http201) && isSingleEntityApiResponse<{ access_token: string; token: string; user: RawApiUser }>(response, ['access_token', 'user'])) {
-        return this.apiClient.response(status as StatusCodes.Http200 | StatusCodes.Http201, response);
+      const entity = unwrapApiEntity<{ access_token: string; token: string; user: RawApiUser }>(
+        response,
+        ['access_token', 'user'],
+      );
+      if ((status === StatusCodes.Http200 || status === StatusCodes.Http201) && entity) {
+        return this.apiClient.response(status as StatusCodes.Http200 | StatusCodes.Http201, entity);
       }
     } catch (err) {
       console.log('err', err);
@@ -76,8 +84,9 @@ export class AuthClient {
       if (isMaintenanceModeResponse(status, response)) {
         return this.apiClient.response(StatusCodes.Http503, response);
       }
-      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<RawApiUser>(response, ['id'])) {
-        return this.apiClient.response(status, response);
+      const entity = unwrapApiEntity<RawApiUser>(response, ['id']);
+      if (status === StatusCodes.Http200 && entity) {
+        return this.apiClient.response(status, entity);
       }
     } catch (err) {
       console.log('err', err);

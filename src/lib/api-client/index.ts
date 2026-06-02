@@ -2,6 +2,7 @@ export * from './api-client';
 export * from './clients';
 export * from './public-env';
 export * from './response';
+export { isValidationErrorApiResponse, isGeneralErrorApiResponse } from './type-guards';
 export * from './type-guards';
 export { apiClient, ApiClientFacade } from './api-client-instance';
 
