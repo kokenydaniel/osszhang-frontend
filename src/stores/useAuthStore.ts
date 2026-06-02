@@ -3,6 +3,7 @@ import { StatusCodes } from '@/types/api';
 import { UserProfile, RawApiUser, type HouseholdProfile } from '@/types';
 import { authClient, getApiErrorMessage, householdClient, walletClient, ApiClientError } from '@/lib/api-client';
 import { isTimeoutError } from '@/lib/api-client/abortError';
+import { isMaintenanceBlockedForUser } from '@/config/platform-feature-flags';
 import { isMaintenanceModeResponse, redirectToMaintenanceIfNeeded } from '@/lib/api-client/response';
 import { getAuthToken, removeAuthToken, setAuthToken as persistAuthToken } from '@/helpers/auth-token';
 import { LoadableStatus } from '@/utils/loadable-status';
@@ -111,6 +112,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   refreshSessionQuiet: async () => {
+    if (isMaintenanceBlockedForUser(get().user)) return;
+
     const token = get().authToken ?? getAuthToken();
     if (!token) return;
 
@@ -169,21 +172,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const res = await authClient.login(credentials);
-      if (res && isMaintenanceModeResponse(res[0], res[1])) {
-        removeAuthToken();
-        set({
-          loginStatus: LoadableStatus.Error,
-          user: null,
-          authToken: null,
-          status: LoadableStatus.Loaded,
-        });
-        const payload = (res[1] ?? {}) as { message?: string };
-        throw new ApiClientError(
-          payload.message ?? 'Karbantartás alatt. Az alkalmazás pillanatnyilag nem elérhető.',
-          503,
-          res[1],
-        );
-      }
       if (!res || (res[0] !== StatusCodes.Http200 && res[0] !== StatusCodes.Http201)) {
         throw new Error('API Error');
       }
@@ -191,8 +179,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       get().setAuthToken(token);
       const user = res[1].user as UserProfile;
       set({ user, loginStatus: LoadableStatus.Loaded, status: LoadableStatus.Loaded });
-      syncBudgetCategories(user);
-      useWalletStore.getState().syncFromUser(user.wallets, user.household?.id);
+      if (!isMaintenanceBlockedForUser(user)) {
+        syncBudgetCategories(user);
+        useWalletStore.getState().syncFromUser(user.wallets, user.household?.id);
+      }
       return user;
     } catch (e) {
       console.error('Login failed', e);
@@ -227,8 +217,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       get().setAuthToken(token);
       const user = res[1].user as UserProfile;
       set({ user, loginStatus: LoadableStatus.Loaded, status: LoadableStatus.Loaded });
-      syncBudgetCategories(user);
-      useWalletStore.getState().syncFromUser(user.wallets, user.household?.id);
+      if (!isMaintenanceBlockedForUser(user)) {
+        syncBudgetCategories(user);
+        useWalletStore.getState().syncFromUser(user.wallets, user.household?.id);
+      }
       return user;
     } catch (e) {
       removeAuthToken();

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { Toaster } from '@/components/ui/Toaster';
+import { ConditionalToaster } from '@/components/layout/conditional-toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { APP_DESCRIPTION, APP_META_TITLE } from '@/config/branding';
 import { GeistSans } from 'geist/font/sans';
@@ -31,7 +31,7 @@ export default function RootLayout({
       <body className="bg-background text-foreground antialiased font-sans">
         <TooltipProvider delayDuration={200}>
           <AuthProvider>
-            <Toaster />
+            <ConditionalToaster />
             {children}
           </AuthProvider>
         </TooltipProvider>

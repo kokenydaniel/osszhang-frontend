@@ -19,3 +19,8 @@ export function isMaintenanceBlockedForUser(user: UserProfile | null | undefined
   if (!user || user.lifetime_admin) return false;
   return isPlatformFeatureEnabled(user, 'maintenance_mode');
 }
+
+/** Skip dashboard data loads, session refresh, and toasts for maintenance-only users. */
+export function shouldUseMaintenanceOnlySession(user: UserProfile | null | undefined): boolean {
+  return isMaintenanceBlockedForUser(user);
+}

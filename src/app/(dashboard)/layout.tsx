@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
@@ -14,7 +14,7 @@ import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { HouseholdOnboardingWizard } from '@/components/onboarding/HouseholdOnboardingWizard';
 import { canAccessModule, type ModuleId } from '@/helpers/module-access';
-import { isMaintenanceBlockedForUser } from '@/config/platform-feature-flags';
+import { shouldUseMaintenanceOnlySession } from '@/config/platform-feature-flags';
 import { resolveRouteTierUpgradeRequirement } from '@/helpers/route-tier-guard';
 import { openUpgradeModal } from '@/stores/useUpgradeModalStore';
 import { needsHouseholdOnboarding } from '@/helpers/household-onboarding';
@@ -74,29 +74,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, status, refreshSessionQuiet } = useAuthStore();
   const { selectedMonth, selectedYear, setSelectedMonth, setSelectedYear } = usePeriodStore();
   const isMaintenanceRoute = pathname.startsWith('/maintenance');
+  const maintenanceOnly = shouldUseMaintenanceOnlySession(user);
+
+  useLayoutEffect(() => {
+    if (isStoreLoading(status) || !user) return;
+    if (maintenanceOnly && !isMaintenanceRoute) {
+      router.replace('/maintenance');
+    }
+  }, [isMaintenanceRoute, maintenanceOnly, router, status, user]);
 
   useEffect(() => {
-    if (isMaintenanceRoute) return;
+    if (isMaintenanceRoute || maintenanceOnly) return;
     if (isStoreLoading(status)) return;
     if (!user) return;
     void loadRouteData(pathname, user);
-  }, [isMaintenanceRoute, pathname, status, user?.id]);
+  }, [isMaintenanceRoute, maintenanceOnly, pathname, status, user?.id]);
 
   useEffect(() => {
-    if (isMaintenanceRoute) return;
+    if (isMaintenanceRoute || maintenanceOnly) return;
     if (isStoreLoading(status)) return;
     void refreshSessionQuiet();
-  }, [isMaintenanceRoute, pathname, refreshSessionQuiet, status]);
+  }, [isMaintenanceRoute, maintenanceOnly, pathname, refreshSessionQuiet, status]);
 
   useEffect(() => {
-    if (isMaintenanceRoute) return;
-    if (isStoreLoading(status) || !user) return;
-    if (isMaintenanceBlockedForUser(user)) {
-      router.replace('/maintenance');
-    }
-  }, [isMaintenanceRoute, router, status, user]);
-
-  useEffect(() => {
+    if (isMaintenanceRoute || maintenanceOnly) return;
     if (isStoreLoading(status) || !user) return;
     const tierBlocked = resolveRouteTierUpgradeRequirement(user, pathname);
 
@@ -171,7 +172,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   })();
 
   const isAllowed = hasPermissionForRoute();
-  const showOnboarding = needsHouseholdOnboarding(user);
+  const showOnboarding = !maintenanceOnly && needsHouseholdOnboarding(user);
 
   useEffect(() => {
     if (isMaintenanceRoute) return;
@@ -184,12 +185,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return <DashboardSkeleton />;
   }
 
-  if (isMaintenanceRoute) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <main className="flex-1 p-4 md:p-8 w-full overflow-x-hidden">{children}</main>
-      </div>
-    );
+  if (isMaintenanceRoute || maintenanceOnly) {
+    if (maintenanceOnly && !isMaintenanceRoute) {
+      return <DashboardSkeleton />;
+    }
+    return <>{children}</>;
   }
 
   if (!user) {

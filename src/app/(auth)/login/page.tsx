@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { isMaintenanceBlockedForUser } from '@/config/platform-feature-flags';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { Mail, Lock, Loader2, ArrowRight, Users } from 'lucide-react';
@@ -23,9 +24,8 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (user) {
-      router.replace('/');
-    }
+    if (!user) return;
+    router.replace(isMaintenanceBlockedForUser(user) ? '/maintenance' : '/');
   }, [router, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,11 +33,11 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login({
+      const loggedIn = await login({
         username: username.trim().toLowerCase(),
         password,
       });
-      router.replace('/');
+      router.replace(isMaintenanceBlockedForUser(loggedIn) ? '/maintenance' : '/');
     } catch (err) {
       setError(getApiErrorMessage(err, 'Hiba történt a bejelentkezés során.'));
     } finally {

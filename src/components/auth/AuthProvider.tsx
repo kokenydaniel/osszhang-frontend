@@ -4,6 +4,7 @@ import React, { PropsWithChildren, ReactNode, useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react';
 import { getAuthToken } from '@/helpers/auth-token';
 import { LoadableStatus } from '@/utils/loadable-status';
+import { isMaintenanceBlockedForUser } from '@/config/platform-feature-flags';
 import { syncBudgetCategories } from '@/helpers/session-bootstrap';
 import type { UserProfile } from '@/types';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -45,12 +46,17 @@ export function AuthProvider({
 
     fetchMe()
       ?.then((user) => {
-        if (user) {
-          syncBudgetCategories(user);
-          useWalletStore.getState().syncFromUser(user.wallets, user.household?.id);
-          if (validateUser && !validateUser(user)) {
-            void logout();
+        if (!user) return;
+        if (isMaintenanceBlockedForUser(user)) {
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/maintenance')) {
+            window.location.replace('/maintenance');
           }
+          return;
+        }
+        syncBudgetCategories(user);
+        useWalletStore.getState().syncFromUser(user.wallets, user.household?.id);
+        if (validateUser && !validateUser(user)) {
+          void logout();
         }
       })
       .finally(() => setIsLoaded(true));
