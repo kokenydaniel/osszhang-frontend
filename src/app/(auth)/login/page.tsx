@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/FieldLabel';
 import { AuthMarketingPanel } from '@/components/auth/AuthMarketingPanel';
-import { AppLogo } from '@/components/branding/AppLogo';
-import { HELP } from '@/lib/helpTexts';
+import { AppLogo } from '@/components/layout/app-logo';
+import { HELP } from '@/config/help';
 import { motion } from 'motion/react';
 
 export default function LoginPage() {

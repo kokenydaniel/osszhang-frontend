@@ -4,7 +4,8 @@ import type { ReactNode, MouseEvent } from 'react';
 import classNames from 'classnames';
 import { TierBadge } from '@/components/subscription/TierBadge';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { canUseFeature, requiredTierForFeature, type PremiumFeatureId } from '@/lib/checkAccess';
+import { featureUpgradeContext } from '@/config/billing/tier-benefits';
+import { canUseFeature, effectiveTier, requiredTierForFeature, type PremiumFeatureId } from '@/helpers/check-access';
 import { openUpgradeModal } from '@/stores/useUpgradeModalStore';
 
 interface TierFeatureGateProps {
@@ -36,8 +37,11 @@ export function TierFeatureGate({
     openUpgradeModal({
       requiredTier: tier === 'premium' ? 'premium' : 'pro',
       featureLabel,
+      featureId: feature,
     });
   };
+
+  const paidTier = tier === 'premium' ? 'premium' : 'pro';
 
   return (
     <div
@@ -50,11 +54,14 @@ export function TierFeatureGate({
       }}
       aria-label={`${featureLabel} — ${tier === 'premium' ? 'Premium' : 'Pro'} csomag szükséges`}
     >
-      <div className="flex items-start gap-3 p-3">
-        <div className="pointer-events-none min-w-0 flex-1 opacity-50 select-none">{children}</div>
-        <div className={classNames('shrink-0 self-start pointer-events-none', badgeClassName)}>
-          <TierBadge tier={tier === 'premium' ? 'premium' : 'pro'} />
+      <div className="flex flex-col gap-2 p-3">
+        <div className="flex items-start gap-3">
+          <div className="pointer-events-none min-w-0 flex-1 opacity-50 select-none">{children}</div>
+          <div className={classNames('shrink-0 self-start pointer-events-none', badgeClassName)}>
+            <TierBadge tier={paidTier} />
+          </div>
         </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">{featureUpgradeContext(feature)}</p>
       </div>
     </div>
   );
@@ -69,6 +76,7 @@ export function useTierFeature(feature: PremiumFeatureId) {
     openUpgradeModal({
       requiredTier: tier === 'premium' ? 'premium' : 'pro',
       featureLabel,
+      featureId: feature,
     });
   };
 

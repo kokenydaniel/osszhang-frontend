@@ -5,7 +5,7 @@ import classNames from 'classnames';
 import { Button } from '@/components/ui/button';
 import { TierBadge } from '@/components/subscription/TierBadge';
 import { useTierFeature } from '@/components/subscription/TierFeatureGate';
-import type { PremiumFeatureId } from '@/lib/checkAccess';
+import type { PremiumFeatureId } from '@/helpers/check-access';
 
 type TierGatedButtonProps = ComponentProps<typeof Button> & {
   feature: PremiumFeatureId;

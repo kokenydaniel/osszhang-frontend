@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { useAuthStore } from './useAuthStore';
-import { resetSessionData } from '@/lib/resetSessionData';
-import { syncBudgetCategories } from '@/lib/sessionBootstrap';
+import { resetSessionData } from '@/helpers/reset-session-data';
+import { syncBudgetCategories } from '@/helpers/session-bootstrap';
 
 interface InitState {
   initialize: () => Promise<void>;

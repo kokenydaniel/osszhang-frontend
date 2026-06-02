@@ -2,19 +2,37 @@ import * as React from "react"
 
 import classNames from "classnames"
 
+import { cva, type VariantProps } from "class-variance-authority"
+
+const cardVariants = cva(
+  "group/card flex flex-col gap-4 overflow-hidden rounded-lg py-4 text-sm text-card-foreground shadow-sm has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-lg *:[img:last-child]:rounded-b-lg",
+  {
+    variants: {
+      variant: {
+        default: "bg-card border border-border",
+        muted: "bg-muted/20 border border-border shadow-none",
+        outline: "bg-transparent border border-border shadow-none",
+        primary: "bg-primary/5 border border-primary/20",
+        destructive: "bg-destructive/5 border border-destructive/30 text-destructive",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
 function Card({
   className,
   size = "default",
+  variant,
   ...props
-}: React.ComponentProps<"div"> & { size?: "default" | "sm" }) {
+}: React.ComponentProps<"div"> & VariantProps<typeof cardVariants> & { size?: "default" | "sm" }) {
   return (
     <div
       data-slot="card"
       data-size={size}
-      className={classNames(
-        "group/card flex flex-col gap-4 overflow-hidden rounded-lg bg-card py-4 text-sm text-card-foreground border border-border shadow-sm has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-lg *:[img:last-child]:rounded-b-lg",
-        className
-      )}
+      className={classNames(cardVariants({ variant }), className)}
       {...props}
     />
   )

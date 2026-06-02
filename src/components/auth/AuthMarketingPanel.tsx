@@ -1,6 +1,6 @@
 'use client';
 
-import { dayjs } from '@/lib/dates';
+import { dayjs } from '@/utils/dates';
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -17,9 +17,9 @@ import {
   Wallet,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { AppLogo } from '@/components/branding/AppLogo';
+import { AppLogo } from '@/components/layout/app-logo';
 import { Sparkline } from '@/components/design/Sparkline';
-import { APP_DESCRIPTION, APP_TAGLINE } from '@/lib/branding';
+import { APP_DESCRIPTION, APP_TAGLINE } from '@/config/branding';
 import classNames from 'classnames';
 
 const highlights = [

@@ -24,12 +24,15 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { FormField } from '@/components/ui/FormField';
+import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import classNames from 'classnames';
-import { APP_NAME } from '@/lib/branding';
+import { APP_NAME } from '@/config/branding';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useInitStore } from '@/stores/useInit';
+import { householdClient } from '@/lib/api-client';
 import { useNotificationStore } from '@/stores/useNotificationStore';
-import { useBudgetStore } from '@/stores/useBudgetStore';
+// Removed useBudgetStore
 import {
   ONBOARDING_CATEGORY_PRESETS,
   ONBOARDING_MODULE_OPTIONS,
@@ -37,7 +40,7 @@ import {
   financialModelNeedsPrivateWallet,
   type FinancialModelId,
   type OnboardingModuleId,
-} from '@/lib/householdOnboarding';
+} from '@/helpers/household-onboarding';
 import {
   buildCategoriesFromAnswers,
   countAnsweredQuestions,
@@ -49,15 +52,16 @@ import {
   type PersonalizationAnswer,
   type PersonalizationAnswers,
   type PersonalizationQuestionId,
-} from '@/lib/onboardingPersonalization';
+} from '@/config/onboarding-personalization';
 import { OnboardingPersonalizationStep } from '@/components/onboarding/OnboardingPersonalizationStep';
 import { OnboardingFinancialModelStep } from '@/components/onboarding/OnboardingFinancialModelStep';
-import { HOUSEHOLD_VIBE_ICONS } from '@/lib/onboardingIcons';
-import { formatGivenName } from '@/lib/personName';
+import { HOUSEHOLD_VIBE_ICONS } from '@/config/onboarding-icons';
+import { formatGivenName } from '@/utils/person-name';
 import { TierBadge } from '@/components/subscription/TierBadge';
-import { tierForOnboardingFeature } from '@/lib/householdOnboarding';
-import { buildOnboardingSavingsSettings } from '@/lib/savingsSettings';
-import { ApiClientError } from '@/lib/api-client/api-client';
+import { tierForOnboardingFeature } from '@/helpers/household-onboarding';
+import { buildOnboardingSavingsSettings } from '@/settings/savings';
+import { StatusCodes } from '@/types/api';
+import { ApiClientError } from '@/lib/api-client';
 import { walletClient } from '@/lib/api-client';
 import { openUpgradeModal } from '@/stores/useUpgradeModalStore';
 
@@ -75,10 +79,10 @@ const MODULE_ICONS: Record<OnboardingModuleId, React.ComponentType<{ size?: numb
 type ModuleSelection = Record<OnboardingModuleId, boolean>;
 
 export function HouseholdOnboardingWizard() {
-  const { user, updateHouseholdSettings } = useAuthStore();
+  const { user } = useAuthStore();
   const { initialize } = useInitStore();
   const { addNotification } = useNotificationStore();
-  const { setCategories } = useBudgetStore();
+  // using direct api client data
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -206,10 +210,14 @@ export function HouseholdOnboardingWizard() {
     try {
       const name = householdName.trim() || user?.household?.name || 'Háztartás';
 
-      await updateHouseholdSettings({
+      const res = await householdClient.update({
         name,
         onboarding_completed: true,
       });
+      if (!res || res[0] !== StatusCodes.Http200) {
+        throw new Error('update failed');
+      }
+      await useAuthStore.getState().fetchMe();
 
       setSkipModalOpen(false);
       await initialize();
@@ -234,7 +242,7 @@ export function HouseholdOnboardingWizard() {
         modules.business ? ['Vállalkozás'] : [],
       );
 
-      const payload: Parameters<typeof updateHouseholdSettings>[0] = {
+      const payload: Parameters<typeof householdClient.update>[0] = {
         name: householdName.trim(),
         onboarding_completed: true,
         budget_enabled: modules.budget,
@@ -261,12 +269,15 @@ export function HouseholdOnboardingWizard() {
         payload.business_name = businessName.trim();
       }
 
-      await updateHouseholdSettings(payload);
+      const res = await householdClient.update(payload);
+      if (!res || res[0] !== StatusCodes.Http200) {
+        addNotification('A művelet nem sikerült. Próbáld újra.', 'error');
+        setSaving(false);
+        return;
+      }
 
       if (modules.budget && finalCategories.length > 0) {
-        const { householdClient } = await import('@/lib/api-client');
         await householdClient.updateCategories(finalCategories);
-        setCategories(finalCategories);
       }
 
       await useAuthStore.getState().fetchMe();
@@ -279,13 +290,21 @@ export function HouseholdOnboardingWizard() {
             { name: 'Saját privát kasszám', isShared: false },
             { silent: true },
           );
-          const { mapWalletFromApi } = await import('@/lib/mapWallet');
           const { useWalletStore } = await import('@/stores/useWalletStore');
-          const created = mapWalletFromApi(res.data);
+          if (!res || (res[0] !== StatusCodes.Http200 && res[0] !== StatusCodes.Http201)) throw new Error('API Error');
+          const rawWallet = res[1];
+          const created = {
+            ...rawWallet,
+            id: rawWallet.id,
+            householdId: rawWallet.household_id,
+            ownerId: rawWallet.owner_id,
+            isShared: rawWallet.is_shared,
+            manualBalance: rawWallet.manual_balance,
+          };
           await useAuthStore.getState().fetchMe();
           useWalletStore.getState().setActiveWalletId(created.id);
-        } catch (error) {
-          if (error instanceof ApiClientError && error.status === 403) {
+        } catch (error: unknown) {
+          if (error instanceof ApiClientError && (error.status === 403 || error.status === 402)) {
             privateWalletPendingUpgrade = true;
             openUpgradeModal({
               requiredTier: 'pro',
@@ -314,7 +333,7 @@ export function HouseholdOnboardingWizard() {
     }
   };
 
-  const firstName = formatGivenName(user?.firstName) || 'Admin';
+  const firstName = formatGivenName(user?.first_name) || 'Admin';
   const activeVibe = HOUSEHOLD_VIBE_PRESETS.find((v) => v.id === selectedVibe);
 
   return (
@@ -384,13 +403,13 @@ export function HouseholdOnboardingWizard() {
             >
               {step === 0 && (
                 <>
-                  <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex gap-3">
-                    <Sparkles size={18} className="text-primary shrink-0 mt-0.5" />
-                    <p className="text-sm text-foreground leading-relaxed">
+                  <Alert variant="primary" className="mb-2">
+                    <Sparkles size={18} className="mt-0.5" />
+                    <AlertDescription>
                       Szia, <strong>{firstName}</strong>! Mesélj egy kicsit magatokról — az {APP_NAME} ez alapján
                       személyre szabja a kategóriákat és modulokat.
-                    </p>
-                  </div>
+                    </AlertDescription>
+                  </Alert>
 
                   <div className="space-y-2">
                     <div>
@@ -483,18 +502,19 @@ export function HouseholdOnboardingWizard() {
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="rounded-xl border border-amber-500/25 bg-amber-500/[0.07] px-4 py-3 flex flex-wrap items-center justify-between gap-3"
                     >
-                      <div className="flex items-start gap-2 min-w-0">
-                        <Wand2 size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                        <p className="text-sm text-foreground leading-relaxed">
-                          <strong>{suggestedModules.length} modult</strong> ajánlunk a válaszaid alapján — be is
-                          kapcsoltuk őket, de bármelyiket kikapcsolhatod.
-                        </p>
-                      </div>
-                      <Button type="button" size="sm" variant="outline" onClick={applyAllSuggestedModules}>
-                        Összes ajánlott
-                      </Button>
+                      <Alert variant="warning" className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-start gap-2 min-w-0">
+                          <Wand2 size={16} className="shrink-0 mt-0.5" />
+                          <AlertDescription>
+                            <strong>{suggestedModules.length} modult</strong> ajánlunk a válaszaid alapján — be is
+                            kapcsoltuk őket, de bármelyiket kikapcsolhatod.
+                          </AlertDescription>
+                        </div>
+                        <Button type="button" size="sm" variant="outline" onClick={applyAllSuggestedModules}>
+                          Összes ajánlott
+                        </Button>
+                      </Alert>
                     </motion.div>
                   )}
 
@@ -607,45 +627,49 @@ export function HouseholdOnboardingWizard() {
                   )}
 
                   {modules.utilities && (
-                    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/20 px-4 py-3">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-medium text-foreground">Rezsi megosztás</p>
-                          <TierBadge tier={tierForOnboardingFeature('utility_split')} />
+                    <Card variant="muted" className="p-0">
+                      <CardContent className="px-4 py-3 flex items-center justify-between gap-3">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-medium text-foreground">Rezsi megosztás</p>
+                            <TierBadge tier={tierForOnboardingFeature('utility_split')} />
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Közös számlák elszámolása partnerekkel (partnert később állíthatod be).
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Közös számlák elszámolása partnerekkel (partnert később állíthatod be).
-                        </p>
-                      </div>
-                      <Switch checked={utilitySplit} onCheckedChange={setUtilitySplit} aria-label="Rezsi megosztás" />
-                    </div>
+                        <Switch checked={utilitySplit} onCheckedChange={setUtilitySplit} aria-label="Rezsi megosztás" />
+                      </CardContent>
+                    </Card>
                   )}
 
                   {modules.savings && (
-                    <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">Külön megtakarítási csoport</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            Pl. utazás vagy egy személy külön szekcióban jelenik meg.
-                          </p>
-                        </div>
-                        <Switch
-                          checked={savingsSeparateGroup}
-                          onCheckedChange={setSavingsSeparateGroup}
-                          aria-label="Külön csoport"
-                        />
-                      </div>
-                      {savingsSeparateGroup && (
-                        <FormField label="Csoport neve">
-                          <Input
-                            value={savingsSeparateName}
-                            onChange={(e) => setSavingsSeparateName(e.target.value)}
-                            placeholder="pl. utazás alap"
+                    <Card variant="muted" className="p-0">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">Külön megtakarítási csoport</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Pl. utazás vagy egy személy külön szekcióban jelenik meg.
+                            </p>
+                          </div>
+                          <Switch
+                            checked={savingsSeparateGroup}
+                            onCheckedChange={setSavingsSeparateGroup}
+                            aria-label="Külön csoport"
                           />
-                        </FormField>
-                      )}
-                    </div>
+                        </div>
+                        {savingsSeparateGroup && (
+                          <FormField label="Csoport neve">
+                            <Input
+                              value={savingsSeparateName}
+                              onChange={(e) => setSavingsSeparateName(e.target.value)}
+                              placeholder="pl. utazás alap"
+                            />
+                          </FormField>
+                        )}
+                      </CardContent>
+                    </Card>
                   )}
 
                   {modules.business && (

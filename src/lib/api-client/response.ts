@@ -1,28 +1,28 @@
-export interface ApiResponse<T> {
-  data: T;
-  status: number;
-}
+export * from '@/types/api';
 
-export type RequestOptions = {
-  silent?: boolean;
-  signal?: AbortSignal;
-  params?: Record<string, string | number | boolean | undefined | null>;
-  /** Request timeout in milliseconds. Defaults to 45s; AI endpoints use 120s. */
-  timeoutMs?: number;
-};
+// ── TypeGuards ────────────────────────────────────────────────────────────────
+// All guards are now centralized in type-guards.ts with proper
+// isObjectInstanceByProperties validation instead of weak `any` checks.
+export {
+  isObject,
+  isArray,
+  isString,
+  isObjectInstanceByProperties,
+  isSingleEntityApiResponse,
+  isCollectionApiResponse,
+  isValidationErrorApiResponse,
+  isGeneralErrorApiResponse,
+} from './type-guards';
 
-export type MaintenanceErrorPayload = {
-  message?: string;
-  code?: string;
-};
+// ── Maintenance mode detection ────────────────────────────────────────────────
 
-export function isMaintenanceModeResponse(status: number, data: unknown): boolean {
-  if (status !== 503) return false;
-  const payload = (data ?? {}) as MaintenanceErrorPayload;
+export function isMaintenanceModeResponse(status: string | number, data: unknown): boolean {
+  if (status !== 503 && status !== '503') return false;
+  const payload = (data ?? {}) as import('@/types/api').MaintenanceErrorPayload;
   return payload.code === 'MAINTENANCE_MODE';
 }
 
-export function redirectToMaintenanceIfNeeded(status: number, data: unknown): void {
+export function redirectToMaintenanceIfNeeded(status: string | number, data: unknown): void {
   if (!isMaintenanceModeResponse(status, data)) return;
   if (typeof window === 'undefined') return;
   if (window.location.pathname.startsWith('/maintenance')) return;

@@ -3,7 +3,7 @@ export type { HouseholdProfile, RawApiHousehold } from './household';
 export type { WalletProfile, RawApiWallet, SubscriptionTier, SubscriptionStatus } from './wallet';
 export type { LedgerEntry, CashTransaction, BudgetListResponse } from './budget';
 export { isSavingsGoalTransaction } from './budget';
-export type { SavingsAccount, Investment } from './savings';
+export type { SavingsAccount, Investment, CreateSavingsPayload } from './savings';
 export type {
   UtilitySplitRule,
   UtilityBill,

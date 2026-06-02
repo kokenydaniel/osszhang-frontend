@@ -1,8 +1,8 @@
 'use client';
 
 import classNames from 'classnames';
-import { yearlyFreeMonths } from '@/lib/subscriptionPlans';
-import type { BillingInterval } from '@/lib/subscriptionPlans';
+import { yearlyFreeMonths } from '@/config/billing/subscription-plans';
+import type { BillingInterval } from '@/config/billing/subscription-plans';
 
 interface BillingIntervalToggleProps {
   value: BillingInterval;

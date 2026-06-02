@@ -4,12 +4,9 @@ export interface MeterReading {
   month: number;
   year: number;
   value: number;
-  isReset: boolean;
-  is_reset?: boolean;
+  is_reset: boolean;
   consumption: number;
-  isEstimated?: boolean;
   is_estimated?: boolean;
-  isOfficial?: boolean;
   is_official?: boolean;
 }
 
@@ -21,3 +18,22 @@ export interface Meter {
   location: string;
   readings: MeterReading[];
 }
+
+export interface CreateMeterPayload {
+  name: string;
+  icon?: string;
+  unit: string;
+  location: string;
+}
+
+export interface CreateReadingPayload {
+  date: string;
+  value: number;
+  is_reset?: boolean;
+  is_estimated?: boolean;
+  is_official?: boolean;
+  month?: number;
+  year?: number;
+}
+
+export type UpdateReadingPayload = Partial<CreateReadingPayload>;

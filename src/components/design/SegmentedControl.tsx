@@ -25,6 +25,8 @@ interface SegmentedControlProps<T extends string = string> {
   layoutId?: string;
   animated?: boolean;
   variant?: 'compact' | 'choice';
+  equalWidth?: boolean;
+  nowrap?: boolean;
 }
 
 const toneStyles: Record<
@@ -62,6 +64,8 @@ export function SegmentedControl<T extends string = string>({
   layoutId,
   animated = true,
   variant = 'compact',
+  equalWidth = true,
+  nowrap = false,
 }: SegmentedControlProps<T>) {
   const autoLayoutId = useId();
   const pillLayoutId = layoutId ?? `segmented-pill${autoLayoutId}`;
@@ -135,7 +139,8 @@ export function SegmentedControl<T extends string = string>({
     <div
       role="tablist"
       className={classNames(
-        'relative inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-1',
+        'relative items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-1',
+        equalWidth ? 'flex w-full sm:inline-flex sm:w-auto' : 'inline-flex',
         className,
       )}
     >
@@ -152,8 +157,10 @@ export function SegmentedControl<T extends string = string>({
             aria-selected={active}
             onClick={() => onChange(opt.value)}
             className={classNames(
-              'relative inline-flex flex-1 items-center justify-center gap-1.5 rounded-md font-medium transition-colors touch-manipulation',
+              'relative inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-colors touch-manipulation',
+              equalWidth ? 'flex-1 min-w-0' : 'flex-none shrink-0',
               size === 'sm' ? 'h-8 px-3 text-xs' : 'h-9 px-3.5 text-[0.8rem]',
+              nowrap && 'px-4',
               active
                 ? styles
                   ? classNames(styles.active, 'border-0 shadow-none')
@@ -186,7 +193,7 @@ export function SegmentedControl<T extends string = string>({
                 className={classNames('relative shrink-0', active && styles?.icon && 'text-inherit')}
               />
             )}
-            <span className="relative">{opt.label}</span>
+            <span className={classNames('relative', nowrap && 'whitespace-nowrap')}>{opt.label}</span>
             {opt.count !== undefined && (
               <span
                 className={classNames(

@@ -4,22 +4,11 @@ export type SubscriptionStatus = 'none' | 'active' | 'past_due' | 'canceled' | '
 
 export interface WalletProfile {
   id: number;
-  householdId: number;
+  household_id: number;
   name: string;
-  ownerId: number | null;
-  isShared: boolean;
-  manualBalance: number;
+  owner_id: number | null;
+  is_shared: boolean;
+  manual_balance: number;
 }
 
-export interface RawApiWallet {
-  id: number;
-  household_id?: number;
-  householdId?: number;
-  name: string;
-  owner_id?: number | null;
-  ownerId?: number | null;
-  is_shared?: boolean;
-  isShared?: boolean;
-  manual_balance?: number;
-  manualBalance?: number;
-}
+export type RawApiWallet = WalletProfile;

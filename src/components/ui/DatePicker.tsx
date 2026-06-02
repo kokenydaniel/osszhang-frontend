@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useRef, useEffect } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import classNames from 'classnames';
-import { dayjs, d, today, DATE_FORMAT, DISPLAY_FORMAT, parseDateInput } from '@/lib/dates';
+import { dayjs, toDayjs, today, DATE_FORMAT, DISPLAY_FORMAT, parseDateInput } from '@/utils/dates';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
 
-interface DatePickerProps {
+export interface DatePickerProps {
   value: string;
   onChange: (date: string) => void;
   placeholder?: string;
@@ -15,12 +16,11 @@ interface DatePickerProps {
   required?: boolean;
 }
 
-const CALENDAR_HEIGHT = 340;
 const INPUT_PLACEHOLDER = 'éééé.hh.nn.';
 
 function formatInputValue(dateStr: string): string {
   if (!dateStr) return '';
-  const parsed = d(dateStr);
+  const parsed = toDayjs(dateStr);
   return parsed.isValid() ? parsed.format(DISPLAY_FORMAT) : '';
 }
 
@@ -33,18 +33,12 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   required = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [openUp, setOpenUp] = useState(false);
-  const [coords, setCoords] = useState({ top: 0, left: 0, width: 288 });
-  const [mounted, setMounted] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(() => (value ? d(value) : dayjs()));
+  const [currentMonth, setCurrentMonth] = useState(() => (value ? toDayjs(value) : dayjs()));
   const [inputText, setInputText] = useState(() => formatInputValue(value));
   const [isFocused, setIsFocused] = useState(false);
   const [inputInvalid, setInputInvalid] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const selectedDate = value ? d(value) : null;
-
-  useEffect(() => setMounted(true), []);
+  const selectedDate = value ? toDayjs(value) : null;
 
   useEffect(() => {
     if (!isFocused) {
@@ -54,60 +48,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   }, [value, isFocused]);
 
   useEffect(() => {
-    if (value) setCurrentMonth(d(value));
+    if (value) setCurrentMonth(toDayjs(value));
   }, [value]);
-
-  const updatePosition = () => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const width = Math.min(288, window.innerWidth - 16);
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const placeAbove = spaceBelow < CALENDAR_HEIGHT && rect.top > CALENDAR_HEIGHT;
-    setOpenUp(placeAbove);
-    let left = rect.left;
-    if (left + width > window.innerWidth - 8) left = window.innerWidth - width - 8;
-    if (left < 8) left = 8;
-    setCoords({
-      left,
-      width,
-      top: placeAbove ? rect.top - 8 : rect.bottom + 8,
-    });
-  };
-
-  useLayoutEffect(() => {
-    if (isOpen) updatePosition();
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const onScrollOrResize = () => updatePosition();
-    window.addEventListener('resize', onScrollOrResize);
-    window.addEventListener('scroll', onScrollOrResize, true);
-    return () => {
-      window.removeEventListener('resize', onScrollOrResize);
-      window.removeEventListener('scroll', onScrollOrResize, true);
-    };
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (containerRef.current?.contains(target)) return;
-      const portal = document.getElementById('datepicker-portal-root');
-      if (portal?.contains(target)) return;
-      setIsOpen(false);
-    };
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsOpen(false);
-    };
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isOpen]);
 
   const commitInput = (): boolean => {
     const trimmed = inputText.trim();
@@ -128,7 +70,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     onChange(parsed);
     setInputText(formatInputValue(parsed));
     setInputInvalid(false);
-    setCurrentMonth(d(parsed));
+    setCurrentMonth(toDayjs(parsed));
     return true;
   };
 
@@ -148,23 +90,27 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
   const renderHeader = () => (
     <div className="flex justify-between items-center mb-3 px-1">
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon-sm"
         onClick={() => setCurrentMonth((m) => m.subtract(1, 'month'))}
-        className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+        className="text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft size={15} />
-      </button>
+      </Button>
       <div className="text-sm font-medium capitalize text-foreground">
         {currentMonth.format('YYYY. MMMM')}
       </div>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon-sm"
         onClick={() => setCurrentMonth((m) => m.add(1, 'month'))}
-        className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+        className="text-muted-foreground hover:text-foreground"
       >
         <ChevronRight size={15} />
-      </button>
+      </Button>
     </div>
   );
 
@@ -221,120 +167,113 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     );
   };
 
-  const calendarPanel = isOpen && mounted && (
-    <div
-      id="datepicker-portal-root"
-      role="dialog"
-      aria-label="Naptár"
-      className="fixed z-[500] rounded-lg border border-border bg-popover p-3 shadow-lg animate-in fade-in zoom-in-95 duration-150"
-      style={{
-        left: coords.left,
-        width: coords.width,
-        ...(openUp ? { bottom: window.innerHeight - coords.top } : { top: coords.top }),
-      }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {renderHeader()}
-      {renderDays()}
-      {renderCells()}
-      <div className="mt-3 pt-3 border-t border-border flex justify-between gap-2">
-        <button
-          type="button"
-          className="px-3 py-1.5 rounded-md text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors touch-manipulation"
-          onClick={() => {
-            onChange('');
-            setInputText('');
-            setInputInvalid(false);
-            setIsOpen(false);
-          }}
-        >
-          Törlés
-        </button>
-        <button
-          type="button"
-          className="px-3 py-1.5 rounded-md text-xs font-medium text-primary hover:bg-primary/10 transition-colors touch-manipulation"
-          onClick={() => {
-            const todayValue = today();
-            onChange(todayValue);
-            setInputText(formatInputValue(todayValue));
-            setInputInvalid(false);
-            setIsOpen(false);
-          }}
-        >
-          Ma
-        </button>
-      </div>
-    </div>
-  );
-
   return (
-    <div ref={containerRef} className={classNames('relative w-full', className)}>
-      <div
-        className={classNames(
-          'flex w-full items-center gap-2 h-9 px-3 bg-input border border-border rounded-md',
-          'hover:border-foreground/20 transition-colors text-sm touch-manipulation',
-          (isOpen || isFocused) && !disabled && 'border-primary/50 ring-2 ring-primary/20',
-          inputInvalid && 'border-destructive ring-2 ring-destructive/20',
-          disabled && 'opacity-50 pointer-events-none cursor-not-allowed',
-        )}
-      >
-        <button
-          type="button"
-          tabIndex={-1}
-          aria-label="Naptár megnyitása"
-          onClick={() => {
-            setIsOpen((open) => !open);
-            inputRef.current?.focus();
-          }}
-          className="text-muted-foreground hover:text-foreground transition-colors shrink-0 -ml-0.5"
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <div className={classNames('relative w-full', className)}>
+        <div
+          className={classNames(
+            'flex w-full items-center gap-2 h-9 px-3 bg-input border border-border rounded-md',
+            'hover:border-foreground/20 transition-colors text-sm touch-manipulation',
+            (isOpen || isFocused) && !disabled && 'border-primary/50 ring-2 ring-primary/20',
+            inputInvalid && 'border-destructive ring-2 ring-destructive/20',
+            disabled && 'opacity-50 pointer-events-none cursor-not-allowed',
+          )}
         >
-          <CalendarIcon size={15} />
-        </button>
-        <input
-          ref={inputRef}
-          type="text"
-          inputMode="numeric"
-          autoComplete="off"
-          spellCheck={false}
-          disabled={disabled}
-          required={required}
-          aria-invalid={inputInvalid}
-          placeholder={placeholder === 'Válassz dátumot' ? INPUT_PLACEHOLDER : placeholder}
-          value={inputText}
-          onChange={(e) => {
-            setInputText(e.target.value);
-            setInputInvalid(false);
-          }}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => {
-            setIsFocused(false);
-            commitInput();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              if (commitInput()) setIsOpen(false);
-            }
-            if (e.key === 'Escape') {
-              setInputText(formatInputValue(value));
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label="Naptár megnyitása"
+              onClick={(e) => {
+                if (isOpen) {
+                  e.preventDefault();
+                  setIsOpen(false);
+                }
+              }}
+              className="text-muted-foreground hover:text-foreground transition-colors shrink-0 -ml-0.5"
+            >
+              <CalendarIcon size={15} />
+            </button>
+          </PopoverTrigger>
+          <input
+            ref={inputRef}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            spellCheck={false}
+            disabled={disabled}
+            required={required}
+            aria-invalid={inputInvalid}
+            placeholder={placeholder === 'Válassz dátumot' ? INPUT_PLACEHOLDER : placeholder}
+            value={inputText}
+            onChange={(e) => {
+              setInputText(e.target.value);
               setInputInvalid(false);
-              setIsOpen(false);
-              inputRef.current?.blur();
-            }
-            if (e.key === 'ArrowDown' && !isOpen) {
-              e.preventDefault();
-              setIsOpen(true);
-            }
-          }}
-          className="flex-1 min-w-0 bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
-        />
-        {value && (
-          <button
+              if (!isOpen) setIsOpen(true);
+            }}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => {
+              setIsFocused(false);
+              commitInput();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (commitInput()) setIsOpen(false);
+              }
+              if (e.key === 'Escape') {
+                setInputText(formatInputValue(value));
+                setInputInvalid(false);
+                setIsOpen(false);
+                inputRef.current?.blur();
+              }
+              if (e.key === 'ArrowDown' && !isOpen) {
+                e.preventDefault();
+                setIsOpen(true);
+              }
+            }}
+            className="flex-1 min-w-0 bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
+          />
+          {value && (
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label="Dátum törlése"
+              className="text-muted-foreground hover:text-destructive transition-colors p-0.5 shrink-0"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange('');
+                setInputText('');
+                setInputInvalid(false);
+                setIsOpen(false);
+              }}
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <PopoverContent
+        elevated
+        align="start"
+        className="w-[288px] p-3"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => {
+          if (inputRef.current?.contains(e.target as Node)) {
+            e.preventDefault();
+          }
+        }}
+      >
+        {renderHeader()}
+        {renderDays()}
+        {renderCells()}
+        <div className="mt-3 pt-3 border-t border-border flex justify-between gap-2">
+          <Button
             type="button"
-            tabIndex={-1}
-            aria-label="Dátum törlése"
-            className="text-muted-foreground hover:text-destructive transition-colors p-0.5 shrink-0"
-            onMouseDown={(e) => e.preventDefault()}
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={() => {
               onChange('');
               setInputText('');
@@ -342,12 +281,25 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               setIsOpen(false);
             }}
           >
-            <X size={14} />
-          </button>
-        )}
-      </div>
-
-      {typeof document !== 'undefined' && createPortal(calendarPanel, document.body)}
-    </div>
+            Törlés
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-primary hover:text-primary hover:bg-primary/10"
+            onClick={() => {
+              const todayValue = today();
+              onChange(todayValue);
+              setInputText(formatInputValue(todayValue));
+              setInputInvalid(false);
+              setIsOpen(false);
+            }}
+          >
+            Ma
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 };

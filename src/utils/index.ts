@@ -6,7 +6,7 @@ export {
   DISPLAY_FORMAT_LONG,
   compareDates,
   datePart,
-  d,
+  toDayjs,
   dayjs,
   formatDate,
   formatDateLong,
@@ -22,8 +22,14 @@ export {
   today,
   toDateString,
   yearMonthPrefix,
-} from '@/lib/dates';
-export type { DateInput } from '@/lib/dates';
+} from '@/utils/dates';
+export type { DateInput } from '@/utils/dates';
+
+export { LoadableStatus, isStoreLoading, isNotFoundStatus } from '@/utils/loadable-status';
+export { pickList } from '@/utils/pick-list';
+export { fetchExchangeRates } from '@/utils/exchange-rates';
+export { activeWalletManualBalance, resolveActiveWallet } from '@/utils/wallet-balance';
+export { isHouseholdReader, canEditHousehold } from '@/utils/household-role';
 
 export function formatHUF(amount: number, compact = false): string {
   if (compact && Math.abs(amount) >= 1_000_000) {

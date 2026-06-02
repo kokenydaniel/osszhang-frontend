@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { BudgetService, type BudgetCashflowMetrics } from '@/services/BudgetService';
-import { UtilitiesService } from '@/services/UtilitiesService';
+import { budgetCalculations, type BudgetCashflowMetrics } from '@/calculations/budget';
+import { utilitiesCalculations } from '@/calculations/utilities';
 import type { CashTransaction, UtilityBill } from '@/types';
 
 export function useBudgetCashflowMetrics(params: {
@@ -18,6 +18,7 @@ export function useBudgetCashflowMetrics(params: {
   includeBudgetExpenses?: boolean;
   includeUtilityBills?: boolean;
   includeGoalRows?: boolean;
+  extraMonthExpenses?: CashTransaction[];
 }): BudgetCashflowMetrics {
   const {
     manualBalance,
@@ -32,12 +33,13 @@ export function useBudgetCashflowMetrics(params: {
     includeBudgetExpenses = true,
     includeUtilityBills = true,
     includeGoalRows = goalsReady,
+    extraMonthExpenses = [],
   } = params;
 
   return useMemo(() => {
     const prefix = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
     const monthlyBills = includeUtilityBills
-      ? bills.filter((b) => !UtilitiesService.isLegacySettlementBill(b) && b.dueDate.startsWith(prefix))
+      ? bills.filter((b) => !utilitiesCalculations.isLegacySettlementBill(b) && b.dueDate.startsWith(prefix))
       : [];
     const monthTransactions = transactions.filter((t) => t.dueDate.startsWith(prefix));
     const monthReserves = monthTransactions.filter((t) => t.isReserve);
@@ -47,11 +49,12 @@ export function useBudgetCashflowMetrics(params: {
         ? monthTransactions.filter((t) => t.type === 'expense' && !t.isReserve)
         : []),
       ...(includeGoalRows ? goalBudgetRows : []),
+      ...extraMonthExpenses,
     ];
     const getBillPortion = (bill: UtilityBill) =>
-      UtilitiesService.ourUtilityPortion(bill, onHouseholdSide, utilitySplitEnabled);
+      utilitiesCalculations.ourUtilityPortion(bill, onHouseholdSide, utilitySplitEnabled);
 
-    return BudgetService.computeBudgetCashflowMetrics({
+    return budgetCalculations.computeBudgetCashflowMetrics({
       manualBalance,
       monthIncomes,
       monthExpenses,
@@ -61,6 +64,7 @@ export function useBudgetCashflowMetrics(params: {
     });
   }, [
     bills,
+    extraMonthExpenses,
     goalBudgetRows,
     includeBudgetExpenses,
     includeGoalRows,

@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { WalletProfile } from '@/types';
-import { syncWalletDomainCaches } from '@/lib/syncWalletDomains';
 
 interface WalletState {
   activeWalletId: number | null;
@@ -20,7 +19,6 @@ export const useWalletStore = create<WalletState>()(
       setActiveWalletId: (walletId) => {
         if (get().activeWalletId === walletId) return;
         set({ activeWalletId: walletId });
-        void syncWalletDomainCaches(walletId, { silent: true });
       },
 
       syncFromUser: (wallets, householdId) => {
@@ -41,12 +39,11 @@ export const useWalletStore = create<WalletState>()(
 
         if (stillValid) return;
 
-        const shared = wallets.find((w) => w.isShared) ?? wallets[0];
+        const shared = wallets.find((w) => w.is_shared) ?? wallets[0];
         const nextWalletId = shared?.id ?? null;
 
         if (prevWalletId !== nextWalletId || prevHousehold !== householdId) {
           set({ activeWalletId: nextWalletId, activeHouseholdId: householdId });
-          void syncWalletDomainCaches(nextWalletId, { silent: true });
         }
       },
 
@@ -62,6 +59,3 @@ export const useWalletStore = create<WalletState>()(
   ),
 );
 
-export function getActiveWalletId(): number | null {
-  return useWalletStore.getState().activeWalletId;
-}

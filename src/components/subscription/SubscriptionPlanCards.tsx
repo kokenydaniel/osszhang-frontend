@@ -5,12 +5,13 @@ import classNames from 'classnames';
 import { Button } from '@/components/ui/button';
 import { TierBadge } from '@/components/subscription/TierBadge';
 import { BillingIntervalToggle } from '@/components/subscription/BillingIntervalToggle';
+import { FREE_TIER_BULLETS, tierBenefitBullets } from '@/config/billing/tier-benefits';
 import {
   formatPlanPrice,
   formatPlanPriceSubline,
   PAID_PLANS,
   type BillingInterval,
-} from '@/lib/subscriptionPlans';
+} from '@/config/billing/subscription-plans';
 import { formatHUF } from '@/utils';
 import type { SubscriptionTier } from '@/types';
 
@@ -51,8 +52,10 @@ export function SubscriptionPlanCards({
       <div className="space-y-4">
         <div className="min-w-0">
           <h3 className="text-base font-semibold text-foreground">Válassz csomagot</h3>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Havi vagy éves számlázás — bármikor módosítható a Stripe ügyfélkapun.
+          <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">
+            Havi vagy éves számlázás — bármikor módosítható a Stripe ügyfélkapun. A Pro az ingyenes
+            csomaghoz képest ad modulokat és privát kasszákat; a Premium a Pro-hoz képest AI-t és vállalkozás
+            funkciókat.
           </p>
         </div>
         <BillingIntervalToggle value={interval} onChange={onIntervalChange} />
@@ -86,7 +89,7 @@ export function SubscriptionPlanCards({
               <p className="mt-1 text-xs text-muted-foreground">örökre ingyenes</p>
             </div>
             <ul className="flex-1 space-y-2 mb-5">
-              {['1 közös kassza', 'Költségvetés / cashflow', 'Háztartás kezelés'].map((feature) => (
+              {FREE_TIER_BULLETS.map((feature) => (
                 <li key={feature} className="flex items-start gap-2 text-sm text-foreground">
                   <Check size={14} className="mt-0.5 shrink-0 text-muted-foreground" />
                   {feature}
@@ -105,6 +108,10 @@ export function SubscriptionPlanCards({
           const pricing = plan.pricing[interval];
           const subline = formatPlanPriceSubline(plan.id, interval);
           const isPremium = plan.id === 'premium';
+          const planFeatures =
+            plan.id === 'premium' && currentTier === 'pro'
+              ? tierBenefitBullets('premium', { currentTier: 'pro' })
+              : plan.features;
 
           return (
             <div
@@ -148,7 +155,7 @@ export function SubscriptionPlanCards({
               </div>
 
               <ul className="flex-1 space-y-2 mb-5">
-                {plan.features.map((feature) => (
+                {planFeatures.map((feature) => (
                   <li key={feature} className="flex items-start gap-2 text-sm text-foreground">
                     <span
                       className={classNames(

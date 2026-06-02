@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import classNames from 'classnames';
 import { OnboardingLivePreview } from '@/components/onboarding/OnboardingLivePreview';
-import { PERSONALIZATION_QUESTION_ICONS } from '@/lib/onboardingIcons';
+import { PERSONALIZATION_QUESTION_ICONS } from '@/config/onboarding-icons';
 import {
   buildCategoriesFromAnswers,
   categoriesForQuestion,
@@ -22,7 +22,7 @@ import {
   type PersonalizationAnswers,
   type PersonalizationQuestion,
   type PersonalizationQuestionId,
-} from '@/lib/onboardingPersonalization';
+} from '@/config/onboarding-personalization';
 
 type Props = {
   householdName: string;

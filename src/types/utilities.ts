@@ -24,7 +24,21 @@ export interface UtilitySettlement {
   summary: string;
 }
 
-export interface UtilitiesIndexResponse {
+export interface UtilitiesIndex {
   bills: UtilityBill[];
   settlements: UtilitySettlement[];
 }
+
+export type UtilitiesIndexResponse = UtilitiesIndex;
+
+export interface CreateUtilityBillPayload {
+  type?: string;
+  total?: number;
+  dueDate?: string;
+  paidDate?: string | null;
+  paidBy?: 'Mi' | 'Ildi' | null;
+  splitRule?: UtilitySplitRule;
+}
+
+export type UpdateUtilityBillPayload = Partial<CreateUtilityBillPayload>;
+export type RawUtilityBill = UtilityBill;

@@ -72,7 +72,7 @@ export function Modal({
     >
       <div
         className={classNames(
-          'w-full flex flex-col bg-card border border-border shadow-xl',
+          'w-full flex flex-col overflow-hidden bg-card border border-border shadow-xl',
           'max-h-[min(92dvh,100%)] sm:max-h-[90vh] sm:rounded-xl rounded-t-xl',
           'animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200',
           'transition-[max-width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
@@ -83,7 +83,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby="modal-title"
       >
-        <div className="relative shrink-0 border-b border-border bg-gradient-to-br from-primary/[0.06] via-card to-card">
+        <div className="relative shrink-0 overflow-hidden rounded-t-xl border-b border-border bg-gradient-to-br from-primary/[0.06] via-card to-card sm:rounded-t-xl">
           <span
             aria-hidden
             className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-primary to-transparent"

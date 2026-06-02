@@ -18,22 +18,23 @@ export function useAsyncAction() {
 }
 
 export function usePendingIds() {
-  const [ids, setIds] = useState<Set<number>>(() => new Set());
+  const [ids, setIds] = useState<Set<string>>(() => new Set());
 
-  const wrap = useCallback(async (id: number, fn: () => Promise<void>) => {
-    setIds((prev) => new Set(prev).add(id));
+  const wrap = useCallback(async (id: number | string, fn: () => Promise<void>) => {
+    const key = String(id);
+    setIds((prev) => new Set(prev).add(key));
     try {
       await fn();
     } finally {
       setIds((prev) => {
         const next = new Set(prev);
-        next.delete(id);
+        next.delete(key);
         return next;
       });
     }
   }, []);
 
-  const isPending = useCallback((id: number) => ids.has(id), [ids]);
+  const isPending = useCallback((id: number | string) => ids.has(String(id)), [ids]);
 
   return { wrap, isPending, hasAny: ids.size > 0 };
 }

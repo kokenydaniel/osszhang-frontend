@@ -1,4 +1,4 @@
-import { removeAuthToken } from '@/lib/authToken';
+import { removeAuthToken } from '@/helpers/auth-token';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 export function useLogout() {

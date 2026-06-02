@@ -1,45 +1,43 @@
 'use client';
 
 import Link from 'next/link';
-import { Check, Sparkles, Star } from 'lucide-react';
+import { Sparkles, Star } from 'lucide-react';
 import { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/button';
 import { BillingIntervalToggle } from '@/components/subscription/BillingIntervalToggle';
+import { TierUpgradeBenefitsList } from '@/components/subscription/TierUpgradeBenefitsList';
 import { useUpgradeModal } from '@/stores/useUpgradeModalStore';
-import { tierLabel } from '@/lib/checkAccess';
+import { Card } from '@/components/ui/card';
+import { effectiveTier, tierLabel } from '@/helpers/check-access';
+import { upgradeModalDescription } from '@/config/billing/tier-benefits';
 import {
   formatPlanPrice,
   formatPlanPriceSubline,
   planPriceId,
   type BillingInterval,
-} from '@/lib/subscriptionPlans';
-import { redirectToStripeCheckout } from '@/lib/stripeCheckout';
+} from '@/config/billing/subscription-plans';
+import { redirectToStripeCheckout } from '@/helpers/stripe-checkout';
 import { useNotificationStore } from '@/stores/useNotificationStore';
-
-const PRO_FEATURES = [
-  'Korlátlan privát kassza',
-  'Megtakarítások és tartozások',
-  'Rezsi és közműóra modul',
-  'Rezsimegosztás partnerekkel',
-];
-
-const PREMIUM_FEATURES = [
-  'Minden Pro funkció',
-  'Shopify rendelés import',
-  'AI pénzügyi tanácsadó',
-  'Automatikus kategorizálás',
-];
+import { useAuthStore } from '@/stores/useAuthStore';
 
 export function UpgradeModal() {
-  const { isOpen, requiredTier, featureLabel, closeUpgradeModal } = useUpgradeModal();
+  const { isOpen, requiredTier, featureLabel, featureId, moduleId, closeUpgradeModal } = useUpgradeModal();
+  const user = useAuthStore((s) => s.user);
   const { addNotification } = useNotificationStore();
   const [loading, setLoading] = useState(false);
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('monthly');
   const isPremium = requiredTier === 'premium';
-  const features = isPremium ? PREMIUM_FEATURES : PRO_FEATURES;
   const tierName = tierLabel(requiredTier);
   const priceSubline = formatPlanPriceSubline(requiredTier, billingInterval);
+  const currentTier = effectiveTier(user);
+
+  const description = upgradeModalDescription(requiredTier, {
+    featureLabel,
+    currentTier,
+    featureId: featureId ?? undefined,
+    moduleId: moduleId ?? undefined,
+  });
 
   const handleUpgrade = async () => {
     setLoading(true);
@@ -56,11 +54,7 @@ export function UpgradeModal() {
       isOpen={isOpen}
       onClose={closeUpgradeModal}
       title={`Ez a funkció a ${tierName} csomag része`}
-      description={
-        featureLabel
-          ? `A(z) „${featureLabel}” funkció a magasabb csomagban érhető el.`
-          : `Válts ${tierName} csomagra a teljes élményért.`
-      }
+      description={description}
       icon={
         isPremium ? (
           <Star size={20} className="fill-current" />
@@ -71,7 +65,7 @@ export function UpgradeModal() {
       size="sm"
     >
       <div className="flex flex-col gap-5">
-        <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
+        <Card className="rounded-xl bg-muted/20 shadow-none p-4 space-y-4 border border-border">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-foreground">{tierName} csomag</p>
             <p className="text-lg font-bold text-foreground tabular-nums mt-0.5">
@@ -84,18 +78,9 @@ export function UpgradeModal() {
           <div className="flex justify-start">
             <BillingIntervalToggle value={billingInterval} onChange={setBillingInterval} />
           </div>
-        </div>
+        </Card>
 
-        <ul className="space-y-2.5">
-          {features.map((item) => (
-            <li key={item} className="flex items-start gap-2.5 text-sm text-foreground">
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary">
-                <Check size={12} strokeWidth={2.5} />
-              </span>
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
+        <TierUpgradeBenefitsList tier={requiredTier} currentTier={currentTier} />
 
         <div className="flex flex-col gap-2.5 pt-1">
           <Button
@@ -113,7 +98,7 @@ export function UpgradeModal() {
             asChild
           >
             <Link href="/pricing" onClick={closeUpgradeModal}>
-              Összes csomag
+              Összes csomag összehasonlítása
             </Link>
           </Button>
         </div>

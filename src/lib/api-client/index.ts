@@ -1,10 +1,25 @@
-export { ApiClient, ApiClientError, getApiErrorMessage } from './api-client';
-export { apiClient, ApiClientFacade } from './api-client-instance';
-export { API_URL } from './public-env';
-export type { ApiResponse, RequestOptions } from './response';
+export * from './api-client';
 export * from './clients';
+export * from './public-env';
+export * from './response';
+export * from './type-guards';
+export { apiClient, ApiClientFacade } from './api-client-instance';
 
 import { apiClient } from './api-client-instance';
+
+export class ApiClientError extends Error {
+  public status?: number;
+  public data?: unknown;
+  constructor(message: string, status?: number, data?: unknown) {
+    super(message);
+    this.status = status;
+    this.data = data;
+  }
+}
+export function getApiErrorMessage(error: unknown, fallback: string = 'Hiba történt'): string {
+  if (error instanceof Error) return error.message;
+  return fallback;
+}
 
 export const authClient = apiClient.auth;
 export const householdClient = apiClient.household;

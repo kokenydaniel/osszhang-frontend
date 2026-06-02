@@ -44,8 +44,8 @@ export function PageHeader({ breadcrumbs, title, description, actions, meta, cla
           ))}
         </nav>
       )}
-      <div className="relative flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
+      <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
           <h1 className="text-[1.875rem] leading-[1.1] font-semibold tracking-tight text-foreground">
             {title}
           </h1>
@@ -54,9 +54,11 @@ export function PageHeader({ breadcrumbs, title, description, actions, meta, cla
           )}
         </div>
         {(actions || meta) && (
-          <div className="flex flex-col gap-2 w-full min-w-0 sm:w-auto sm:max-w-full sm:items-end shrink-0">
+          <div className="flex flex-col gap-2 w-full min-w-0 sm:w-auto sm:max-w-[min(100%,420px)] sm:items-end shrink-0">
             {meta}
-            {actions && <div className="flex flex-wrap items-center justify-end gap-2">{actions}</div>}
+            {actions && (
+              <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-2">{actions}</div>
+            )}
           </div>
         )}
       </div>

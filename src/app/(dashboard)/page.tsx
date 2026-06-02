@@ -1,9 +1,4 @@
-import { Metadata } from 'next';
-import DashboardPage from '@/components/modules/dashboard/dashboard-page';
-
-export const metadata: Metadata = {
-  title: 'Irányítópult | Háztartás Menedzser',
-};
+import { DashboardPage } from '@/components/dashboard/dashboard-page';
 
 export default function Page() {
   return <DashboardPage />;

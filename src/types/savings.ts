@@ -4,6 +4,7 @@ export interface SavingsWalletRef {
   id: number;
   name: string;
   isShared: boolean;
+  is_shared?: boolean;
 }
 
 export interface SavingsAccount {
@@ -19,6 +20,18 @@ export interface SavingsAccount {
   targetDate: string | null;
   wallet?: SavingsWalletRef | null;
   ledger: import('./budget').LedgerEntry[];
+}
+
+export interface CreateSavingsPayload {
+  type: SavingsType;
+  institution: string;
+  currency?: string;
+  owner?: string;
+  count_in_savings?: boolean;
+  goalAmount?: number;
+  currentAmount?: number;
+  targetDate?: string;
+  walletId?: number | null;
 }
 
 export interface Investment {

@@ -7,7 +7,7 @@ import { TierBadge } from '@/components/subscription/TierBadge';
 import {
   ONBOARDING_FINANCIAL_MODEL_OPTIONS,
   type FinancialModelId,
-} from '@/lib/householdOnboarding';
+} from '@/helpers/household-onboarding';
 
 const MODEL_ICONS: Record<FinancialModelId, React.ComponentType<{ size?: number; className?: string }>> = {
   shared: Users,

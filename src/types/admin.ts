@@ -1,31 +1,49 @@
-import type { SubscriptionTier } from '@/types';
+import type { SubscriptionTier } from './wallet';
 
 export interface AdminUser {
   id: number;
   username: string;
-  firstName: string;
-  lastName: string;
+  first_name: string;
+  last_name: string;
   role: string;
-  lifetimeAdmin: boolean;
-  isActive: boolean;
-  householdId: number | null;
-  householdName: string | null;
-  businessName: string | null;
-  householdSubscriptionTier: SubscriptionTier;
-  effectiveTier: SubscriptionTier;
-  lastLoginAt: string | null;
-  createdAt: string | null;
+  lifetime_admin: boolean;
+  is_active: boolean;
+  household_id: number | null;
+  household_name: string | null;
+  business_name: string | null;
+  household_subscription_tier: SubscriptionTier;
+  billing_tier: SubscriptionTier;
+  effective_tier: SubscriptionTier;
+  tier_grant: SubscriptionTier | null;
+  tier_grant_expires_at: string | null;
+  tier_grant_is_permanent: boolean;
+  tier_grant_note: string | null;
+  tier_grant_active: boolean;
+  last_login_at: string | null;
+  created_at: string | null;
+}
+
+export interface AdminTierGrantPayload {
+  grant_tier: 'pro' | 'premium' | null;
+  permanent: boolean;
+  expires_at: string | null;
+  note: string | null;
 }
 
 export interface AdminUsersMeta {
-  currentPage: number;
-  lastPage: number;
-  perPage: number;
+  current_page: number;
+  last_page: number;
+  per_page: number;
   total: number;
 }
 
 export interface AdminUsersPage {
   users: AdminUser[];
+  meta: AdminUsersMeta;
+}
+
+export interface AdminUsersApiResponse {
+  data: AdminUser[];
   meta: AdminUsersMeta;
 }
 
@@ -54,15 +72,23 @@ export interface FeatureFlag {
 
 export type FeatureFlagsRecord = Record<string, FeatureFlag>;
 
+export interface FeatureFlagsApiResponse {
+  data: FeatureFlag[];
+}
+
 export type SystemAnnouncementType = 'info' | 'warning' | 'danger';
 
 export interface SystemAnnouncement {
   id: number;
   message: string;
   type: SystemAnnouncementType;
-  isActive: boolean;
-  createdAt: string | null;
-  updatedAt: string | null;
+  is_active: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface SystemAnnouncementsApiResponse {
+  data: SystemAnnouncement[];
 }
 
 export interface CreateSystemAnnouncementPayload {

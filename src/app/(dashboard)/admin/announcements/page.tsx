@@ -1,10 +1,5 @@
-import { Metadata } from 'next';
-import { AnnouncementsPage } from '@/components/modules/admin/announcements-page';
+import { AnnouncementsPage } from '@/components/admin/announcements-page';
 
-export const metadata: Metadata = {
-  title: 'Rendszerüzenetek | Platform admin',
-};
-
-export default function AdminAnnouncementsPage() {
+export default function Page() {
   return <AnnouncementsPage />;
 }

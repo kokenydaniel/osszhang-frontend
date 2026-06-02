@@ -20,7 +20,7 @@ export function ChangePasswordModal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const open = Boolean(user?.mustChangePassword);
+  const open = Boolean(user?.must_change_password);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

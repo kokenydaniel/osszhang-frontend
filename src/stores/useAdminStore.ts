@@ -22,6 +22,8 @@ interface AdminState {
   setFeatureFlagsLoaded: (loaded: boolean) => void;
   setAnnouncements: (announcements: SystemAnnouncement[]) => void;
   applyAnnouncementToggle: (announcement: SystemAnnouncement) => void;
+  patchAnnouncement: (announcement: SystemAnnouncement) => void;
+  removeAnnouncement: (id: number) => void;
   prependAnnouncement: (announcement: SystemAnnouncement) => void;
   setAnnouncementsLoading: (loading: boolean) => void;
   setAnnouncementsLoaded: (loaded: boolean) => void;
@@ -64,9 +66,19 @@ export const useAdminStore = create<AdminState>((set) => ({
     set((state) => ({
       announcements: state.announcements.map((item) => {
         if (item.id === announcement.id) return announcement;
-        if (announcement.isActive) return { ...item, isActive: false };
+        if (announcement.is_active) return { ...item, is_active: false };
         return item;
       }),
+    })),
+  patchAnnouncement: (announcement) =>
+    set((state) => ({
+      announcements: state.announcements.map((item) =>
+        item.id === announcement.id ? announcement : item,
+      ),
+    })),
+  removeAnnouncement: (id) =>
+    set((state) => ({
+      announcements: state.announcements.filter((item) => item.id !== id),
     })),
   prependAnnouncement: (announcement) =>
     set((state) => ({ announcements: [announcement, ...state.announcements] })),

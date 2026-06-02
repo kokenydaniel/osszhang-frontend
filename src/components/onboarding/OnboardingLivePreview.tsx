@@ -3,8 +3,8 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { Sparkles, Star, Tag } from 'lucide-react';
 import classNames from 'classnames';
-import type { OnboardingModuleId } from '@/lib/householdOnboarding';
-import { ONBOARDING_MODULE_OPTIONS } from '@/lib/householdOnboarding';
+import type { OnboardingModuleId } from '@/helpers/household-onboarding';
+import { ONBOARDING_MODULE_OPTIONS } from '@/helpers/household-onboarding';
 
 type Props = {
   householdName: string;

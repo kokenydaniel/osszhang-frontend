@@ -1,31 +1,81 @@
 import type { ApiClient } from '../api-client';
-import type { Meter, MeterReading } from '@/types';
+import { StatusCodes, SingleEntityResponse, CollectionResponse, EmptyResponse, isSingleEntityApiResponse, isCollectionApiResponse } from '../response';
+import type { Meter } from '@/types';
+import type { CreateMeterPayload, CreateReadingPayload, UpdateReadingPayload } from '@/types/meters';
 import type { RequestOptions } from '../response';
 
 export class MetersClient {
   constructor(protected apiClient: ApiClient, protected baseEndpoint = 'meters') {}
 
-  getAll(options?: RequestOptions) {
-    return this.apiClient.getJson<Meter[]>(this.baseEndpoint, options);
+  async getAll(options?: RequestOptions): CollectionResponse<Meter> {
+    try {
+      const [status, response] = await this.apiClient.getJson(this.baseEndpoint, options);
+      if (status === StatusCodes.Http200 && isCollectionApiResponse<Meter>(response, ['id'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
   }
 
-  create(data: Omit<Meter, 'id' | 'readings' | 'icon'> & Partial<Pick<Meter, 'icon'>>) {
-    return this.apiClient.postJson<Meter>(this.baseEndpoint, data);
+  async create(data: CreateMeterPayload & { household_id: number }): SingleEntityResponse<Meter> {
+    try {
+      const [status, response] = await this.apiClient.postJson(this.baseEndpoint, data);
+      if ((status === StatusCodes.Http200 || status === StatusCodes.Http201) && isSingleEntityApiResponse<Meter>(response, ['id'])) {
+        return this.apiClient.response(status as StatusCodes.Http200 | StatusCodes.Http201, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
   }
 
-  delete(id: number) {
-    return this.apiClient.deleteJson(`${this.baseEndpoint}/${id}`);
+  async delete(id: number): EmptyResponse {
+    try {
+      const [status, response] = await this.apiClient.deleteJson(`${this.baseEndpoint}/${id}`);
+      if (status === StatusCodes.Http200 || status === StatusCodes.Http204) {
+        return this.apiClient.response(status as StatusCodes.Http200 | StatusCodes.Http204, null);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
   }
 
-  addReading(meterId: number, data: Omit<MeterReading, 'id' | 'consumption'>) {
-    return this.apiClient.postJson<Meter>(`${this.baseEndpoint}/${meterId}/readings`, data);
+  async addReading(meterId: number, data: CreateReadingPayload): SingleEntityResponse<Meter> {
+    try {
+      const [status, response] = await this.apiClient.postJson(`${this.baseEndpoint}/${meterId}/readings`, data);
+      if ((status === StatusCodes.Http200 || status === StatusCodes.Http201) && isSingleEntityApiResponse<Meter>(response, ['id'])) {
+        return this.apiClient.response(status as StatusCodes.Http200 | StatusCodes.Http201, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
   }
 
-  updateReading(meterId: number, readingId: number, data: Partial<Omit<MeterReading, 'id' | 'consumption'>>) {
-    return this.apiClient.putJson<Meter>(`${this.baseEndpoint}/${meterId}/readings/${readingId}`, data);
+  async updateReading(meterId: number, readingId: number, data: UpdateReadingPayload): SingleEntityResponse<Meter> {
+    try {
+      const [status, response] = await this.apiClient.putJson(`${this.baseEndpoint}/${meterId}/readings/${readingId}`, data);
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<Meter>(response, ['id'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
   }
 
-  deleteReading(meterId: number, readingId: number) {
-    return this.apiClient.deleteJson<Meter>(`${this.baseEndpoint}/${meterId}/readings/${readingId}`);
+  async deleteReading(meterId: number, readingId: number): SingleEntityResponse<Meter> {
+    try {
+      const [status, response] = await this.apiClient.deleteJson(`${this.baseEndpoint}/${meterId}/readings/${readingId}`);
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<Meter>(response, ['id'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
   }
 }

@@ -3,13 +3,17 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { usePreferenceStore } from '@/stores/usePreferenceStore';
-import { canAccessModule, isModuleEnabled, type ModuleId } from '@/lib/moduleAccess';
-import { canAccessModuleByTier, requiresUpgradeForModule, showTierBadgeForModule } from '@/lib/checkAccess';
+import config from '@/config/config';
+import { canAccessModule, isModuleEnabled, type ModuleId } from '@/helpers/module-access';
+import {
+  canAccessModuleByTier,
+  requiresUpgradeForFeature,
+  requiresUpgradeForModule,
+  showTierBadgeForModule,
+} from '@/helpers/check-access';
 import { useUpgradeModalStore } from '@/stores/useUpgradeModalStore';
-import { resolveAppName } from '@/lib/branding';
-import { isPlatformAdmin } from '@/lib/platformAdmin';
-import { isPlatformFeatureEnabled } from '@/lib/platformFeatureFlags';
+import { isPlatformAdmin } from '@/config/platform-admin';
+import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
 import classNames from 'classnames';
 import {
   LayoutDashboard, Wallet, Home, Settings,
@@ -28,11 +32,10 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const { user } = useAuthStore();
-  const { userPreferences } = usePreferenceStore();
   const openUpgrade = useUpgradeModalStore((s) => s.open);
 
-  const appName = resolveAppName(userPreferences?.appName);
-  const businessName = user?.household?.businessName ?? user?.household?.business_name ?? 'Vállalkozás';
+  const appName = config.branding.appName;
+  const businessName = user?.household?.business_name ?? user?.household?.business_name ?? 'Vállalkozás';
 
   const navGroups = [
     {
@@ -61,7 +64,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
     ...(isPlatformFeatureEnabled(user, 'enable_ai_travel_planner')
       ? [
           {
-            section: '🛠️ Okos eszközök',
+            section: 'Okos eszközök',
             items: [
               {
                 href: '/tools/travel',
@@ -108,10 +111,23 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   ) => {
     if (
       !user ||
-      ['dashboard', 'settings', 'admin-users', 'admin-features', 'admin-announcements', 'tools-travel'].includes(
-        moduleId,
-      )
+      ['dashboard', 'settings', 'admin-users', 'admin-features', 'admin-announcements'].includes(moduleId)
     ) {
+      onMobileClose?.();
+      return;
+    }
+
+    if (moduleId === 'tools-travel') {
+      const upgradeTier = requiresUpgradeForFeature(user, 'ai');
+      if (upgradeTier) {
+        e.preventDefault();
+        openUpgrade({
+          requiredTier: 'premium',
+          featureLabel: label,
+          featureId: 'ai',
+        });
+        return;
+      }
       onMobileClose?.();
       return;
     }
@@ -129,6 +145,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       openUpgrade({
         requiredTier: upgradeTier === 'premium' ? 'premium' : 'pro',
         featureLabel: label,
+        moduleId: mod,
       });
       return;
     }

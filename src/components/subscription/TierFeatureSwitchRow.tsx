@@ -2,8 +2,9 @@
 
 import { Switch } from '@/components/ui/switch';
 import { TierBadge } from '@/components/subscription/TierBadge';
+import { featureUpgradeContext } from '@/config/billing/tier-benefits';
 import { useTierFeature } from '@/components/subscription/TierFeatureGate';
-import type { PremiumFeatureId } from '@/lib/checkAccess';
+import type { PremiumFeatureId } from '@/helpers/check-access';
 
 interface TierFeatureSwitchRowProps {
   feature: PremiumFeatureId;
@@ -45,6 +46,9 @@ export function TierFeatureSwitchRow({
         </div>
         {description ? (
           <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
+        ) : null}
+        {!allowed ? (
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{featureUpgradeContext(feature)}</p>
         ) : null}
       </div>
       <Switch

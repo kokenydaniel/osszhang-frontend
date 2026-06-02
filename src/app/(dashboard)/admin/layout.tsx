@@ -1,12 +1,7 @@
 'use client';
 
-import { AdminGuard } from '@/components/modules/admin/AdminGuard';
-import { AdminUiProvider } from '@/components/modules/admin/AdminUiContext';
+import { AdminGuard } from '@/components/admin/AdminGuard';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AdminGuard>
-      <AdminUiProvider>{children}</AdminUiProvider>
-    </AdminGuard>
-  );
+  return <AdminGuard>{children}</AdminGuard>;
 }

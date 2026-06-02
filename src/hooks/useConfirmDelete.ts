@@ -1,7 +1,7 @@
 'use client';
 
 import { createElement, useCallback, useState } from 'react';
-import { ConfirmDeleteDialog } from './ConfirmDeleteDialog';
+import { ConfirmDeleteDialog } from '@/components/design/ConfirmDeleteDialog';
 
 export interface ConfirmDeleteOptions {
   title: string;

@@ -2,9 +2,9 @@
 
 import React, { PropsWithChildren, ReactNode, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { getAuthToken } from '@/lib/authToken';
-import { LoadableStatus } from '@/lib/loadableStatus';
-import { syncBudgetCategories } from '@/lib/sessionBootstrap';
+import { getAuthToken } from '@/helpers/auth-token';
+import { LoadableStatus } from '@/utils/loadable-status';
+import { syncBudgetCategories } from '@/helpers/session-bootstrap';
 import type { UserProfile } from '@/types';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useWalletStore } from '@/stores/useWalletStore';

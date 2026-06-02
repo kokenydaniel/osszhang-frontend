@@ -1,60 +1,30 @@
-import { useNotificationStore } from '@/stores/useNotificationStore';
-import { getAuthToken, removeAuthToken } from '@/lib/authToken';
-import { isAbortError, isTimeoutError, mergeAbortSignals } from '@/lib/api-client/abortError';
+import { getAuthToken } from '@/helpers/auth-token';
 import { API_URL } from './public-env';
-import type { ApiResponse, RequestOptions } from './response';
-import { isMaintenanceModeResponse, redirectToMaintenanceIfNeeded } from './response';
+import type { ApiClientResponse, SupportedStatusCodes, RequestOptions } from './response';
 
-export { isAbortError, isTimeoutError } from '@/lib/api-client/abortError';
+export class InvalidConfiguration extends Error {}
 
-export class ApiClientError extends Error {
-  status: number;
-  data: unknown;
-
-  constructor(status: number, data: unknown, message?: string) {
-    super(message || 'API request failed');
-    this.name = 'ApiClientError';
-    this.status = status;
-    this.data = data;
-  }
+interface NextFetchRequestConfig {
+  revalidate?: number | false;
+  tags?: string[];
 }
 
-type ApiErrorPayload = {
-  errors?: Record<string, string[]>;
-  message?: string;
-};
-
-export function getApiErrorMessage(error: unknown, fallback = 'Váratlan hiba történt.'): string {
-  if (error instanceof ApiClientError) {
-    const payload = (error.data ?? {}) as ApiErrorPayload;
-    if (payload.errors) {
-      const joined = Object.values(payload.errors).flat().filter(Boolean).join(' ');
-      if (joined) return joined;
-    }
-    if (payload.message) return payload.message;
-    if (error.status === 401) return 'Hibás felhasználónév vagy jelszó.';
-    if (error.status >= 500) return 'Szerver hiba történt. Próbáld újra később.';
-  }
-
-  if (isTimeoutError(error)) {
-    return 'A kérés túl sokáig tartott. Próbáld újra!';
-  }
-
-  if (error instanceof Error && error.message && error.message !== 'API request failed') {
-    return error.message;
-  }
-
-  return fallback;
+interface NextConfigAwareRequestInit extends RequestInit {
+  next?: NextFetchRequestConfig | undefined;
 }
 
 export class ApiClient {
-  constructor(protected baseUrl: string = API_URL) {
+  constructor(protected baseUrl: string = API_URL, protected fetchCache = 60) {
     if (!baseUrl) {
-      throw new Error('ApiClient cannot be configured, baseUrl is missing.');
+      throw new InvalidConfiguration('ApiClient cannot be configured, baseUrl is missing.');
     }
   }
 
-  protected getDefaultHeaders(): HeadersInit {
+  response<S extends SupportedStatusCodes, T>(status: S, response: T): ApiClientResponse<S, T> {
+    return [status, response];
+  }
+
+  protected getDefaultHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -62,7 +32,7 @@ export class ApiClient {
 
     const token = getAuthToken();
     if (token) {
-      headers.Authorization = `Bearer ${token}`;
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
     return headers;
@@ -83,159 +53,136 @@ export class ApiClient {
     return url.toString();
   }
 
-  protected async parseBody(response: Response): Promise<unknown> {
+  protected async fetch(endpoint: string, init?: NextConfigAwareRequestInit, options?: RequestOptions) {
+    const requestInit: NextConfigAwareRequestInit = {
+      next: {
+        revalidate: this.fetchCache,
+        ...(init?.next ?? {}),
+      },
+      ...(init ?? {}),
+    };
+
+    requestInit.headers = {
+      ...this.getDefaultHeaders(),
+      ...(requestInit.headers || {}),
+    };
+
+    return fetch(this.buildUrl(endpoint, options?.params), requestInit);
+  }
+
+  protected async parseBody(response: Response): Promise<object | null> {
     const text = await response.text();
     if (!text) return null;
 
     try {
       return JSON.parse(text);
     } catch {
-      return text;
+      // If it's not JSON, we return an object wrapping the text to maintain the tuple type [string, object | null]
+      return { text };
     }
   }
 
-  protected shouldBypassMaintenanceRedirect(): boolean {
-    if (typeof window === 'undefined') return false;
+  async getJson(endpoint: string, options?: RequestOptions): Promise<[string, object | null]> {
     try {
-      // Lazy require avoids circular import: useAuthStore -> api-client -> useAuthStore
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { useAuthStore } = require('@/stores/useAuthStore') as typeof import('@/stores/useAuthStore');
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { isPlatformAdmin } = require('@/lib/platformAdmin') as typeof import('@/lib/platformAdmin');
-      return isPlatformAdmin(useAuthStore.getState().user);
-    } catch {
-      return false;
-    }
-  }
-
-  protected handleHttpError(status: number, data: unknown, silent?: boolean): never {
-    if (isMaintenanceModeResponse(status, data) && !this.shouldBypassMaintenanceRedirect()) {
-      redirectToMaintenanceIfNeeded(status, data);
-    }
-
-    const { addNotification } = useNotificationStore.getState();
-    const payload = (data ?? {}) as { errors?: Record<string, string[]>; message?: string; code?: string };
-
-    if (!silent) {
-      switch (status) {
-        case 401: {
-          const onAuthPage =
-            typeof window !== 'undefined' &&
-            (window.location.pathname.includes('/login') ||
-              window.location.pathname.includes('/register'));
-          if (typeof window !== 'undefined' && !onAuthPage) {
-            removeAuthToken();
-            addNotification('A munkamenet lejárt. Kérjük, jelentkezz be újra.', 'error');
-            window.location.href = '/login';
-          }
-          break;
-        }
-        case 403:
-          addNotification('Nincs jogosultságod a művelethez!', 'error');
-          break;
-        case 422: {
-          const errors = payload.errors ? Object.values(payload.errors).flat().join(' ') : 'Érvénytelen adatok.';
-          addNotification(errors, 'error');
-          break;
-        }
-        case 429:
-          addNotification('Túl sok kérés! Próbáld újra később.', 'info');
-          break;
-        case 503:
-          if (!isMaintenanceModeResponse(status, data)) {
-            addNotification(payload.message || 'A szolgáltatás átmenetileg nem elérhető.', 'error');
-          }
-          break;
-        case 500:
-          addNotification('Szerver hiba történt. Dolgozunk a javításon!', 'error');
-          break;
-        default:
-          addNotification(payload.message || 'Váratlan hiba történt.', 'error');
-      }
-    }
-
-    throw new ApiClientError(status, data);
-  }
-
-  protected async request<T>(
-    method: string,
-    endpoint: string,
-    body?: unknown,
-    options?: RequestOptions,
-  ): Promise<ApiResponse<T>> {
-    const timeoutController = new AbortController();
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    const timeoutMs = options?.timeoutMs ?? 45000;
-    if (typeof window !== 'undefined') {
-      timeout = setTimeout(() => {
-        timeoutController.abort(new DOMException('The request timed out.', 'TimeoutError'));
-      }, timeoutMs);
-    }
-
-    const signals = [timeoutController.signal];
-    if (options?.signal) {
-      signals.push(options.signal);
-    }
-    const signal = mergeAbortSignals(signals);
-
-    try {
-      const response = await fetch(this.buildUrl(endpoint, options?.params), {
-        method,
-        headers: this.getDefaultHeaders(),
-        body: body === undefined ? undefined : JSON.stringify(body),
-        signal,
-      });
-
+      const response = await this.fetch(endpoint, { method: 'GET' }, options);
       const data = await this.parseBody(response);
-
-      if (!response.ok) {
-        this.handleHttpError(response.status, data, options?.silent);
-      }
-
-      return { data: data as T, status: response.status };
-    } catch (error) {
-      if (error instanceof ApiClientError) {
-        throw error;
-      }
-
-      if (isAbortError(error)) {
-        throw error;
-      }
-
-      const { addNotification } = useNotificationStore.getState();
-      if (!options?.silent) {
-        if (isTimeoutError(error)) {
-          addNotification('A kérés túl sokáig tartott. Próbáld újra!', 'error');
-        } else {
-          addNotification('Hálózati hiba! Ellenőrizd az internetkapcsolatot.', 'error');
-        }
-      }
-
-      throw error;
-    } finally {
-      if (timeout !== undefined) {
-        clearTimeout(timeout);
-      }
+      return [response.status.toString(), data];
+    } catch (err) {
+      console.log('ApiClient GET Error:', err);
+      return ['500', null];
     }
   }
 
-  getJson<T>(endpoint: string, options?: RequestOptions) {
-    return this.request<T>('GET', endpoint, undefined, options);
+  async post(
+    endpoint: string,
+    body: BodyInit | FormData | null = null,
+    headers?: HeadersInit,
+    options?: RequestOptions
+  ): Promise<[string, object | null]> {
+    try {
+      const requestInit: NextConfigAwareRequestInit = {
+        method: 'POST',
+        body,
+      };
+      if (headers) {
+        requestInit.headers = headers;
+      }
+      const response = await this.fetch(endpoint, requestInit, options);
+      const data = await this.parseBody(response);
+      return [response.status.toString(), data];
+    } catch (err) {
+      console.log('ApiClient POST Error:', err);
+      return ['500', null];
+    }
   }
 
-  postJson<T>(endpoint: string, body?: unknown, options?: RequestOptions) {
-    return this.request<T>('POST', endpoint, body, options);
+  async postJson(
+    endpoint: string,
+    body: object | null = null,
+    options?: RequestOptions
+  ): Promise<[string, object | null]> {
+    return this.post(
+      endpoint,
+      body ? JSON.stringify(body) : null,
+      { 'Content-Type': 'application/json;charset=UTF-8' },
+      options
+    );
   }
 
-  putJson<T>(endpoint: string, body?: unknown, options?: RequestOptions) {
-    return this.request<T>('PUT', endpoint, body, options);
+  async putJson(
+    endpoint: string,
+    body: object | null = null,
+    options?: RequestOptions
+  ): Promise<[string, object | null]> {
+    try {
+      const response = await this.fetch(endpoint, {
+        method: 'PUT',
+        body: body ? JSON.stringify(body) : null,
+        headers: { 'Content-Type': 'application/json;charset=UTF-8' },
+      }, options);
+      const data = await this.parseBody(response);
+      return [response.status.toString(), data];
+    } catch (err) {
+      console.log('ApiClient PUT Error:', err);
+      return ['500', null];
+    }
   }
 
-  patchJson<T>(endpoint: string, body?: unknown, options?: RequestOptions) {
-    return this.request<T>('PATCH', endpoint, body, options);
+  async patchJson(
+    endpoint: string,
+    body: object | null = null,
+    options?: RequestOptions
+  ): Promise<[string, object | null]> {
+    try {
+      const response = await this.fetch(endpoint, {
+        method: 'PATCH',
+        body: body ? JSON.stringify(body) : null,
+        headers: { 'Content-Type': 'application/json;charset=UTF-8' },
+      }, options);
+      const data = await this.parseBody(response);
+      return [response.status.toString(), data];
+    } catch (err) {
+      console.log('ApiClient PATCH Error:', err);
+      return ['500', null];
+    }
   }
 
-  deleteJson<T>(endpoint: string, body?: unknown, options?: RequestOptions) {
-    return this.request<T>('DELETE', endpoint, body, options);
+  async deleteJson(
+    endpoint: string,
+    body: object | null = null,
+    options?: RequestOptions
+  ): Promise<[string, object | null]> {
+    try {
+      const response = await this.fetch(endpoint, {
+        method: 'DELETE',
+        body: body ? JSON.stringify(body) : null,
+        headers: { 'Content-Type': 'application/json;charset=UTF-8' },
+      }, options);
+      const data = await this.parseBody(response);
+      return [response.status.toString(), data];
+    } catch (err) {
+      console.log('ApiClient DELETE Error:', err);
+      return ['500', null];
+    }
   }
 }

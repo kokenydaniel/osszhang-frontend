@@ -1,0 +1,19 @@
+# PenzPilot frontend architecture
+
+See `AGENTS.md` for the full folder map.
+
+## WHERE THINGS LIVE
+- **API only:** `src/lib/api-client/`
+- **Math:** `src/calculations/`
+- **Household defaults:** `src/settings/` + `src/config/moduleDefaults.ts`
+- **Static product:** `src/config/`
+- **Pure utils:** `src/utils/`
+- **Loaders / gates / glue:** `src/helpers/`
+- **Cache:** `src/stores/`
+- **UI:** `src/components/{domain}/`
+
+## RULES
+- **Never** add files to `src/lib/` except under `api-client/`
+- Kebab-case files; tuple API `[status, body]`; no `any`
+- react-hook-form; modal state on page
+- New constants → `config/`

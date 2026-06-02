@@ -1,18 +1,27 @@
 import type { ApiClient } from '../api-client';
+import { StatusCodes, SingleEntityResponse, EmptyResponse, isSingleEntityApiResponse } from '../response';
 import type { RawApiUser } from '@/types';
 
 export class AuthClient {
   constructor(protected apiClient: ApiClient, protected baseEndpoint = '') {}
 
-  login(credentials: { username: string; password?: string }) {
-    return this.apiClient.postJson<{ access_token: string; token: string; user: RawApiUser }>(
-      `${this.baseEndpoint}/login`,
-      credentials,
-      { silent: true },
-    );
+  async login(credentials: { username: string; password?: string }): SingleEntityResponse<{ access_token: string; token: string; user: RawApiUser }> {
+    try {
+      const [status, response] = await this.apiClient.postJson(
+        `${this.baseEndpoint}/login`,
+        credentials,
+        { silent: true },
+      );
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ access_token: string; token: string; user: RawApiUser }>(response, ['access_token', 'user'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
   }
 
-  register(data: {
+  async register(data: {
     username: string;
     password?: string;
     password_confirmation?: string;
@@ -21,35 +30,75 @@ export class AuthClient {
     firstName?: string;
     lastName?: string;
     household_name?: string;
-  }) {
-    return this.apiClient.postJson<{ access_token: string; token: string; user: RawApiUser }>(
-      `${this.baseEndpoint}/register`,
-      data,
-      { silent: true },
-    );
+  }): SingleEntityResponse<{ access_token: string; token: string; user: RawApiUser }> {
+    try {
+      const [status, response] = await this.apiClient.postJson(
+        `${this.baseEndpoint}/register`,
+        data,
+        { silent: true },
+      );
+      if ((status === StatusCodes.Http200 || status === StatusCodes.Http201) && isSingleEntityApiResponse<{ access_token: string; token: string; user: RawApiUser }>(response, ['access_token', 'user'])) {
+        return this.apiClient.response(status as StatusCodes.Http200 | StatusCodes.Http201, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
   }
 
-  logout() {
-    return this.apiClient.postJson<{ message: string }>(`${this.baseEndpoint}/logout`);
+  async logout(): EmptyResponse {
+    try {
+      const [status, response] = await this.apiClient.postJson(`${this.baseEndpoint}/logout`);
+      if (status === StatusCodes.Http200) {
+        return this.apiClient.response(status, null);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
   }
 
-  me() {
-    return this.apiClient.getJson<RawApiUser>(`${this.baseEndpoint}/me`);
+  async me(): SingleEntityResponse<RawApiUser> {
+    try {
+      const [status, response] = await this.apiClient.getJson(`${this.baseEndpoint}/me`);
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<RawApiUser>(response, ['id'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
   }
 
-  updateProfile(data: {
+  async updateProfile(data: {
     firstName?: string;
     lastName?: string;
     password?: string;
     password_confirmation?: string;
-  }) {
-    return this.apiClient.putJson<RawApiUser>(`${this.baseEndpoint}/me`, data);
+  }): SingleEntityResponse<RawApiUser> {
+    try {
+      const [status, response] = await this.apiClient.putJson(`${this.baseEndpoint}/me`, data);
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<RawApiUser>(response, ['id'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
   }
 
-  changePassword(data: { password: string; password_confirmation: string }) {
-    return this.apiClient.postJson<{ message: string; must_change_password: boolean }>(
-      `${this.baseEndpoint}/me/change-password`,
-      data,
-    );
+  async changePassword(data: { password: string; password_confirmation: string }): SingleEntityResponse<{ message: string; must_change_password: boolean }> {
+    try {
+      const [status, response] = await this.apiClient.postJson(
+        `${this.baseEndpoint}/me/change-password`,
+        data,
+      );
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ message: string; must_change_password: boolean }>(response, ['message'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
   }
 }

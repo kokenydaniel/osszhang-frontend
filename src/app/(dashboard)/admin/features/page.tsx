@@ -1,10 +1,5 @@
-import { Metadata } from 'next';
-import { FeatureFlagsPage } from '@/components/modules/admin/feature-flags-page';
+import { FeatureFlagsPage } from '@/components/admin/feature-flags-page';
 
-export const metadata: Metadata = {
-  title: 'Rendszer funkciók | Platform admin',
-};
-
-export default function AdminFeaturesPage() {
+export default function Page() {
   return <FeatureFlagsPage />;
 }

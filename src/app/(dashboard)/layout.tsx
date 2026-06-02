@@ -5,21 +5,21 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { usePreferenceStore } from '@/stores/usePreferenceStore';
-import { isStoreLoading } from '@/lib/loadableStatus';
+import { usePeriodStore } from '@/stores/usePeriodStore';
+import { isStoreLoading } from '@/utils/loadable-status';
 import { getCurrentMonth, getCurrentYear } from '@/utils';
 import { Lock } from 'lucide-react';
 import Link from 'next/link';
 import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { HouseholdOnboardingWizard } from '@/components/onboarding/HouseholdOnboardingWizard';
-import { canAccessModule, type ModuleId } from '@/lib/moduleAccess';
-import { requiresUpgradeForModule } from '@/lib/checkAccess';
+import { canAccessModule, type ModuleId } from '@/helpers/module-access';
+import { resolveRouteTierUpgradeRequirement } from '@/helpers/route-tier-guard';
 import { openUpgradeModal } from '@/stores/useUpgradeModalStore';
-import { needsHouseholdOnboarding } from '@/lib/householdOnboarding';
-import { loadRouteData } from '@/lib/loadRouteData';
-import { formatDisplayName } from '@/lib/personName';
-import { ImpersonationBanner } from '@/components/modules/admin/ImpersonationBanner';
+import { needsHouseholdOnboarding } from '@/helpers/household-onboarding';
+import { loadRouteData } from '@/helpers/route-data';
+import { formatDisplayName } from '@/utils/person-name';
+import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
 import { SystemAnnouncementBanner } from '@/components/layout/SystemAnnouncementBanner';
 import classNames from 'classnames';
 
@@ -71,7 +71,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const { user, status, refreshSessionQuiet } = useAuthStore();
-  const { selectedMonth, selectedYear, setSelectedMonth, setSelectedYear } = usePreferenceStore();
+  const { selectedMonth, selectedYear, setSelectedMonth, setSelectedYear } = usePeriodStore();
   const isMaintenanceRoute = pathname.startsWith('/maintenance');
 
   useEffect(() => {
@@ -89,25 +89,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (isStoreLoading(status) || !user) return;
-    const tierBlocked = (() => {
-      const routes: [string, ModuleId][] = [
-        ['/savings', 'savings'],
-        ['/debts', 'debts'],
-        ['/utilities', 'utilities'],
-        ['/meters', 'meters'],
-        ['/business', 'business'],
-      ];
-      for (const [prefix, moduleId] of routes) {
-        if (pathname.startsWith(prefix) && canAccessModule(user, moduleId)) {
-          return requiresUpgradeForModule(user, moduleId);
-        }
-      }
-      return null;
-    })();
+    const tierBlocked = resolveRouteTierUpgradeRequirement(user, pathname);
 
     if (tierBlocked) {
       openUpgradeModal({
-        requiredTier: tierBlocked,
+        requiredTier: tierBlocked.requiredTier,
+        featureLabel: tierBlocked.featureLabel,
+        moduleId: tierBlocked.moduleId,
+        featureId: tierBlocked.featureId,
       });
       router.replace('/');
     }
@@ -133,7 +122,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const currentUser = {
-    name: user ? formatDisplayName(user.firstName, user.lastName) || 'Betöltés...' : 'Betöltés...',
+    name: user ? formatDisplayName(user.first_name, user.last_name) || 'Betöltés...' : 'Betöltés...',
   };
 
   const hasPermissionForRoute = () => {
