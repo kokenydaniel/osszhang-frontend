@@ -15,6 +15,7 @@ export interface CashTransaction {
   encryptedPayload?: string;
   dueDate: string;
   paidDate: string | null;
+  currency?: string;
   isBudget?: boolean;
   isReserve?: boolean;
   isSavingsGoal?: boolean;

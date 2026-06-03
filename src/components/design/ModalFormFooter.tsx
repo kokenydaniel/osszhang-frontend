@@ -32,10 +32,11 @@ export function ModalFormFooter({
         type={submitType}
         className="flex-1"
         disabled={submitDisabled || loading}
+        loading={loading}
         onClick={submitType === 'button' ? onSubmit : undefined}
       >
         {submitIcon}
-        {loading ? 'Feldolgozás…' : submitLabel}
+        {loading ? 'Mentés…' : submitLabel}
       </Button>
     </div>
   );

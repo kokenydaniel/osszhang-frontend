@@ -62,8 +62,13 @@ export class ApiClient {
       ...(init ?? {}),
     };
 
+    const defaultHeaders = this.getDefaultHeaders();
+    if (requestInit.body instanceof FormData) {
+      delete defaultHeaders['Content-Type'];
+    }
+
     requestInit.headers = {
-      ...this.getDefaultHeaders(),
+      ...defaultHeaders,
       ...(requestInit.headers || {}),
     };
 
@@ -183,6 +188,34 @@ export class ApiClient {
     } catch (err) {
       console.log('ApiClient DELETE Error:', err);
       return ['500', null];
+    }
+  }
+
+  /** Multipart upload — ne állítson JSON Content-Type-ot. */
+  async postFormData(endpoint: string, formData: FormData, options?: RequestOptions): Promise<[string, object | null]> {
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    const token = getAuthToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    return this.post(endpoint, formData, headers, options);
+  }
+
+  async downloadBlob(endpoint: string, options?: RequestOptions): Promise<Response | null> {
+    try {
+      const headers: Record<string, string> = { Accept: '*/*' };
+      const token = getAuthToken();
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      const response = await this.fetch(endpoint, { method: 'GET', headers }, options);
+      if (!response.ok) {
+        return null;
+      }
+      return response;
+    } catch (err) {
+      console.log('ApiClient downloadBlob Error:', err);
+      return null;
     }
   }
 }

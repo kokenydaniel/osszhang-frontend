@@ -29,6 +29,17 @@ export const help = {
       'AI által generált heti összefoglaló a háztartás pénzügyeiről — trendek és figyelmeztetések.',
     aiUtilities:
       'A mérőóra-leolvasások és számlák alapján keres szokatlan fogyasztást vagy ugrást.',
+    pocketMoneyInterest:
+      'Kiosztható havi kamat — csak az aktuális hónap utolsó napjain (alapból 3), amikor érdemes rögzíteni.',
+    insuranceUpcoming:
+      'Közelgő biztosítási megújítások és fedezet/lejárat — ugyanaz, mint a Biztosítások oldalon.',
+    businessTax:
+      'AAM éves bevételi keret becslése a rögzített rendelések alapján — a Vállalkozás éves nézetével egyezik.',
+    rentalExpected:
+      'Aktív ingatlanok havi bérleti díja + áthárított közös költség (NAV: bevétel), az adott hónapra.',
+    rentalReceived: 'Az adott hónapban befizetés napjával rögzített bevételek összege.',
+    rentalOutstanding: 'Várható bérleti díj mínusz befolyt — ami még nem érkezett be.',
+    rentalOverdue: 'Esedékesség után (türelmi nap) még nem befizetett bérleti díjak.',
   },
 
   budget: {
@@ -61,6 +72,8 @@ export const help = {
     description: 'Rövid megnevezés a tételről (pl. „Lidl”, „Netflix”).',
     category: 'Költségkategória — a beállításokban szerkeszthető lista.',
     amount: 'Összeg forintban. Kiadásnál negatív előjel nem kell.',
+    currency:
+      'Mentés: az összeg EUR/USD-ben marad. A költségvetés számítás (Fizetendő, Marad, kategóriák) forintra vált élő árfolyamon.',
     date: 'Mikor esedékes vagy mikor történt a tranzakció.',
     paidDate: 'Ha kitöltöd, a tétel kifizetettnek számít és nem jelenik meg a fizetendő listában.',
     statusToggle:
@@ -226,14 +239,39 @@ export const help = {
       'A bolt admin címe, pl. bolt-neve.myshopify.com — a Shopify Admin → Beállítások → Bolt részletei alatt találod.',
     shopifyToken:
       'Shopify Admin API hozzáférési token (shpat_… előtaggal). A Shopify Adminban: Beállítások → Alkalmazások és értékesítési csatornák → Alkalmazások fejlesztése → Alkalmazás létrehozása → Admin API jogosultságok (orders olvasás) → Token telepítése / megtekintése. Csak a szerveren tároljuk titkosítva, soha ne oszd meg nyilvánosan.',
+    sumupMerchantCode:
+      'SumUp Merchant kód (pl. MH4H92C7) — a SumUp Dashboard → Fiók / Bolt adatai alatt, vagy a tranzakciók URL-jében.',
+    sumupApiKey:
+      'SumUp API kulcs (sup_sk_…). SumUp Developer / Dashboard → API kulcsok. Szükséges jogosultság: tranzakció előzmények (transactions.history) és profil / kifizetések (user.profile vagy user.profile_readonly). Titkosítva tároljuk.',
     splitPartner: 'Rezsi megosztásnál a másik fél háztartási tagja.',
     inviteUsername: 'Az új tag ezzel a felhasználónévvel lép be (kisbetű, pl. ildi).',
     invitePassword: 'Ideiglenes jelszó — első belépés után érdemes cserélni.',
     inviteRole: 'Admin: minden modul. Olvasó: csak megtekintés. Egyéni: modulonkénti jog.',
     invitePermissions: 'Mely modulokat láthatja az új tag (ha nem admin).',
     categoryName: 'Költségkategória neve a költségvetésben.',
+    pocketMoneyEntryType:
+      'Kiosztás: adsz zsebpénzt (növeli az egyenleget). Költés: elköltött összeg (csökkenti). Korrekció: ha a számított egyenleg nem stimmel a valósággal — pl. kezdő összeg vagy maradt készpénz (szintén növeli).',
+    pocketMoneyBalance:
+      'Az egyenleg a kiválasztott hónap végéig összesítve jelenik meg — nem nullázódik minden hónapban. A táblázat csak az adott hónap mozgásait listázza.',
+    pocketMoneyInterest:
+      'A Kamatozás almenüben: kamat %, hogy a teljes egyenlegre vagy csak a hónapban kiosztott zsebpénzre számolunk, és hogy csak spórolás esetén jár-e, vagy költés után a bent maradtra is. A kiosztható kamat figyelmeztetés és a rögzítés gomb csak az aktuális hónap utolsó napjain jelenik meg (alapból 3 nap), mert addig változhatnak a költések.',
+    insuranceReminder:
+      'A beállításokban megadott napok számával előtte listázzuk a megújítást és a fedezet végét. Lejárt dátum „lejárt” jelzéssel.',
+    insurancePolicy:
+      'Szerződés típusa: általános vagy élet / befektetési alap (befizetett összeg = alapérték, frissíthető). Díjmentesített szerződésnél nincs fizetendő díj. Fizetési gyakoriság (havi, negyedéves, féléves, éves) és induló hónap: ha be van kapcsolva a költségvetés-szinkron, a díjak automatikusan megjelennek a költségvetésben (mint a hitel törlesztések). Megújítás és fedezet dátuma külön mező. Ha a fedezet vége múltbeli, a szerződés automatikusan megszűnt / lejárt.',
+    insuranceAttachment:
+      'PDF dokumentumok csatolása szerződésenként (kötvény, ajánlat, melléklet). Csatolás funkció és Premium szükséges.',
+    insuranceDelete:
+      'Törléskor a szerződés eltűnik a listából; a költségvetésben a múltbeli (törlés előtti) hónapok díjai megmaradnak, a jövőbeli szinkronizált tételek nem jelennek meg többé.',
     deleteHousehold:
       'Véglegesen törli a háztartást, az összes pénzügyi adatot és minden családtag fiókját. Nem vonható vissza.',
+    rentalProperty:
+      'Bérleti díj és áthárított közös költség (bérlő fizeti) = várható bevétel. Esedékesség napja, megállapodások, szerződés feltöltése. Költségvetés-szinkron: befizetéskor bevételként jelenik meg a költségvetésben.',
+    rentalIncome:
+      'Havi tétel ingatlanonként: bérleti díj, közös ktg. áthárítás, esedékesség és befizetés napja. Üres befizetés = még nem érkezett — lejárt figyelmeztetés esedékesség után.',
+    rentalExpense:
+      'Tulajdonosi költség (felújítás, karbantartás, társasházi közös ktg. ha te fizeted) — nem keverendő a bérlőtől számlázott díjjal. Adózásnál külön költségként vezethető.',
+    rentalExport: 'Éves CSV export: ingatlanok és havi bevételek (pontosvesszővel elválasztva, Excelhez).',
   },
 } as const;
 

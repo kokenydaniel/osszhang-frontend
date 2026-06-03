@@ -4,7 +4,7 @@ import { useMemo, type ReactNode } from 'react';
 import classNames from 'classnames';
 import { formatDisplayInitials, formatDisplayName, formatGivenName } from '@/utils/person-name';
 import { HELP } from '@/config/help';
-import { PageHeader, MetricStrip, AccentPanel } from '@/components/design';
+import { PageHeader, MetricStrip, AccentPanel, ModulePageSkeleton } from '@/components/design';
 import { TierGatedAiPanel } from '@/components/subscription/TierGatedAiPanel';
 import { useTierFeature } from '@/components/subscription/TierFeatureGate';
 import { Sparkles } from 'lucide-react';
@@ -19,6 +19,7 @@ import { AiCfoWidget } from './ai-cfo-widget';
 import { WalletSwitcherContainer as WalletSwitcher } from '@/components/layout/wallet-switcher-container';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
+import { aiFeatureLabel } from '@/config/ai-features';
 
 export function DashboardPage() {
   const state = useDashboardPageData();
@@ -38,6 +39,15 @@ export function DashboardPage() {
           utilitySplitEnabled={state.utilitySplitEnabled}
           rezsiBalance={state.rezsiBalance}
           counterpartyLabel={state.counterpartyLabel}
+          insuranceUpcoming={state.insuranceUpcoming}
+          insuranceReminderDays={state.insuranceReminderDays}
+          rentalOverdueRents={state.rentalOverdueRents}
+          rentalOverdueGraceDays={state.rentalOverdueGraceDays}
+          pocketMoneyInterestAlert={state.pocketMoneyInterestAlert}
+          businessTaxAlert={state.businessTaxAlert}
+          aiUtilityAnomalies={state.aiUtilityAnomalies}
+          canUseAi={state.canUseAi}
+          financialDataReady={state.financialDataReady}
         />
       ),
       ai_cfo: showAiCfo ? (
@@ -105,7 +115,7 @@ export function DashboardPage() {
                 key="ai_briefing"
                 tone="ai"
                 icon={Sparkles}
-                title="Heti AI tájékoztató"
+                title={aiFeatureLabel('weekly_report')}
                 titleInfo={HELP.dashboard.aiBriefing}
                 description="Az aktuális adatokra szabott összegzés"
                 glow
@@ -117,9 +127,9 @@ export function DashboardPage() {
             ? (
                 <TierGatedAiPanel
                   key="ai_briefing"
-                  featureLabel="Heti AI tájékoztató"
+                  featureLabel={aiFeatureLabel('weekly_report')}
                   icon={Sparkles}
-                  title="Heti AI tájékoztató"
+                  title={aiFeatureLabel('weekly_report')}
                   titleInfo={HELP.dashboard.aiBriefing}
                   description="Az aktuális adatokra szabott összegzés"
                   glow
@@ -135,6 +145,8 @@ export function DashboardPage() {
       .map((id) => widgets[id])
       .filter((node): node is ReactNode => node != null);
   }, [state, showAiCfo, canUseAi]);
+
+  const contentReady = state.financialDataReady && state.activeWalletId !== null;
 
   return (
     <div className="flex flex-col gap-7 w-full max-w-[1500px] mx-auto">
@@ -175,7 +187,11 @@ export function DashboardPage() {
         }
       />
 
-      {orderedWidgets}
+      {contentReady ? (
+        orderedWidgets
+      ) : (
+        <ModulePageSkeleton metrics={4} tableRows={6} />
+      )}
     </div>
   );
 }

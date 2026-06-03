@@ -14,6 +14,9 @@ export type TierGuardedFeatureRoute = {
 
 /** Dashboard paths that require Pro or Premium (mirrors backend `tier.module` groups). */
 export const tierGuardedModuleRoutes: TierGuardedModuleRoute[] = [
+  { prefix: '/pocket-money', moduleId: 'pocket_money' },
+  { prefix: '/insurance', moduleId: 'insurance' },
+  { prefix: '/rental', moduleId: 'rental' },
   { prefix: '/savings', moduleId: 'savings' },
   { prefix: '/debts', moduleId: 'debts' },
   { prefix: '/utilities', moduleId: 'utilities' },
@@ -23,5 +26,5 @@ export const tierGuardedModuleRoutes: TierGuardedModuleRoute[] = [
 
 /** Premium feature routes without a dedicated module id. */
 export const tierGuardedFeatureRoutes: TierGuardedFeatureRoute[] = [
-  { prefix: '/tools/travel', featureId: 'ai', featureLabel: 'AI Utazástervező' },
+  { prefix: '/tools/travel', featureId: 'ai', featureLabel: 'Utazás költségtervező' },
 ];

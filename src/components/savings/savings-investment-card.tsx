@@ -128,7 +128,7 @@ export function SavingsInvestmentCard({
                 requestDelete({
                   title: 'Befektetés törlése',
                   message: `Biztosan törlöd a „${inv.name}" befektetést? Ez a művelet nem vonható vissza.`,
-                  onConfirm: () => void deleteInvestment(inv.id),
+                  onConfirm: () => deleteInvestment(inv.id),
                 })
               }
               className="text-muted-foreground hover:text-destructive transition-colors p-1"

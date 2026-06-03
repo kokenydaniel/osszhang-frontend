@@ -105,7 +105,7 @@ function MetricLabelRow({
         </div>
       )}
       <div className="min-w-0 flex-1 flex items-start gap-1">
-        <span className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground leading-snug break-words">
+        <span className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground leading-snug whitespace-nowrap truncate">
           {label}
         </span>
         {info && <InfoTooltip content={info} className="mt-px shrink-0" />}
@@ -133,7 +133,7 @@ function MetricLabelRowCompact({
         </div>
       )}
       <div className="min-w-0 flex-1 flex items-start gap-1">
-        <span className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground leading-snug break-words">
+        <span className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground leading-snug whitespace-nowrap truncate">
           {label}
         </span>
         {info && <InfoTooltip content={info} className="mt-px shrink-0" />}

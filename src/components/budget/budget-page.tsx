@@ -11,22 +11,32 @@ import { useBudgetPageData } from '@/hooks/useBudgetPageData';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import { useAsyncAction, usePendingIds } from '@/hooks/useAsyncAction';
-import { budgetClient, debtsClient, walletClient } from '@/lib/api-client';
+import { budgetClient, debtsClient, insuranceClient, rentalClient, walletClient } from '@/lib/api-client';
 import {
   parseDebtInstallmentId,
   withInstallmentMonthPaid,
   withInstallmentMonthUnpaid,
 } from '@/helpers/debt-budget';
+import { isExternallyManagedBudgetRow } from '@/helpers/budget-feed';
+import {
+  parseInsurancePremiumId,
+  withInsurancePeriodPaid,
+  withInsurancePeriodUnpaid,
+} from '@/helpers/insurance-budget';
+import { parseRentalIncomeId } from '@/helpers/rental-budget';
 import { useDebtsStore } from '@/stores/debtsStore';
+import { useInsuranceStore } from '@/stores/insuranceStore';
+import { useRentalStore } from '@/stores/rentalStore';
 import { budgetStore } from '@/stores/budgetStore';
 import { StatusCodes } from '@/types/api';
 import { canEditHousehold } from '@/utils/household-role';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useExchangeRatesStore } from '@/stores/useExchangeRatesStore';
 import { today as todayDate } from '@/utils';
 import type { CashTransaction } from '@/types';
 import { BudgetBalancePanel } from './budget-balance-panel';
-import { BudgetAiOverspendBanner } from './budget-ai-overspend-banner';
 import { BudgetMissedIncomeBanner } from './budget-missed-income-banner';
+import { BudgetMonthInsightsSection } from './budget-month-insights-section';
 import { BudgetCategorySummary } from './budget-category-summary';
 import { BudgetTransactionFeed } from './budget-transaction-feed';
 import {
@@ -50,6 +60,7 @@ export function BudgetPage() {
   const [activeView, setActiveView] = useState<'month' | 'year'>('month');
 
   const manualBalanceNum = Number(manualBalanceInput) || 0;
+  const exchangeRates = useExchangeRatesStore((s) => s.rates);
   const data = useBudgetPageData(manualBalanceNum);
   const yearData = useBudgetYearData({
     activeWalletId: data.activeWalletId,
@@ -74,6 +85,7 @@ export function BudgetPage() {
     today: todayDate(),
     isReader: data.isReader,
     categoryColor: data.categoryColor,
+    exchangeRates,
     onEdit: (tx: CashTransaction) => {
       if (!canEditHousehold(data.user)) return;
       setTxModal({ mode: 'edit', transaction: tx });
@@ -190,6 +202,77 @@ export function BudgetPage() {
       return;
     }
 
+    const insuranceLine = parseInsurancePremiumId(id);
+    if (insuranceLine) {
+      const policy = data.insurancePolicies.find((p) => p.id === insuranceLine.policyId);
+      if (!policy) return;
+      try {
+        const paid = !!patch.paidDate;
+        const nextPolicy = paid
+          ? withInsurancePeriodPaid(policy, insuranceLine.year, insuranceLine.month)
+          : withInsurancePeriodUnpaid(policy, insuranceLine.year, insuranceLine.month);
+        const res = await insuranceClient.update(policy.id, {
+          paidBudgetPeriods: nextPolicy.paidBudgetPeriods,
+        });
+        if (!res || res[0] !== StatusCodes.Http200) throw new Error();
+        useInsuranceStore.getState().upsertPolicy(res[1]);
+        void useInsuranceStore.getState().fetch(true);
+        if (paid) {
+          addNotification('Biztosítási díj kifizetve.', 'success');
+        }
+      } catch {
+        addNotification('A biztosítás díj állapota nem menthető.', 'error');
+      }
+      return;
+    }
+
+    const rentalLine = parseRentalIncomeId(id);
+    if (rentalLine) {
+      const entry = data.rentalIncomeEntries.find(
+        (e: (typeof data.rentalIncomeEntries)[number]) =>
+          e.rentalPropertyId === rentalLine.propertyId &&
+          e.periodYear === rentalLine.year &&
+          e.periodMonth === rentalLine.month,
+      );
+      const property = data.rentalProperties.find(
+        (p: (typeof data.rentalProperties)[number]) => p.id === rentalLine.propertyId,
+      );
+      if (!property?.budgetSyncEnabled) return;
+      try {
+        const paid = !!patch.paidDate;
+        const paidDate = patch.paidDate ?? todayDate();
+        if (entry) {
+          const res = await rentalClient.updateIncome(entry.id, {
+            paidDate: paid ? paidDate : null,
+          });
+          if (!res || res[0] !== StatusCodes.Http200) throw new Error();
+          useRentalStore.getState().upsertIncome(res[1]);
+        } else if (paid) {
+          const res = await rentalClient.createIncome({
+            rentalPropertyId: rentalLine.propertyId,
+            periodYear: rentalLine.year,
+            periodMonth: rentalLine.month,
+            amount: property.monthlyRent + property.monthlyCommonCost,
+            rentAmount: property.monthlyRent,
+            commonCostAmount: property.monthlyCommonCost,
+            currency: property.currency,
+            paidDate,
+          });
+          if (!res || (res[0] !== StatusCodes.Http200 && res[0] !== StatusCodes.Http201)) {
+            throw new Error();
+          }
+          useRentalStore.getState().upsertIncome(res[1]);
+        }
+        void useRentalStore.getState().fetch(data.selectedYear, data.selectedMonth, true);
+        if (paid) {
+          addNotification('Bérleti díj befizetve.', 'success');
+        }
+      } catch {
+        addNotification('A bérleti díj állapota nem menthető.', 'error');
+      }
+      return;
+    }
+
     if (typeof id !== 'number') return;
 
     const previous = budgetStore.getState().transactions.find((t) => t.id === id);
@@ -211,7 +294,16 @@ export function BudgetPage() {
     }
   }
 
-  async function deleteTransaction(id: number) {
+  async function deleteTransaction(id: number | string) {
+    if (isExternallyManagedBudgetRow(id)) {
+      addNotification(
+        'A szinkronizált díjat a Biztosítások vagy Tartozások modulban kezeld — a költségvetésből nem törölhető.',
+        'error',
+      );
+      return;
+    }
+    if (typeof id !== 'number') return;
+
     try {
       const tx = data.transactions.find((t) => t.id === id);
       const res = await budgetClient.delete(id);
@@ -301,11 +393,21 @@ export function BudgetPage() {
             <MetricStrip items={data.cashflowMetrics} columns={3} variant="separated" />
           </div>
 
+          <p className="text-xs text-muted-foreground -mt-2">
+            Külföldi pénznemű tételeknél az összeg eredeti valutában marad; a fenti mutatók és a lista forintra
+            számolnak az élő árfolyamon.
+          </p>
+
           <BudgetMissedIncomeBanner summary={data.missedIncomeSummary} />
 
-          <BudgetAiOverspendBanner aiOverspend={data.aiOverspend} />
+          <MetricStrip items={data.summaryMetrics} columns={4} variant="separated" />
 
-          <MetricStrip items={data.summaryMetrics} columns={4} />
+          <BudgetMonthInsightsSection
+            year={data.selectedYear}
+            month={data.selectedMonth}
+            walletId={data.activeWalletId}
+            aiOverspend={data.aiOverspend}
+          />
 
           {!data.isLoading ? (
             <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">

@@ -132,3 +132,48 @@ export interface AiTravelPlan {
   summary?: string;
   warning?: string;
 }
+
+export interface AiPaymentPriorityItem {
+  rank: number;
+  source: string;
+  id: number;
+  label: string;
+  amount: number;
+  currency: string;
+  due_date: string;
+  is_overdue: boolean;
+}
+
+export interface AiPaymentPriority {
+  year: number;
+  month: number;
+  total_amount: number;
+  item_count: number;
+  items: AiPaymentPriorityItem[];
+  note?: string;
+}
+
+export interface AiVatEstimate {
+  year: number;
+  month: number;
+  order_count: number;
+  skipped_order_count?: number;
+  net_total: number;
+  vat_amount: number;
+  gross_total: number;
+  vat_percent?: number;
+  price_input_mode?: 'net' | 'gross';
+  tax_regime?: 'aam' | 'vat' | 'kata';
+  income_tax_method?: 'cost_ratio' | 'actual' | 'kata_flat';
+  cost_ratio_percent?: number;
+  revenue_basis?: 'documented_only' | 'all_orders';
+  estimated_taxable_income?: number | null;
+  estimated_cost_share?: number | null;
+  note?: string;
+}
+
+export interface AiCostReduction {
+  suggestions: string[];
+  categories?: Array<{ category: string; spent: number }>;
+  note?: string;
+}

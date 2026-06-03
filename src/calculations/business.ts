@@ -1,4 +1,11 @@
+import type { TaxRegime } from '@/config/business-tax';
+import type { BusinessSettings } from '@/settings/business';
 import type { BusinessOrder } from '@/types/business';
+import {
+  computeAnnualTaxRevenue,
+  orderCountsAsTaxRevenue,
+  type AnnualTaxRevenueResult,
+} from '@/utils/business-tax-revenue';
 import { compareDates, formatHUF } from '@/utils';
 import { HELP } from '@/config/help';
 import type { MetricItem } from '@/components/design';
@@ -34,7 +41,12 @@ export type BusinessYearStats = {
   chartData: BusinessChartPoint[];
 };
 
+export type { AnnualTaxRevenueResult as AnnualRevenueSummary };
+
 export const businessCalculations = {
+  orderCountsAsTaxRevenue,
+  computeAnnualRevenue: computeAnnualTaxRevenue,
+
   filterByMonth(orders: BusinessOrder[], year: number, month: number): BusinessOrder[] {
     const prefix = `${year}-${month.toString().padStart(2, '0')}`;
     return orders
@@ -47,7 +59,7 @@ export const businessCalculations = {
     const totalYTD = yearOrders.reduce((sum, order) => sum + order.amount, 0);
     const aov = yearOrders.length > 0 ? totalYTD / yearOrders.length : 0;
 
-    const channelMap = orders.reduce<Record<string, number>>((acc, order) => {
+    const channelMap = yearOrders.reduce<Record<string, number>>((acc, order) => {
       acc[order.channel] = (acc[order.channel] || 0) + order.amount;
       return acc;
     }, {});
@@ -162,20 +174,39 @@ Adataim:
     ];
   },
 
-  buildSummaryMetrics(stats: BusinessYearStats, selectedYear: number): MetricItem[] {
-    const yearlyTotalsSpark = stats.chartData.map((point) => point.bevetel);
+  buildSummaryMetrics(
+    stats: BusinessYearStats,
+    selectedYear: number,
+    taxRevenue?: AnnualTaxRevenueResult | null,
+    taxRegime?: TaxRegime,
+  ): MetricItem[] {
+    const yearlyTotalsSpark = stats.chartData.map((point) => point.bevetel + point.kintlevoseg);
+    const isAam = taxRegime === 'aam' && taxRevenue != null;
+
+    const primaryMetric: MetricItem = isAam
+      ? {
+          label: 'AAM bevétel',
+          value: formatHUF(taxRevenue.total),
+          info: 'Bizonylatos tételek összege — ez számít az AAM kerethez (Számlázz-hoz közel).',
+          hint: `${taxRevenue.orderCount} tétel · összes rendelés ${formatHUF(taxRevenue.totalAllOrdersNet)}`,
+          icon: TrendingUp,
+          tone: 'primary',
+          emphasis: true,
+          sparkline: yearlyTotalsSpark,
+        }
+      : {
+          label: 'YTD forgalom',
+          value: formatHUF(stats.totalYTD),
+          info: HELP.business.ytd,
+          hint: `${selectedYear} év · minden rögzített rendelés`,
+          icon: TrendingUp,
+          tone: 'primary',
+          emphasis: true,
+          sparkline: yearlyTotalsSpark,
+        };
 
     return [
-      {
-        label: 'YTD forgalom',
-        value: formatHUF(stats.totalYTD),
-        info: HELP.business.ytd,
-        hint: `${selectedYear} év eddig`,
-        icon: TrendingUp,
-        tone: 'primary',
-        emphasis: true,
-        sparkline: yearlyTotalsSpark,
-      },
+      primaryMetric,
       {
         label: 'AOV',
         value: formatHUF(stats.aov),
@@ -192,14 +223,23 @@ Adataim:
         icon: ShoppingBag,
         tone: 'success',
       },
-      {
-        label: 'Csatornák',
-        value: String(stats.channelData.length),
-        info: HELP.business.channelCount,
-        hint: 'Aktív értékesítési csatorna',
-        icon: List,
-        tone: 'default',
-      },
+      isAam && taxRevenue.totalExcludedNet > 0
+        ? {
+            label: 'Nincs bizonylat',
+            value: formatHUF(taxRevenue.totalExcludedNet),
+            info: 'Rendelések összege, amelyek kimaradtak az AAM bevételből (nincs jelölés / érvényes számla).',
+            hint: `${taxRevenue.skippedCount} tétel`,
+            icon: AlertCircle,
+            tone: 'warning',
+          }
+        : {
+            label: 'Csatornák',
+            value: String(stats.channelData.length),
+            info: HELP.business.channelCount,
+            hint: 'Aktív értékesítési csatorna',
+            icon: List,
+            tone: 'default',
+          },
     ];
   }
 };

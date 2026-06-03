@@ -2,10 +2,7 @@ import type { RawApiHousehold } from './household';
 import type { RawApiWallet, SubscriptionTier } from './wallet';
 import type { SystemAnnouncement } from './admin';
 
-export type PlatformFeatureFlagKey =
-  | 'enable_ai_cfo'
-  | 'enable_ai_travel_planner'
-  | 'maintenance_mode';
+export type PlatformFeatureFlagKey = string;
 export type PlatformFeatureFlags = Partial<Record<PlatformFeatureFlagKey, boolean>>;
 
 export interface UserProfile {

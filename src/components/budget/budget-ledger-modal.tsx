@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/FieldLabel';
 import { LedgerHistoryPanel } from '@/components/design';
+import { LedgerEntryAttachments } from '@/components/attachments/ledger-entry-attachments';
 import { HELP } from '@/config/help';
 import { today as todayDate } from '@/utils/dates';
 import { Check, Edit3, Pencil, Plus, Trash2 } from 'lucide-react';
@@ -263,7 +264,7 @@ export function BudgetLedgerModal({
                     requestDelete({
                       title: 'Ledger tétel törlése',
                       message: `Biztosan törlöd a „${item.reason}" tételt?`,
-                      onConfirm: () => void deleteLedgerEntry(item),
+                      onConfirm: () => deleteLedgerEntry(item),
                     })
                   }
                 >
@@ -271,6 +272,7 @@ export function BudgetLedgerModal({
                 </Button>
               </>
             )}
+            rowFooter={(item) => <LedgerEntryAttachments ledgerEntryId={item.id} compact />}
           />
         ) : (
           <LedgerHistoryPanel items={ledgerItems} />

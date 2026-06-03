@@ -1,4 +1,5 @@
 import config from '@/config/config';
+import { aiFeatureLabel } from '@/config/ai-features';
 
 export const DASHBOARD_WIDGET_IDS = [
   'alerts',
@@ -22,12 +23,12 @@ export const DEFAULT_DASHBOARD_SETTINGS: DashboardSettings = {
 
 export const DASHBOARD_WIDGET_LABELS: Record<DashboardWidgetId, string> = {
   alerts: 'Figyelmeztetések (kimaradt bevétel, rezsi)',
-  ai_cfo: 'AI pénzügyi tanácsadó',
+  ai_cfo: aiFeatureLabel('monthly_advisor'),
   primary_metrics: 'Fő mutatók',
   secondary_metrics: 'Másodlagos mutatók',
   main_grid: 'Fizetendők és oldalsáv',
   business_chart: 'Vállalkozás grafikon',
-  ai_briefing: 'Heti AI tájékoztató',
+  ai_briefing: aiFeatureLabel('weekly_report'),
 };
 
 type HouseholdLike = {

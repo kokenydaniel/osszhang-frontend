@@ -289,6 +289,52 @@ Válasz: egyetlen egész szám, semmi más.`;
     );
   },
 
+  /** Helyszín csoportok szerint (Beállítások → Közműórák); ismeretlen helyszín saját csoportként. */
+  groupByLocationGroups(
+    meters: Meter[],
+    groups: Array<{ name: string; locations: string[] }>,
+  ): Record<string, Meter[]> {
+    if (!groups.length) {
+      return this.groupByLocation(meters);
+    }
+
+    const acc: Record<string, Meter[]> = {};
+    const normalize = (s: string) => s.trim().toLowerCase();
+
+    for (const meter of meters) {
+      const loc = (meter.location ?? '').trim();
+      const locKey = normalize(loc);
+      const matched = groups.find(
+        (g) =>
+          normalize(g.name) === locKey ||
+          g.locations.some((l) => normalize(l) === locKey),
+      );
+      const key = matched?.name.trim() || loc || 'Nincs helyszín';
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(meter);
+    }
+
+    return acc;
+  },
+
+  locationOptionsFromGroups(
+    groups: Array<{ name: string; locations: string[] }>,
+    defaultLocation: string,
+  ): string[] {
+    const out = new Set<string>();
+    const def = defaultLocation.trim();
+    if (def) out.add(def);
+    for (const g of groups) {
+      const name = g.name.trim();
+      if (name) out.add(name);
+      for (const loc of g.locations) {
+        const l = loc.trim();
+        if (l) out.add(l);
+      }
+    }
+    return [...out];
+  },
+
   getMeterMeta(name: string): MeterMeta {
     if (name.includes('Villany')) {
       return {

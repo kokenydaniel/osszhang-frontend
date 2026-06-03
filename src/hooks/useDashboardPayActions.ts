@@ -6,7 +6,7 @@ import { useUtilitiesStore } from '@/stores/utilitiesStore';
 import { useDebtsStore } from '@/stores/debtsStore';
 import { useWalletStore } from '@/stores/useWalletStore';
 import type { CashTransaction } from '@/types';
-import { budgetClient, debtsClient } from '@/lib/api-client';
+import { budgetClient, debtsClient, insuranceClient } from '@/lib/api-client';
 import { today as todayDate } from '@/utils/dates';
 import { isHouseholdReader } from '@/utils/household-role';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -17,6 +17,11 @@ import {
   parseDebtInstallmentId,
   withInstallmentMonthPaid,
 } from '@/helpers/debt-budget';
+import {
+  parseInsurancePremiumId,
+  withInsurancePeriodPaid,
+} from '@/helpers/insurance-budget';
+import { useInsuranceStore } from '@/stores/insuranceStore';
 
 export function useDashboardPayActions() {
   const { user } = useAuthStore();
@@ -48,6 +53,19 @@ export function useDashboardPayActions() {
             debts.map((d) => (d.id === debt.id ? res[1] : d)),
             activeWalletId,
           );
+          return;
+        }
+
+        const insuranceLine = parseInsurancePremiumId(item.id);
+        if (insuranceLine) {
+          const policy = useInsuranceStore.getState().budgetPolicies.find((p) => p.id === insuranceLine.policyId);
+          if (!policy) return;
+          const nextPolicy = withInsurancePeriodPaid(policy, insuranceLine.year, insuranceLine.month);
+          const res = await insuranceClient.update(policy.id, {
+            paidBudgetPeriods: nextPolicy.paidBudgetPeriods,
+          });
+          if (!res || res[0] !== StatusCodes.Http200) return;
+          useInsuranceStore.getState().upsertPolicy(res[1]);
           return;
         }
 

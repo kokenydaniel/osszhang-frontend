@@ -50,14 +50,62 @@ export const BILLING_FEATURE_MATRIX: BillingFeatureRow[] = [
   {
     id: 'shopify',
     label: 'Shopify webshop integráció',
-    upgradeHint: 'Premium: rendelések automatikus importja.',
+    upgradeHint: 'Premium: Shopify rendelések automatikus importja.',
+    minTier: 'premium',
+  },
+  {
+    id: 'woocommerce',
+    label: 'WooCommerce webshop integráció',
+    upgradeHint: 'Premium: WooCommerce rendelések importja.',
+    minTier: 'premium',
+  },
+  {
+    id: 'unas',
+    label: 'UNAS webshop integráció',
+    upgradeHint: 'Premium: UNAS rendelések importja.',
     minTier: 'premium',
   },
   {
     id: 'ai',
-    label: 'AI pénzügyi asszisztens',
-    upgradeHint: 'Premium: CFO, előrejelzés, kategorizálás, anomáliafigyelés, utazástervező.',
+    label: 'Okos pénzügyi funkciók',
+    upgradeHint: 'Premium: tanácsadó, fizetési prioritás, ÁFA kimutatás, spórolási javaslatok.',
     minTier: 'premium',
+  },
+  {
+    id: 'integrations',
+    label: 'Webshop integrációk (Shopify, WooCommerce, UNAS)',
+    upgradeHint: 'Premium: három webshop platform rendelés importja.',
+    minTier: 'premium',
+  },
+  {
+    id: 'attachments',
+    label: 'Számla és nyugta csatolás',
+    upgradeHint: 'Premium: fájl csatolása tételekhez.',
+    minTier: 'premium',
+  },
+  {
+    id: 'sumup_import',
+    label: 'SumUp könyvelési import',
+    upgradeHint: 'Premium: SumUp tranzakciók és kifizetések automatikus letöltése a könyvelési csomagba.',
+    minTier: 'premium',
+  },
+  {
+    id: 'pocket_money',
+    label: 'Családi zsebpénz',
+    upgradeHint: 'Pro: gyerekek zsebpénze és költései.',
+    minTier: 'pro',
+  },
+  {
+    id: 'insurance',
+    label: 'Biztosítások',
+    upgradeHint: 'Pro: szerződések és megújítási emlékeztetők.',
+    minTier: 'pro',
+  },
+  {
+    id: 'rental',
+    label: 'Bérbeadás',
+    upgradeHint: 'Pro: bérleti ingatlanok és bevételek.',
+    minTier: 'pro',
   },
 ];
 

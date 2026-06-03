@@ -6,10 +6,16 @@ import { useUtilitiesStore } from '@/stores/utilitiesStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useWalletStore } from '@/stores/useWalletStore';
 import { useDebtsStore } from '@/stores/debtsStore';
+import { useInsuranceStore } from '@/stores/insuranceStore';
+import { useRentalStore } from '@/stores/rentalStore';
 import { usePeriodStore } from '@/stores/usePeriodStore';
 import { resolveDebtsSettings } from '@/settings/debts';
+import { resolveInsuranceSettings } from '@/settings/insurance';
 import { resolveBudgetSettings, resolveCategoryColor } from '@/settings/budget';
 import { useDebtBudgetInstallments } from '@/hooks/useDebtBudgetInstallments';
+import { useInsuranceBudgetPremiums } from '@/hooks/useInsuranceBudgetPremiums';
+import { useRentalBudgetIncomes } from '@/hooks/useRentalBudgetIncomes';
+import { resolveRentalSettings } from '@/settings/rental';
 import { canUseModuleWithTier } from '@/helpers/module-access';
 import { formatHUF } from '@/utils';
 import { utilitiesCalculations } from '@/calculations/utilities';
@@ -24,9 +30,13 @@ import { budgetCalculations } from '@/calculations/budget';
 import type { CashTransaction, UtilityBill } from '@/types';
 import { useBudgetCashflowMetrics } from '@/hooks/useBudgetCashflowMetrics';
 import { useMissedIncomeSummary } from '@/hooks/useMissedIncomeSummary';
+import { useEnsureExchangeRates } from '@/hooks/useEnsureExchangeRates';
+import { useExchangeRatesStore } from '@/stores/useExchangeRatesStore';
 
 export function useBudgetPageData(manualBalance: number) {
   const { user } = useAuthStore();
+  useEnsureExchangeRates();
+  const exchangeRates = useExchangeRatesStore((s) => s.rates);
   const activeWalletId = useWalletStore((s) => s.activeWalletId);
   const { selectedMonth, selectedYear } = usePeriodStore();
 
@@ -50,7 +60,12 @@ export function useBudgetPageData(manualBalance: number) {
   }, []);
 
   const debts = useDebtsStore((s) => s.debts);
+  const insurancePolicies = useInsuranceStore((s) => s.budgetPolicies);
+  const rentalProperties = useRentalStore((s) => s.properties);
+  const rentalIncomeEntries = useRentalStore((s) => s.incomeEntries);
   const debtsSettings = useMemo(() => resolveDebtsSettings(user?.household), [user?.household]);
+  const insuranceSettings = useMemo(() => resolveInsuranceSettings(user?.household), [user?.household]);
+  const rentalSettings = useMemo(() => resolveRentalSettings(user?.household), [user?.household]);
   const budgetSettings = useMemo(() => resolveBudgetSettings(user?.household), [user?.household]);
   const categoryColor = useCallback(
     (name: string) => resolveCategoryColor(name, budgetSettings),
@@ -62,6 +77,16 @@ export function useBudgetPageData(manualBalance: number) {
     if (!canUseModuleWithTier(user, 'debts')) return;
     void useDebtsStore.getState().fetch(activeWalletId);
   }, [activeWalletId, user]);
+
+  useEffect(() => {
+    if (!canUseModuleWithTier(user, 'insurance')) return;
+    void useInsuranceStore.getState().fetch();
+  }, [user]);
+
+  useEffect(() => {
+    if (!canUseModuleWithTier(user, 'rental')) return;
+    void useRentalStore.getState().fetch(selectedYear, selectedMonth);
+  }, [user, selectedYear, selectedMonth]);
 
   useEffect(() => {
     void useBudgetStore
@@ -115,6 +140,32 @@ export function useBudgetPageData(manualBalance: number) {
     enabled: goalsReady,
   });
 
+  const insurancePremiums = useInsuranceBudgetPremiums({
+    policies: insurancePolicies,
+    user,
+    selectedYear,
+    selectedMonth,
+    categories,
+    paymentCategoryPattern: insuranceSettings.payment_category_pattern,
+    enabled: goalsReady,
+  });
+
+  const rentalBudgetIncomes = useRentalBudgetIncomes({
+    properties: rentalProperties,
+    incomeEntries: rentalIncomeEntries,
+    user,
+    selectedYear,
+    selectedMonth,
+    categories,
+    incomeCategoryPattern: rentalSettings.income_category_pattern,
+    enabled: goalsReady,
+  });
+
+  const syncedInsuranceExpenses = useMemo(
+    () => [...debtInstallments, ...insurancePremiums],
+    [debtInstallments, insurancePremiums],
+  );
+
   const budgetCashflow = useBudgetCashflowMetrics({
     manualBalance,
     transactions,
@@ -125,7 +176,8 @@ export function useBudgetPageData(manualBalance: number) {
     selectedYear,
     onHouseholdSide,
     utilitySplitEnabled,
-    extraMonthExpenses: debtInstallments,
+    extraMonthExpenses: syncedInsuranceExpenses,
+    extraMonthIncomes: rentalBudgetIncomes,
   });
 
   const {
@@ -144,13 +196,14 @@ export function useBudgetPageData(manualBalance: number) {
     );
     const goalRows = goalsReady ? goalBudgetRows : [];
     const monthReserves = monthTransactions.filter((t: CashTransaction) => t.isReserve);
-    const monthIncomes = monthTransactions.filter(
-      (t: CashTransaction) => t.type === 'income' && !t.isReserve,
-    );
+    const monthIncomes = [
+      ...monthTransactions.filter((t: CashTransaction) => t.type === 'income' && !t.isReserve),
+      ...rentalBudgetIncomes,
+    ];
     const monthExpenses = [
       ...monthTransactions.filter((t: CashTransaction) => t.type === 'expense' && !t.isReserve),
       ...goalRows,
-      ...debtInstallments,
+      ...syncedInsuranceExpenses,
     ];
     const monthBills = bills.filter(
       (b) => b.dueDate.startsWith(selectedYearMonth) && !utilitiesCalculations.isLegacySettlementBill(b),
@@ -162,25 +215,39 @@ export function useBudgetPageData(manualBalance: number) {
       expenses: monthExpenses,
       reserves: monthReserves,
       monthlyBills: monthBills,
-      totalIncomeReceived: budgetCalculations.calculateTotalIncomeReceived(monthIncomes),
+      totalIncomeReceived: budgetCalculations.calculateTotalIncomeReceived(monthIncomes, exchangeRates),
       totalActualSpent: budgetCalculations.calculateTotalActualSpent(
         monthExpenses,
         monthBills,
         getBillPortion,
+        exchangeRates,
       ),
       totalProjectedExpense: budgetCalculations.calculateTotalProjectedExpense(
         monthExpenses,
         monthBills,
         getBillPortion,
+        exchangeRates,
       ),
       categoryData: budgetCalculations.groupTransactionsByCategory(
         categories,
         monthExpenses,
         monthBills,
         getBillPortion,
+        exchangeRates,
       ),
     };
-  }, [bills, categories, debtInstallments, getBillPortion, goalBudgetRows, goalsReady, selectedYearMonth, transactions]);
+  }, [
+    bills,
+    categories,
+    syncedInsuranceExpenses,
+    rentalBudgetIncomes,
+    exchangeRates,
+    getBillPortion,
+    goalBudgetRows,
+    goalsReady,
+    selectedYearMonth,
+    transactions,
+  ]);
 
   const cashflowMetrics: MetricItem[] = [
     {
@@ -260,6 +327,11 @@ export function useBudgetPageData(manualBalance: number) {
     walletManualBalance,
     debts,
     debtsSettings,
+    insurancePolicies,
+    insuranceSettings,
+    rentalProperties,
+    rentalIncomeEntries,
+    rentalSettings,
     missedIncomeSummary,
     refreshMissedIncome,
     categoryColor,

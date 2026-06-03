@@ -9,8 +9,57 @@ export const moduleDefaults = {
     default_vat_percent: 27,
     price_input_mode: 'gross' as 'net' | 'gross',
     order_statuses: ['Függőben', 'Feldolgozás alatt', 'Szállítva', 'Teljesítve', 'Visszautaltva'],
+    order_status_colors: {
+      Függőben: 'warning',
+      'Feldolgozás alatt': 'info',
+      Szállítva: 'primary',
+      Teljesítve: 'success',
+      Visszautaltva: 'danger',
+    } as Record<string, 'success' | 'warning' | 'danger' | 'info' | 'primary' | 'neutral'>,
     shopify_sync_schedule: 'off' as 'off' | 'hourly' | 'every_6_hours' | 'daily',
     shopify_last_synced_at: null as string | null,
+    sumup_last_synced_at: null as string | null,
+    tax_regime: 'aam' as 'aam' | 'vat' | 'kata',
+    income_tax_method: 'cost_ratio' as 'cost_ratio' | 'actual' | 'kata_flat',
+    cost_ratio_percent: 40,
+    revenue_basis: 'documented_only' as 'documented_only' | 'all_orders',
+  },
+  dashboard: {
+    widget_order: [
+      'alerts',
+      'ai_cfo',
+      'primary_metrics',
+      'secondary_metrics',
+      'main_grid',
+      'business_chart',
+      'ai_briefing',
+    ] as const,
+    widgets: {
+      monthly_advisor: true,
+      weekly_report: true,
+      payment_priority: true,
+    },
+  },
+  pocket_money: {
+    currencies: ['HUF', 'EUR'] as string[],
+    default_currency: 'HUF' as string,
+    /** Kiosztható kamat figyelmeztetés: csak a hónap utolsó N napjában (aktuális hónap). */
+    interest_reminder_days_at_month_end: 3,
+  },
+  insurance: {
+    reminder_days_before: 30,
+    currencies: ['HUF', 'EUR'] as string[],
+    default_currency: 'HUF' as string,
+    payment_category_pattern: 'biztosít',
+    budget_sync_default: false,
+  },
+  rental: {
+    currencies: ['HUF', 'EUR'] as string[],
+    default_currency: 'HUF' as string,
+    contract_reminder_days_before: 60,
+    overdue_grace_days: 0,
+    budget_sync_default: false,
+    income_category_pattern: 'bérlet',
   },
   budget: {
     category_groups: [] as Array<{ name: string; color: string; categories: string[] }>,
@@ -18,6 +67,7 @@ export const moduleDefaults = {
     clone_mode: 'all' as 'all' | 'budget_only' | 'fixed_recurring',
     missed_income_enabled: true,
     missed_income_grace_days: 0,
+    default_currency: 'HUF' as 'HUF' | 'EUR' | 'USD',
   },
   debts: {
     default_strategy: 'avalanche' as const,
@@ -37,17 +87,6 @@ export const moduleDefaults = {
     clone_from_previous_month: true,
     settlement_auto_suggest: true,
     default_payer_user_id: null as number | null,
-  },
-  dashboard: {
-    widget_order: [
-      'alerts',
-      'ai_cfo',
-      'primary_metrics',
-      'secondary_metrics',
-      'main_grid',
-      'business_chart',
-      'ai_briefing',
-    ] as const,
   },
   savings: {
     owners: [] as string[],

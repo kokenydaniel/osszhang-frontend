@@ -10,6 +10,7 @@ import { LabelWithInfo } from '@/components/ui/InfoTooltip';
 import { OptionsSelect } from '@/components/ui/OptionsSelect';
 import { HELP } from '@/config/help';
 import type { BusinessSettings } from '@/settings/business';
+import { Switch } from '@/components/ui/switch';
 import { User, Banknote } from 'lucide-react';
 
 export type BusinessOrderFormValues = {
@@ -21,8 +22,8 @@ export type BusinessOrderFormValues = {
   provider: string;
   destination: string;
   paidDate: string;
+  hasInvoice: boolean;
   invoiceId: string;
-  orderStatus: string;
 };
 
 type BusinessOrderFormProps = {
@@ -37,8 +38,12 @@ export function BusinessOrderForm({ form, bizOptions, isEdit, onCancel, onSubmit
   const {
     register,
     control,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = form;
+  const hasInvoice = watch('hasInvoice');
+  const invoiceId = watch('invoiceId');
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
@@ -119,23 +124,25 @@ export function BusinessOrderForm({ form, bizOptions, isEdit, onCancel, onSubmit
             )}
           />
         </div>
-        <div className="space-y-1.5">
-          <FieldLabel info="A rendelés feldolgozási állapota (beállításokból).">Rendelés státusza</FieldLabel>
-          <Controller
-            name="orderStatus"
-            control={control}
-            rules={{ required: true }}
-            render={({ field }) => (
-              <OptionsSelect value={field.value} onChange={field.onChange} options={bizOptions.order_statuses} />
-            )}
-          />
-        </div>
       </div>
 
       <div className="rounded-md border border-border bg-muted/30 p-3 space-y-3">
         <LabelWithInfo className="text-xs font-medium" info={HELP.business.paymentSection}>
           Kifizetés és számla
         </LabelWithInfo>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border/80 bg-card px-3 py-2.5">
+          <div>
+            <p className="text-xs font-medium text-foreground">Számla vagy nyugta készült</p>
+            <p className="text-[0.65rem] text-muted-foreground mt-0.5">
+              AAM / dokumentált bevétel kimutatásnál ez számít bevételnek (vagy ha van sorszám).
+            </p>
+          </div>
+          <Switch
+            checked={hasInvoice || Boolean(invoiceId.trim())}
+            onCheckedChange={(checked) => setValue('hasInvoice', checked)}
+            aria-label="Bizonylat készült"
+          />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <FieldLabel className="text-[0.7rem] text-muted-foreground" info={HELP.business.paidDateBiz}>

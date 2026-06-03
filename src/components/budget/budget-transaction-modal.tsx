@@ -7,6 +7,8 @@ import { HELP } from '@/config/help';
 import { today as todayIso } from '@/utils/dates';
 import { budgetClient } from '@/lib/api-client';
 import { getActiveWalletId } from '@/helpers/wallet';
+import { resolveDefaultCurrency } from '@/settings/budget';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { StatusCodes } from '@/types/api';
 import { aiHelpers } from '@/helpers/ai-helpers';
 import type { CashTransaction } from '@/types';
@@ -21,6 +23,7 @@ function valuesFromTransaction(tx: CashTransaction): BudgetTransactionFormValues
     txCat: tx.category,
     txDesc: tx.description,
     txAmount: tx.amount.toString(),
+    txCurrency: tx.currency ?? 'HUF',
     txDue: tx.dueDate,
     txIsBudget: tx.isBudget || false,
     txIsReserve: tx.isReserve || false,
@@ -30,12 +33,14 @@ function valuesFromTransaction(tx: CashTransaction): BudgetTransactionFormValues
 function emptyValues(
   categories: string[],
   defaultType: 'income' | 'expense',
+  defaultCurrency: ReturnType<typeof resolveDefaultCurrency>,
 ): BudgetTransactionFormValues {
   return {
     txType: defaultType,
     txCat: categories[0] || '',
     txDesc: '',
     txAmount: '',
+    txCurrency: defaultCurrency,
     txDue: todayIso(),
     txIsBudget: false,
     txIsReserve: false,
@@ -61,12 +66,14 @@ export function BudgetTransactionModal({
   onClose,
   onSaved,
 }: BudgetTransactionModalProps) {
+  const household = useAuthStore((s) => s.user?.household);
+  const defaultCurrency = resolveDefaultCurrency(household);
   const [isCategoryLoading, setIsCategoryLoading] = useState(false);
   const isEdit = target?.mode === 'edit';
   const editTx = isEdit ? target.transaction : null;
 
   const form = useForm<BudgetTransactionFormValues>({
-    defaultValues: emptyValues(categories, 'expense'),
+    defaultValues: emptyValues(categories, 'expense', defaultCurrency),
   });
 
   const txType = form.watch('txType');
@@ -78,9 +85,9 @@ export function BudgetTransactionModal({
     if (target.mode === 'edit') {
       form.reset(valuesFromTransaction(target.transaction));
     } else {
-      form.reset(emptyValues(categories, target.defaultType ?? 'expense'));
+      form.reset(emptyValues(categories, target.defaultType ?? 'expense', defaultCurrency));
     }
-  }, [open, target, categories, form]);
+  }, [open, target, categories, defaultCurrency, form]);
 
   const handleAutoCategory = async () => {
     const desc = form.getValues('txDesc').trim();
@@ -107,6 +114,7 @@ export function BudgetTransactionModal({
       description: values.txDesc,
       category: values.txCat,
       amount: Number(cleanAmount),
+      currency: values.txCurrency || 'HUF',
       dueDate: values.txDue,
       isBudget: values.txIsBudget,
       isReserve: values.txIsReserve,

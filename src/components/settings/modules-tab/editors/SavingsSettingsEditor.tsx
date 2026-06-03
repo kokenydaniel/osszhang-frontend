@@ -111,9 +111,14 @@ export function SavingsSettingsEditor({
         </FormField>
       </div>
 
+      <p className="text-xs text-muted-foreground rounded-lg border border-border bg-muted/15 px-3 py-2">
+        Az alapértelmezett pénznemet a Költségvetés modul beállításainál állítod (HUF / EUR / USD). Itt azt listázod,
+        mely pénznemek választhatók új megtakarítási számlánál.
+      </p>
+
       <StringListEditor
         title="Pénznemek"
-        description="Új számla létrehozásánál választható pénznemek."
+        description="Új számla létrehozásánál választható pénznemek (pl. HUF, EUR)."
         items={value.currencies}
         onChange={(currencies) => onChange({ ...value, currencies })}
         placeholder="pl. HUF, EUR…"

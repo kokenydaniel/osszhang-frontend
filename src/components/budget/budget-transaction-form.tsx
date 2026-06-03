@@ -25,6 +25,7 @@ export type BudgetTransactionFormValues = {
   txCat: string;
   txDesc: string;
   txAmount: string;
+  txCurrency: string;
   txDue: string;
   txIsBudget: boolean;
   txIsReserve: boolean;
@@ -185,8 +186,8 @@ export function BudgetTransactionForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
+      <div className="grid grid-cols-2 gap-3 items-end">
+        <div className="space-y-1.5 min-w-0">
           <FieldLabel
             info={HELP.budget.amount}
             hint={
@@ -197,7 +198,7 @@ export function BudgetTransactionForm({
                   : undefined
             }
           >
-            Összeg (Ft)
+            Összeg
           </FieldLabel>
           <Input
             type="number"
@@ -207,6 +208,24 @@ export function BudgetTransactionForm({
           />
           {errors.txAmount ? <p className="text-xs text-destructive">{errors.txAmount.message}</p> : null}
         </div>
+        <div className="space-y-1.5 min-w-0">
+          <FieldLabel
+            info="Mentés: az összeg EUR/USD-ben marad. A költségvetés számítás forintra vált élő árfolyamon."
+          >
+            Pénznem
+          </FieldLabel>
+          <select
+            className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
+            {...register('txCurrency')}
+          >
+            <option value="HUF">HUF</option>
+            <option value="EUR">EUR</option>
+            <option value="USD">USD</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3">
         <div className="space-y-1.5">
           <FieldLabel info={HELP.budget.date} hint="Esedékesség vagy a tranzakció napja.">
             Dátum

@@ -18,15 +18,25 @@ export function AnimatedHeight({ children, contentKey, className }: AnimatedHeig
     const el = innerRef.current;
     if (!el) return;
 
+    let frame = 0;
     const measure = () => {
-      setHeight(el.scrollHeight);
+      const next = el.scrollHeight;
+      setHeight((prev) => (prev === next ? prev : next));
     };
 
-    measure();
-    const observer = new ResizeObserver(measure);
+    const scheduleMeasure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    };
+
+    scheduleMeasure();
+    const observer = new ResizeObserver(scheduleMeasure);
     observer.observe(el);
-    return () => observer.disconnect();
-  }, [children, contentKey]);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [contentKey]);
 
   return (
     <motion.div

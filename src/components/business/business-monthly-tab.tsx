@@ -21,6 +21,7 @@ export type BusinessMonthlyTabProps = {
   syncShopify: () => void | Promise<void>;
   openForm: (order?: BusinessOrder) => void;
   deleteOrder: (id: number) => void | Promise<void>;
+  updateOrderStatus: (id: number, orderStatus: string) => void | Promise<void>;
   requestDelete: ReturnType<typeof useConfirmDelete>['requestDelete'];
   isReader: boolean;
   bizOptions: BusinessSettings;
@@ -35,6 +36,7 @@ export function BusinessMonthlyTab({
   syncShopify,
   openForm,
   deleteOrder,
+  updateOrderStatus,
   requestDelete,
   isReader,
   bizOptions,
@@ -81,6 +83,7 @@ export function BusinessMonthlyTab({
         filteredOrders={filteredOrders}
         openForm={openForm}
         deleteOrder={deleteOrder}
+        updateOrderStatus={updateOrderStatus}
         requestDelete={requestDelete}
         isReader={isReader}
         bizOptions={bizOptions}

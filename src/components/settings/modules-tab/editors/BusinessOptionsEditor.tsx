@@ -5,7 +5,14 @@ import { Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/FormField';
-import type { BusinessSettings, ShopifySyncSchedule } from '@/settings/business';
+import { OrderStatusToneSelect } from '@/components/ui/OrderStatusToneSelect';
+import { StatusPill } from '@/components/design';
+import type { BusinessSettings } from '@/settings/business';
+import {
+  resolveOrderStatusTone,
+  setOrderStatusColor,
+  syncOrderStatusColors,
+} from '@/settings/business';
 
 type ListKey = 'channels' | 'payment_methods' | 'providers' | 'destinations';
 
@@ -61,7 +68,8 @@ export function BusinessOptionsEditor({
     onChange({ ...value, [key]: value[key].filter((x) => x !== label) });
   };
 
-  const updateStatuses = (statuses: string[]) => onChange({ ...value, order_statuses: statuses });
+  const updateStatuses = (statuses: string[]) =>
+    onChange(syncOrderStatusColors({ ...value, order_statuses: statuses }));
 
   return (
     <div className="space-y-6">
@@ -116,85 +124,50 @@ export function BusinessOptionsEditor({
       ))}
     </div>
 
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-xl border border-border bg-muted/10 p-4">
-      <FormField label="Alap ÁFA (%)" info="Új rendelésnél előre kitöltött áfa kulcs.">
-        <Input
-          type="number"
-          min={0}
-          max={100}
-          step={0.1}
-          value={value.default_vat_percent}
-          onChange={(e) =>
-            onChange({
-              ...value,
-              default_vat_percent: Math.max(0, Math.min(100, Number(e.target.value) || 0)),
-            })
-          }
-        />
-      </FormField>
-      <FormField label="Ár megadása" info="Új tételnél nettó vagy bruttó összeg legyen az alapértelmezés.">
-        <select
-          className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring outline-none"
-          value={value.price_input_mode}
-          onChange={(e) =>
-            onChange({ ...value, price_input_mode: e.target.value as BusinessSettings['price_input_mode'] })
-          }
-        >
-          <option value="gross">Bruttó</option>
-          <option value="net">Nettó</option>
-        </select>
-      </FormField>
-    </div>
-
     <div className="rounded-xl border border-border bg-card p-5 space-y-3">
       <div>
         <h4 className="text-sm font-semibold text-foreground">Rendelés státuszok</h4>
-        <p className="text-xs text-muted-foreground mt-1">Ezek választhatók új és meglévő rendelésnél.</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Státuszok és színeik a rendeléslistában. Új státusznál alapértelmezetten szürke.
+        </p>
       </div>
-      <div className="flex flex-wrap gap-1.5">
-        {value.order_statuses.map((status) => (
-          <span key={status} className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium">
-            {status}
-            {value.order_statuses.length > 1 && (
-              <button
-                type="button"
-                onClick={() => updateStatuses(value.order_statuses.filter((s) => s !== status))}
-                className="text-muted-foreground hover:text-destructive"
-              >
-                <X size={12} />
-              </button>
-            )}
-          </span>
-        ))}
+      <div className="space-y-2">
+        {value.order_statuses.map((status) => {
+          const tone = resolveOrderStatusTone(value, status);
+          return (
+            <div
+              key={status}
+              className="grid grid-cols-[minmax(0,1fr)_8.5rem_auto] items-center gap-2 rounded-lg border border-border bg-muted/10 px-3 py-2"
+            >
+              <StatusPill status={tone} size="xs" dot>
+                {status}
+              </StatusPill>
+              <OrderStatusToneSelect
+                value={tone}
+                onChange={(next) => onChange(setOrderStatusColor(value, status, next))}
+                className="h-8 text-xs"
+              />
+              {value.order_statuses.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => updateStatuses(value.order_statuses.filter((s) => s !== status))}
+                  className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  aria-label={`${status} törlése`}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
-      <StatusDraft onAdd={(label) => {
-        if (value.order_statuses.some((s) => s.toLowerCase() === label.toLowerCase())) return;
-        updateStatuses([...value.order_statuses, label]);
-      }} />
+      <StatusDraft
+        onAdd={(label) => {
+          if (value.order_statuses.some((s) => s.toLowerCase() === label.toLowerCase())) return;
+          updateStatuses([...value.order_statuses, label]);
+        }}
+      />
     </div>
-
-    <FormField
-      label="Shopify automatikus szinkron"
-      info="A szerver 15 percenként ellenőrzi; az ütemezés szerint importál. Manuális import továbbra is elérhető."
-      hint={
-        value.shopify_last_synced_at
-          ? `Utolsó szinkron: ${new Date(value.shopify_last_synced_at).toLocaleString('hu-HU')}`
-          : undefined
-      }
-    >
-      <select
-        className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring outline-none"
-        value={value.shopify_sync_schedule}
-        onChange={(e) =>
-          onChange({ ...value, shopify_sync_schedule: e.target.value as ShopifySyncSchedule })
-        }
-      >
-        <option value="off">Kikapcsolva</option>
-        <option value="hourly">Óránként</option>
-        <option value="every_6_hours">6 óránként</option>
-        <option value="daily">Naponta</option>
-      </select>
-    </FormField>
     </div>
   );
 }

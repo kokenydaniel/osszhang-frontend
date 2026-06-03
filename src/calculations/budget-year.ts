@@ -4,6 +4,7 @@ import { hasSettlementDate } from '@/utils';
 import { formatHUF, shortMonthName } from '@/utils';
 import { HELP } from '@/config/help';
 import { budgetCalculations } from '@/calculations/budget';
+import { toHuf } from '@/utils/money';
 import {
   budgetYearExtendedCalculations,
   type BudgetYearDebtsSummary,
@@ -15,6 +16,8 @@ import {
 } from '@/calculations/budget-year-extended';
 import { utilitiesCalculations } from '@/calculations/utilities';
 import { buildDebtBudgetExpenses } from '@/helpers/debt-budget';
+import { buildInsuranceBudgetExpenses } from '@/helpers/insurance-budget';
+import type { InsurancePolicy } from '@/types/insurance';
 import type { MetricItem } from '@/components/design';
 import { ArrowDownRight, ArrowUpRight, Minus, Tag, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 
@@ -67,10 +70,10 @@ function inYear(dueDate: string, year: number): boolean {
   return dueDate.startsWith(yearPrefix(year));
 }
 
-export function incomeReceivedAmount(tx: CashTransaction): number {
+export function incomeReceivedAmount(tx: CashTransaction, rates: Record<string, number>): number {
   if (tx.type !== 'income' || tx.isReserve) return 0;
   if (!hasSettlementDate(tx.paidDate)) return 0;
-  return tx.amount;
+  return toHuf(tx.amount, tx.currency, rates);
 }
 
 function debtInstallmentsForYear(
@@ -86,6 +89,19 @@ function debtInstallmentsForYear(
   return rows;
 }
 
+function insurancePremiumsForYear(
+  policies: InsurancePolicy[],
+  year: number,
+  categories: string[],
+  categoryPattern: string,
+): CashTransaction[] {
+  const rows: CashTransaction[] = [];
+  for (let month = 1; month <= 12; month += 1) {
+    rows.push(...buildInsuranceBudgetExpenses(policies, year, month, categories, categoryPattern));
+  }
+  return rows;
+}
+
 function sumCategorySpent(
   transactions: CashTransaction[],
   goalRows: CashTransaction[],
@@ -93,6 +109,7 @@ function sumCategorySpent(
   debtRows: CashTransaction[],
   categories: string[],
   getBillPortion: (b: UtilityBill) => number,
+  rates: Record<string, number>,
 ): Map<string, number> {
   const totals = new Map<string, number>();
 
@@ -104,7 +121,7 @@ function sumCategorySpent(
 
   for (const tx of [...transactions, ...goalRows]) {
     if (tx.type !== 'expense' || tx.isReserve) continue;
-    add(tx.category || 'Egyéb', budgetCalculations.categorySummaryAmount(tx));
+    add(tx.category || 'Egyéb', budgetCalculations.categorySummaryAmount(tx, rates));
   }
 
   for (const bill of bills) {
@@ -112,7 +129,7 @@ function sumCategorySpent(
   }
 
   for (const row of debtRows) {
-    add(row.category || 'Egyéb', budgetCalculations.categorySummaryAmount(row));
+    add(row.category || 'Egyéb', budgetCalculations.categorySummaryAmount(row, rates));
   }
 
   for (const name of categories) {
@@ -156,35 +173,53 @@ export const budgetYearCalculations = {
     goalRows: CashTransaction[];
     bills: UtilityBill[];
     debts: Debt[];
+    insurancePolicies?: InsurancePolicy[];
+    insuranceCategoryPattern?: string;
     savings: SavingsAccount[];
     year: number;
     categories: string[];
     debtCategoryPattern: string;
     getBillPortion: (b: UtilityBill) => number;
     includeDebts: boolean;
+    includeInsurance?: boolean;
     includeSavings: boolean;
+    exchangeRates?: Record<string, number>;
   }): BudgetYearSnapshot {
     const {
       transactions,
       goalRows,
       bills,
       debts,
+      insurancePolicies = [],
+      insuranceCategoryPattern = 'biztosít',
       savings,
       year,
       categories,
       debtCategoryPattern,
       getBillPortion,
       includeDebts,
+      includeInsurance = false,
       includeSavings,
     } = params;
+    const rates = params.exchangeRates ?? { HUF: 1 };
     const previousYear = year - 1;
 
     const yearTx = this.filterTransactionsForYear(transactions, year);
     const prevYearTx = this.filterTransactionsForYear(transactions, previousYear);
     const yearBills = this.filterBillsForYear(bills, year);
     const prevYearBills = this.filterBillsForYear(bills, previousYear);
-    const yearDebtRows = debtInstallmentsForYear(debts, year, categories, debtCategoryPattern);
-    const prevDebtRows = debtInstallmentsForYear(debts, previousYear, categories, debtCategoryPattern);
+    const yearDebtRows = [
+      ...(includeDebts ? debtInstallmentsForYear(debts, year, categories, debtCategoryPattern) : []),
+      ...(includeInsurance
+        ? insurancePremiumsForYear(insurancePolicies, year, categories, insuranceCategoryPattern)
+        : []),
+    ];
+    const prevDebtRows = [
+      ...(includeDebts ? debtInstallmentsForYear(debts, previousYear, categories, debtCategoryPattern) : []),
+      ...(includeInsurance
+        ? insurancePremiumsForYear(insurancePolicies, previousYear, categories, insuranceCategoryPattern)
+        : []),
+    ];
 
     const yearGoals = goalRows.filter((row) => inYear(row.dueDate, year));
     const prevYearGoals = goalRows.filter((row) => inYear(row.dueDate, previousYear));
@@ -196,6 +231,7 @@ export const budgetYearCalculations = {
       yearDebtRows,
       categories,
       getBillPortion,
+      rates,
     );
     const previousCategories = sumCategorySpent(
       prevYearTx,
@@ -204,6 +240,7 @@ export const budgetYearCalculations = {
       prevDebtRows,
       categories,
       getBillPortion,
+      rates,
     );
 
     const totalExpenseYTD = [...currentCategories.values()].reduce((sum, value) => sum + value, 0);
@@ -216,7 +253,7 @@ export const budgetYearCalculations = {
           ? null
           : 0;
 
-    const totalIncomeYTD = yearTx.reduce((sum, tx) => sum + incomeReceivedAmount(tx), 0);
+    const totalIncomeYTD = yearTx.reduce((sum, tx) => sum + incomeReceivedAmount(tx, rates), 0);
     const categoryRows = mapToCategoryRows(currentCategories, previousCategories);
     const topCategory = categoryRows[0]?.name ?? '—';
 
@@ -230,13 +267,13 @@ export const budgetYearCalculations = {
 
       const kiadas =
         [...monthTx, ...monthGoals].reduce(
-          (sum, tx) => sum + budgetCalculations.categorySummaryAmount(tx),
+          (sum, tx) => sum + budgetCalculations.categorySummaryAmount(tx, rates),
           0,
         ) +
         monthBills.reduce((sum, bill) => sum + getBillPortion(bill), 0) +
-        monthDebt.reduce((sum, row) => sum + budgetCalculations.categorySummaryAmount(row), 0);
+        monthDebt.reduce((sum, row) => sum + budgetCalculations.categorySummaryAmount(row, rates), 0);
 
-      const bevetel = monthTx.reduce((sum, tx) => sum + incomeReceivedAmount(tx), 0);
+      const bevetel = monthTx.reduce((sum, tx) => sum + incomeReceivedAmount(tx, rates), 0);
 
       return { name: shortMonthName(month), kiadas, bevetel };
     });

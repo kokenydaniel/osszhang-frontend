@@ -60,9 +60,20 @@ export function useBusinessPageData() {
     () => businessCalculations.buildMonthlyMetrics(filteredOrders, yearStats.chartData, selectedMonth),
     [filteredOrders, selectedMonth, yearStats.chartData],
   );
+  const annualTaxRevenue = useMemo(
+    () => businessCalculations.computeAnnualRevenue(orders, selectedYear, bizOptions),
+    [orders, selectedYear, bizOptions],
+  );
+
   const summaryMetrics = useMemo(
-    () => businessCalculations.buildSummaryMetrics(yearStats, selectedYear),
-    [selectedYear, yearStats],
+    () =>
+      businessCalculations.buildSummaryMetrics(
+        yearStats,
+        selectedYear,
+        annualTaxRevenue,
+        bizOptions.tax_regime,
+      ),
+    [annualTaxRevenue, bizOptions.tax_regime, selectedYear, yearStats],
   );
 
   const saveOrder = useCallback(
@@ -105,6 +116,29 @@ export function useBusinessPageData() {
     [addNotification, removeOrder],
   );
 
+  const updateOrderStatus = useCallback(
+    async (id: number, orderStatus: string) => {
+      if (!canEditHousehold(user)) return;
+
+      const previous = orders.find((o) => o.id === id);
+      const previousStatus =
+        previous?.orderStatus?.trim() || bizOptions.order_statuses[0] || '';
+      if (!previous || previousStatus === orderStatus) return;
+
+      patchOrder(id, { ...previous, orderStatus });
+
+      try {
+        const res = await businessClient.update(id, { orderStatus });
+        if (!res || res[0] !== StatusCodes.Http200) throw new Error('API Error');
+        patchOrder(id, { ...(res[1] as BusinessOrder), orderStatus });
+      } catch {
+        patchOrder(id, previous);
+        addNotification('A státusz frissítése nem sikerült.', 'error');
+      }
+    },
+    [addNotification, bizOptions.order_statuses, orders, patchOrder, user],
+  );
+
   const syncShopify = useCallback(async () => {
     if (!canEditHousehold(user)) return;
     addNotification('Shopify rendelések importálása elindult...', 'info');
@@ -144,12 +178,15 @@ export function useBusinessPageData() {
     deleteOrder,
     requestDelete,
     saveOrder,
+    updateOrderStatus,
     syncShopify,
     requestAiAdvice,
     aiAdvice,
     chartData: yearStats.chartData,
     channelData: yearStats.channelData,
     totalYTD: yearStats.totalYTD,
+    annualTaxRevenue,
+    orders,
     ConfirmDeleteModal,
   };
 }

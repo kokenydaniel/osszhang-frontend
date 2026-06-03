@@ -6,6 +6,9 @@ import {
   ArrowRight,
   Check,
   Command,
+  Coins,
+  Shield,
+  Building2,
   Gauge,
   Home,
   PiggyBank,
@@ -74,6 +77,9 @@ const MODULE_ICONS: Record<OnboardingModuleId, React.ComponentType<{ size?: numb
   utilities: Droplets,
   meters: Gauge,
   business: ShoppingBag,
+  pocket_money: Coins,
+  insurance: Shield,
+  rental: Building2,
 };
 
 type ModuleSelection = Record<OnboardingModuleId, boolean>;
@@ -98,6 +104,9 @@ export function HouseholdOnboardingWizard() {
     utilities: false,
     meters: false,
     business: false,
+    pocket_money: false,
+    insurance: false,
+    rental: false,
   });
   const [personalization, setPersonalization] = useState<PersonalizationAnswers>(
     () => ({ ...DEFAULT_PERSONALIZATION_ANSWERS }),

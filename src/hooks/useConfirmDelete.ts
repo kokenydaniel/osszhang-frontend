@@ -30,8 +30,10 @@ export function useConfirmDelete() {
       onConfirm: async () => {
         setConfirmLoading(true);
         try {
-          await pending.onConfirm();
+          await Promise.resolve(pending.onConfirm());
           setPending(null);
+        } catch {
+          // Modal marad nyitva — a hívó kezeli az értesítést
         } finally {
           setConfirmLoading(false);
         }

@@ -144,6 +144,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       ['/utilities', 'utilities'],
       ['/meters', 'meters'],
       ['/business', 'business'],
+      ['/pocket-money', 'pocket_money'],
+      ['/insurance', 'insurance'],
+      ['/rental', 'rental'],
     ];
     for (const [prefix, moduleId] of routes) {
       if (pathname.startsWith(prefix)) {
@@ -162,6 +165,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       ['/utilities', 'utilities'],
       ['/meters', 'meters'],
       ['/business', 'business'],
+      ['/pocket-money', 'pocket_money'],
+      ['/insurance', 'insurance'],
+      ['/rental', 'rental'],
     ];
     for (const [prefix, moduleId] of routes) {
       if (pathname.startsWith(prefix) && !canAccessModule(user, moduleId)) {

@@ -29,6 +29,14 @@ export class HouseholdClient {
     meters_enabled?: boolean;
     savings_settings?: import('@/settings/savings').SavingsSettings;
     debts_settings?: import('@/settings/debts').DebtsSettings;
+    pocket_money_enabled?: boolean;
+    pocket_money_settings?:
+      | import('@/settings/pocket-money').PocketMoneySettings
+      | import('@/settings/pocket-money').PocketMoneySettingsApiPayload;
+    insurance_enabled?: boolean;
+    insurance_settings?: import('@/settings/insurance').InsuranceSettings;
+    rental_enabled?: boolean;
+    rental_settings?: import('@/settings/rental').RentalSettings;
     meters_settings?: import('@/settings/meters').MetersSettings;
     onboarding_completed?: boolean;
     business_enabled?: boolean;

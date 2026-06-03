@@ -14,6 +14,9 @@ export const ONBOARDING_MODULE_TIERS: Partial<Record<OnboardingModuleId, 'pro' |
   debts: 'pro',
   utilities: 'pro',
   meters: 'pro',
+  pocket_money: 'pro',
+  insurance: 'pro',
+  rental: 'pro',
   business: 'premium',
 };
 
@@ -57,6 +60,24 @@ export const ONBOARDING_MODULE_OPTIONS: {
     label: 'Vállalkozás',
     description: 'Rendelések és bevételek nyilvántartása — webshop import opcionális.',
     tier: 'premium',
+  },
+  {
+    id: 'pocket_money',
+    label: 'Zsebpénz',
+    description: 'Családtagok zsebpénze és költései.',
+    tier: 'pro',
+  },
+  {
+    id: 'insurance',
+    label: 'Biztosítások',
+    description: 'Szerződések, éves díjak és megújítási emlékeztetők.',
+    tier: 'pro',
+  },
+  {
+    id: 'rental',
+    label: 'Bérbeadás',
+    description: 'Bérbe adott ingatlanok és bevételi tételek.',
+    tier: 'pro',
   },
 ];
 

@@ -25,8 +25,19 @@ export function ConfirmModal({
   overlayZIndex,
   confirmLoading = false,
 }: ConfirmModalProps) {
+  const handleClose = () => {
+    if (confirmLoading) return;
+    onClose();
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} overlayZIndex={overlayZIndex}>
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={title}
+      overlayZIndex={overlayZIndex}
+      dismissible={!confirmLoading}
+    >
       <div className="flex flex-col gap-4 py-1">
         <div className="flex gap-3 items-start">
           <div className={classNames(
@@ -38,7 +49,7 @@ export function ConfirmModal({
           <p className="text-sm text-foreground leading-relaxed pt-1">{message}</p>
         </div>
         <div className="flex gap-2 justify-end mt-1">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={handleClose} disabled={confirmLoading}>
             {cancelText}
           </Button>
           <Button
@@ -47,7 +58,7 @@ export function ConfirmModal({
             disabled={confirmLoading}
             onClick={() => void onConfirm()}
           >
-            {confirmText}
+            {confirmLoading ? 'Törlés…' : confirmText}
           </Button>
         </div>
       </div>

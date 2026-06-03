@@ -9,10 +9,14 @@ import { canUseFeature } from '@/helpers/check-access';
 import { resolveDebtsSettings } from '@/settings/debts';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useDebtsStore } from '@/stores/debtsStore';
+import { useInsuranceStore } from '@/stores/insuranceStore';
+import { resolveInsuranceSettings } from '@/settings/insurance';
 import { useSavingsStore } from '@/stores/savingsStore';
 import { useUtilitiesStore } from '@/stores/utilitiesStore';
 import { StatusCodes } from '@/types/api';
 import type { CashTransaction } from '@/types';
+import { useExchangeRatesStore } from '@/stores/useExchangeRatesStore';
+import { useEnsureExchangeRates } from '@/hooks/useEnsureExchangeRates';
 
 export function useBudgetYearData(params: {
   activeWalletId: number | null;
@@ -21,11 +25,15 @@ export function useBudgetYearData(params: {
 }) {
   const { activeWalletId, selectedYear, enabled } = params;
   const { user } = useAuthStore();
+  useEnsureExchangeRates();
+  const exchangeRates = useExchangeRatesStore((s) => s.rates);
   const bills = useUtilitiesStore((s) => s.bills);
   const debts = useDebtsStore((s) => s.debts);
+  const insurancePolicies = useInsuranceStore((s) => s.budgetPolicies);
   const savings = useSavingsStore((s) => s.savings);
 
   const canUseDebts = canUseModuleWithTier(user, 'debts');
+  const canUseInsurance = canUseModuleWithTier(user, 'insurance');
   const canUseSavings = canUseModuleWithTier(user, 'savings');
 
   const [transactions, setTransactions] = useState<CashTransaction[]>([]);
@@ -37,6 +45,7 @@ export function useBudgetYearData(params: {
     ? user.household.categories
     : ['Fizetés', 'Élelmiszer', 'Rezsi'];
   const debtsSettings = useMemo(() => resolveDebtsSettings(user?.household), [user?.household]);
+  const insuranceSettings = useMemo(() => resolveInsuranceSettings(user?.household), [user?.household]);
 
   const utilitySplitConfigured =
     user?.household?.utility_split_enabled ?? user?.household?.utility_split_enabled ?? false;
@@ -109,7 +118,12 @@ export function useBudgetYearData(params: {
     if (activeWalletId !== null && canUseSavings) {
       void useSavingsStore.getState().fetch(activeWalletId);
     }
-  }, [activeWalletId, canUseDebts, canUseSavings, enabled]);
+  }, [activeWalletId, canUseDebts, canUseInsurance, canUseSavings, enabled]);
+
+  useEffect(() => {
+    if (!canUseInsurance || !enabled) return;
+    void useInsuranceStore.getState().fetch();
+  }, [canUseInsurance, enabled]);
 
   const snapshot = useMemo(
     () =>
@@ -118,20 +132,28 @@ export function useBudgetYearData(params: {
         goalRows,
         bills,
         debts: canUseDebts ? walletDebts : [],
+        insurancePolicies: canUseInsurance ? insurancePolicies : [],
+        insuranceCategoryPattern: insuranceSettings.payment_category_pattern,
         savings: canUseSavings ? walletSavings : [],
         year: selectedYear,
         categories,
         debtCategoryPattern: debtsSettings.payment_category_pattern,
         getBillPortion,
         includeDebts: canUseDebts,
+        includeInsurance: canUseInsurance,
         includeSavings: canUseSavings,
+        exchangeRates,
       }),
     [
       bills,
       canUseDebts,
+      canUseInsurance,
       canUseSavings,
       categories,
       debtsSettings.payment_category_pattern,
+      insurancePolicies,
+      insuranceSettings.payment_category_pattern,
+      exchangeRates,
       getBillPortion,
       goalRows,
       walletSavings,

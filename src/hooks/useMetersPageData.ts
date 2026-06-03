@@ -40,7 +40,10 @@ export function useMetersPageData() {
   const metersSettings = useMemo(() => resolveMetersSettings(user?.household), [user?.household]);
   const isReader = isHouseholdReader(user);
   const canUseAi = canUseFeature(user, 'ai');
-  const locationGroups = useMemo(() => metersCalculations.groupByLocation(meters), [meters]);
+  const locationGroups = useMemo(
+    () => metersCalculations.groupByLocationGroups(meters, metersSettings.location_groups),
+    [meters, metersSettings.location_groups],
+  );
 
   const refreshAiAnomalies = useCallback(async () => {
     const data = await aiHelpers.getUtilityAnomalies(selectedYear, selectedMonth);
@@ -167,7 +170,7 @@ export function useMetersPageData() {
       requestDelete({
         title: 'Mérőóra törlése',
         message: `Biztosan törlöd a „${m?.name ?? 'mérőóra'}" mérőórát az összes állással együtt? Ez a művelet nem vonható vissza.`,
-        onConfirm: () => void deleteMeter(id),
+        onConfirm: () => deleteMeter(id),
       });
     },
     [deleteMeter, meters, requestDelete],
@@ -178,7 +181,7 @@ export function useMetersPageData() {
       requestDelete({
         title: 'Leolvasás törlése',
         message: 'Biztosan törlöd ezt az óraállást? A fogyasztási adatok újraszámolásra kerülnek.',
-        onConfirm: () => void deleteReading(mId, rId),
+        onConfirm: () => deleteReading(mId, rId),
       });
     },
     [deleteReading, requestDelete],

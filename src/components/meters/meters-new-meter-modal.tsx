@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/FieldLabel';
 import { HELP } from '@/config/help';
+import { metersCalculations } from '@/calculations/meters';
 import type { MetersSettings, MeterTemplate } from '@/settings/meters';
 
 type NewMeterFormValues = {
@@ -45,6 +46,11 @@ export function MetersNewMeterModal({ open, metersSettings, onClose, onCreate }:
     form.setValue('unit', template.unit);
     form.setValue('location', template.location ?? metersSettings.default_location ?? '');
   };
+
+  const locationOptions = metersCalculations.locationOptionsFromGroups(
+    metersSettings.location_groups,
+    metersSettings.default_location,
+  );
 
   const submit = form.handleSubmit(async (values) => {
     try {
@@ -104,7 +110,20 @@ export function MetersNewMeterModal({ open, metersSettings, onClose, onCreate }:
           </div>
           <div className="space-y-1.5">
             <FieldLabel info={HELP.meters.newMeterLocation}>Helyszín</FieldLabel>
-            <Input {...register('location')} />
+            {locationOptions.length > 1 ? (
+              <select
+                className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
+                {...register('location', { required: true })}
+              >
+                {locationOptions.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {loc}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <Input {...register('location', { required: true })} />
+            )}
           </div>
         </div>
 

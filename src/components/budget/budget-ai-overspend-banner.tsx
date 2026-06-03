@@ -1,4 +1,5 @@
 import { formatHUF } from '@/utils';
+import { aiFeatureLabel } from '@/config/ai-features';
 import { HELP } from '@/config/help';
 import { AccentPanel } from '@/components/design';
 import { TierGatedAiPanel } from '@/components/subscription/TierGatedAiPanel';
@@ -8,6 +9,7 @@ import type { AiOverspendAnalysis } from '@/types';
 
 type BudgetAiOverspendBannerProps = {
   aiOverspend: AiOverspendAnalysis | null;
+  compact?: boolean;
 };
 
 function buildDescription(aiOverspend: AiOverspendAnalysis): string {
@@ -26,15 +28,16 @@ function buildDescription(aiOverspend: AiOverspendAnalysis): string {
   return 'A túlköltés a havi egyenleg negatív értékéből számolódik — ugyanabból a logikából, mint a „Havi egyenleg” statisztika alatt.';
 }
 
-export function BudgetAiOverspendBanner({ aiOverspend }: BudgetAiOverspendBannerProps) {
+export function BudgetAiOverspendBanner({ aiOverspend, compact = false }: BudgetAiOverspendBannerProps) {
   const { allowed: canUseAi } = useTierFeature('ai');
 
   if (!canUseAi) {
+    if (compact) return null;
     return (
       <TierGatedAiPanel
-        featureLabel="AI túlköltés figyelő"
+        featureLabel={aiFeatureLabel('overspend_analysis')}
         icon={Bot}
-        title="AI túlköltés ellenőrzés"
+        title={aiFeatureLabel('overspend_analysis')}
         titleInfo={HELP.budget.aiOverspend}
         description="Befolyt bevétel és kifizetett kiadások összehasonlítása"
       >
@@ -47,6 +50,30 @@ export function BudgetAiOverspendBanner({ aiOverspend }: BudgetAiOverspendBanner
 
   const isOverspent = aiOverspend.status === 'overspent' && aiOverspend.overspend_amount > 0;
   const description = buildDescription(aiOverspend);
+
+  if (compact) {
+    return (
+      <div
+        className={
+          isOverspent
+            ? 'rounded-lg border border-amber-500/30 bg-amber-500/8 px-3 py-2.5'
+            : 'rounded-lg border border-emerald-500/25 bg-emerald-500/8 px-3 py-2.5'
+        }
+      >
+        <p className="text-xs font-semibold text-foreground">
+          {isOverspent
+            ? `Túlköltés: ${formatHUF(aiOverspend.overspend_amount)}`
+            : 'Nincs túlköltés ebben a hónapban'}
+        </p>
+        <p className="text-[0.65rem] text-muted-foreground mt-0.5 line-clamp-2">{description}</p>
+        {isOverspent && aiOverspend.top_drivers?.[0] ? (
+          <p className="text-[0.65rem] mt-1">
+            Legnagyobb: {aiOverspend.top_drivers[0].category} ({formatHUF(aiOverspend.top_drivers[0].amount)})
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <AccentPanel

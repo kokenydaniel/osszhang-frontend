@@ -2,6 +2,11 @@ import type { ModuleId } from '@/helpers/module-access';
 import { LoadableStatus, isStoreLoading } from '@/utils/loadable-status';
 import {
   isBudgetPeriodReady,
+  isHouseholdResourceReady,
+  isInsuranceDataReady,
+  isRentalPeriodReady,
+  isPocketMoneyPeriodReady,
+  isUtilitiesLoaded,
   isWalletDebtsReady,
   isWalletSavingsReady,
 } from '@/helpers/store-ready';
@@ -20,6 +25,16 @@ export function isDashboardFinancialDataReady(params: {
   savingsLoadedWalletId: number | null;
   debtsStatus: LoadableStatus;
   debtsLoadedWalletId: number | null;
+  householdId: number | null | undefined;
+  insuranceStatus: LoadableStatus;
+  rentalStatus: LoadableStatus;
+  rentalLoadedPeriod: string | null;
+  pocketMoneyStatus: LoadableStatus;
+  pocketMoneyLoadedPeriod: string | null;
+  metersStatus: LoadableStatus;
+  metersLoadedHouseholdId: number | null;
+  businessStatus: LoadableStatus;
+  businessLoadedHouseholdId: number | null;
 }): boolean {
   const {
     activeWalletId,
@@ -33,6 +48,16 @@ export function isDashboardFinancialDataReady(params: {
     savingsLoadedWalletId,
     debtsStatus,
     debtsLoadedWalletId,
+    householdId,
+    insuranceStatus,
+    rentalStatus,
+    rentalLoadedPeriod,
+    pocketMoneyStatus,
+    pocketMoneyLoadedPeriod,
+    metersStatus,
+    metersLoadedHouseholdId,
+    businessStatus,
+    businessLoadedHouseholdId,
   } = params;
 
   if (activeWalletId === null) return false;
@@ -48,7 +73,7 @@ export function isDashboardFinancialDataReady(params: {
   }
 
   if (needs('utilities')) {
-    if (isStoreLoading(utilitiesStatus)) return false;
+    if (!isUtilitiesLoaded(utilitiesStatus)) return false;
   }
 
   if (needs('savings')) {
@@ -59,6 +84,36 @@ export function isDashboardFinancialDataReady(params: {
 
   if (needs('debts')) {
     if (!isWalletDebtsReady(activeWalletId, debtsLoadedWalletId, debtsStatus)) {
+      return false;
+    }
+  }
+
+  if (needs('insurance')) {
+    if (!isInsuranceDataReady(insuranceStatus)) return false;
+  }
+
+  if (needs('rental')) {
+    if (!isRentalPeriodReady(selectedYear, selectedMonth, rentalLoadedPeriod, rentalStatus)) {
+      return false;
+    }
+  }
+
+  if (needs('pocket_money')) {
+    if (
+      !isPocketMoneyPeriodReady(selectedYear, selectedMonth, pocketMoneyLoadedPeriod, pocketMoneyStatus)
+    ) {
+      return false;
+    }
+  }
+
+  if (needs('meters')) {
+    if (!isHouseholdResourceReady(householdId, metersLoadedHouseholdId, metersStatus)) {
+      return false;
+    }
+  }
+
+  if (needs('business')) {
+    if (!isHouseholdResourceReady(householdId, businessLoadedHouseholdId, businessStatus)) {
       return false;
     }
   }

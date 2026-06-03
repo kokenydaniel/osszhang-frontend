@@ -51,7 +51,7 @@ export function SavingsAccountCard({
               requestDelete({
                 title: 'Számla törlése',
                 message: `Biztosan törlöd a „${acc.institution}" számlát és az összes mozgást? Ez a művelet nem vonható vissza.`,
-                onConfirm: () => void deleteSavingsAccount(acc.id),
+                onConfirm: () => deleteSavingsAccount(acc.id),
               })
       }
       value={

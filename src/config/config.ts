@@ -17,7 +17,7 @@ const config = {
   },
 
   modules: {
-    ids: ['budget', 'savings', 'debts', 'utilities', 'meters', 'business'] as const,
+    ids: ['budget', 'savings', 'debts', 'utilities', 'meters', 'business', 'pocket_money', 'insurance', 'rental'] as const,
     labels: {
       budget: 'Költségvetés',
       savings: 'Megtakarítás',
@@ -25,6 +25,9 @@ const config = {
       utilities: 'Rezsi',
       meters: 'Közműórák',
       business: 'Vállalkozás',
+      pocket_money: 'Zsebpénz',
+      insurance: 'Biztosítások',
+      rental: 'Bérbeadás',
     },
     householdFlags: {
       budget: ['budget_enabled', 'budgetEnabled'] as const,
@@ -33,6 +36,9 @@ const config = {
       utilities: ['utilities_enabled', 'utilitiesEnabled'] as const,
       meters: ['meters_enabled', 'metersEnabled'] as const,
       business: ['business_enabled', 'businessEnabled'] as const,
+      pocket_money: ['pocket_money_enabled', 'pocketMoneyEnabled'] as const,
+      insurance: ['insurance_enabled', 'insuranceEnabled'] as const,
+      rental: ['rental_enabled', 'rentalEnabled'] as const,
     },
   },
 

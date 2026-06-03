@@ -5,16 +5,28 @@ import { DataTable, type DataTableColumn } from '@/components/design/DataTable';
 import { EmptyState } from '@/components/design/EmptyState';
 import { StatusPill } from '@/components/design/StatusPill';
 import { formatFeatureFlagLabel } from '@/helpers/admin-helpers';
+import { PLATFORM_FEATURE_CATEGORY_LABELS, platformFeatureCategory } from '@/config/platform-features';
 import type { FeatureFlag } from '@/types/admin';
 
 interface FeatureFlagTableProps {
   flags: FeatureFlag[];
   togglingKey: string | null;
   onToggle: (key: string, value: boolean) => void;
+  emptyDescription?: string;
 }
 
-export function FeatureFlagTable({ flags, togglingKey, onToggle }: FeatureFlagTableProps) {
+export function FeatureFlagTable({ flags, togglingKey, onToggle, emptyDescription }: FeatureFlagTableProps) {
   const columns: DataTableColumn<FeatureFlag>[] = [
+    {
+      key: 'category',
+      header: 'Csoport',
+      width: '12%',
+      cell: (row) => (
+        <span className="text-xs text-muted-foreground">
+          {PLATFORM_FEATURE_CATEGORY_LABELS[platformFeatureCategory(row.key)]}
+        </span>
+      ),
+    },
     {
       key: 'name',
       header: 'Funkció',
@@ -29,7 +41,9 @@ export function FeatureFlagTable({ flags, togglingKey, onToggle }: FeatureFlagTa
       key: 'description',
       header: 'Leírás',
       cell: (row) => (
-        <span className="text-sm text-muted-foreground">{row.description ?? '—'}</span>
+        <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl whitespace-pre-wrap">
+          {row.description ?? '—'}
+        </p>
       ),
     },
     {
@@ -66,7 +80,7 @@ export function FeatureFlagTable({ flags, togglingKey, onToggle }: FeatureFlagTa
       empty={
         <EmptyState
           title="Nincs rendszer funkció"
-          description="A globális feature flag-ek még nem lettek konfigurálva."
+          description={emptyDescription ?? 'A globális feature flag-ek még nem lettek konfigurálva.'}
         />
       }
     />

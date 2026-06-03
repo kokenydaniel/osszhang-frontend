@@ -11,3 +11,7 @@ export { AiFinanceClient } from './ai-finance-client';
 export { WalletClient } from './wallet-client';
 export { SubscriptionClient } from './subscription-client';
 export { AdminClient } from './admin-client';
+export { AttachmentsClient } from './attachments-client';
+export { PocketMoneyClient } from './pocket-money-client';
+export { InsuranceClient } from './insurance-client';
+export { RentalClient } from './rental-client';

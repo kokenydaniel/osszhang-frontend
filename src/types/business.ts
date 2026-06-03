@@ -25,6 +25,7 @@ export interface CreateBusinessOrderPayload {
   destination: string;
   amount: number;
   paidDate: string | null;
+  hasInvoice?: boolean;
   invoiceId?: string;
   state: 'RENDBEN' | 'KINT' | 'KINT_PARKOL';
   orderStatus: string;

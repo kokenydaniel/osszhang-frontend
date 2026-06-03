@@ -55,6 +55,8 @@ function Button({
   }) {
   const Comp = asChild ? Slot.Root : "button"
   const isDisabled = disabled || loading
+  const isIconOnly =
+    size === "icon" || size === "icon-xs" || size === "icon-sm" || size === "icon-lg"
 
   return (
     <Comp
@@ -63,15 +65,22 @@ function Button({
       data-size={size}
       data-loading={loading ? "" : undefined}
       aria-busy={loading || undefined}
-      className={classNames(buttonVariants({ variant, size, className }))}
+      className={classNames(
+        buttonVariants({ variant, size, className }),
+        loading && !isIconOnly && "[&>svg:not([data-slot=button-loader])]:hidden",
+      )}
       disabled={isDisabled}
       {...props}
     >
       {loading ? (
-        <>
-          <Loader2 className="animate-spin" aria-hidden />
-          {children}
-        </>
+        isIconOnly ? (
+          <Loader2 data-slot="button-loader" className="animate-spin" aria-hidden />
+        ) : (
+          <>
+            <Loader2 data-slot="button-loader" className="animate-spin" aria-hidden />
+            {children}
+          </>
+        )
       ) : (
         children
       )}

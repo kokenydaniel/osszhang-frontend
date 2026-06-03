@@ -83,7 +83,7 @@ export function SavingsGoalCard({
               requestDelete({
                 title: 'Cél törlése',
                 message: `Biztosan törlöd a „${goal.institution}" megtakarítási célt és az összes mozgást?`,
-                onConfirm: () => void deleteSavingsAccount(goal.id),
+                onConfirm: () => deleteSavingsAccount(goal.id),
               })
             }
           >

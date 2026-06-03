@@ -15,13 +15,18 @@ const emptyTemplate = (location: string): MeterTemplate => ({
   location,
 });
 
+export type MetersSettingsSection = 'all' | 'general' | 'templates' | 'alerts' | 'locations';
+
 export function MetersSettingsEditor({
   value,
   onChange,
+  section = 'all',
 }: {
   value: MetersSettings;
   onChange: (next: MetersSettings) => void;
+  section?: MetersSettingsSection;
 }) {
+  const show = (part: MetersSettingsSection) => section === 'all' || section === part;
   const updateTemplate = (index: number, patch: Partial<MeterTemplate>) => {
     onChange({
       ...value,
@@ -31,14 +36,17 @@ export function MetersSettingsEditor({
 
   return (
     <div className="space-y-4">
-      <FormField label="Alapértelmezett helyszín" info="Új óra létrehozásánál előre kitöltött érték.">
+      {show('general') ? (
+      <FormField label="Alapértelmezett helyszín" info="Új óra létrehozásánál előre kitöltött érték. A helyszín csoportokban definiált értékek is választhatók az űrlapon.">
         <Input
           value={value.default_location}
           onChange={(e) => onChange({ ...value, default_location: e.target.value })}
           placeholder="Otthon"
         />
       </FormField>
+      ) : null}
 
+      {show('general') ? (
       <Card>
         <CardContent className="space-y-3 pt-4">
           <div>
@@ -65,7 +73,10 @@ export function MetersSettingsEditor({
           </div>
         </CardContent>
       </Card>
+      ) : null}
 
+      {show('templates') ? (
+      <>
       <div>
         <h5 className="text-sm font-semibold text-foreground">Óra sablonok</h5>
         <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
@@ -108,9 +119,11 @@ export function MetersSettingsEditor({
       <Button type="button" variant="outline" size="sm" onClick={() => onChange({ ...value, templates: [...value.templates, emptyTemplate(value.default_location)] })}>
         <Plus size={13} /> Sablon sor
       </Button>
+      </>
+      ) : null}
 
-      <SettingsDivider />
-
+      {show('alerts') ? (
+      <>
       <FormField label="Olvasás emlékeztető (hónap napja)" info="0 = kikapcsolva. Ezen a napon jelezzük, ha még nincs új leolvasás.">
         <Input
           type="number"
@@ -151,10 +164,16 @@ export function MetersSettingsEditor({
           onCheckedChange={(checked) => onChange({ ...value, show_annual_summary_on_dashboard: checked })}
         />
       </div>
+      </>
+      ) : null}
 
+      {show('locations') ? (
+      <>
       <div>
         <h5 className="text-sm font-semibold text-foreground">Helyszín csoportok</h5>
-        <p className="text-xs text-muted-foreground mt-1">Otthon, nyaraló stb. — sablonok és szűrők számára.</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          A Közműórák oldalon ezek szerint csoportosítjuk az órákat (pl. Otthon, Nyaraló). A helyszín neve egyezzen a csoportban szereplő címkével.
+        </p>
       </div>
       {value.location_groups.map((group, gIndex) => (
         <LocationGroupRow
@@ -186,12 +205,10 @@ export function MetersSettingsEditor({
       >
         <Plus size={13} /> Helyszín csoport
       </Button>
+      </>
+      ) : null}
     </div>
   );
-}
-
-function SettingsDivider() {
-  return <hr className="border-border my-2" />;
 }
 
 function LocationGroupRow({

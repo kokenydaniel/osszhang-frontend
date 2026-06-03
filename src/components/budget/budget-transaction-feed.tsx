@@ -2,6 +2,7 @@
 
 import classNames from 'classnames';
 import { formatHUF, formatDate, isDueOverdue, hasSettlementDate, today as todayDate } from '@/utils';
+import { formatTransactionAmount, toHuf } from '@/utils/money';
 import { CashTransaction, LedgerEntry, UtilityBill } from '@/types';
 import { savingsCalculations } from '@/calculations/savings';
 
@@ -34,7 +35,7 @@ import {
   ReceiptText,
   Wallet,
 } from 'lucide-react';
-import { mapTransactionsToGroupedFeed, type BudgetTableItem } from '@/helpers/budget-feed';
+import { isExternallyManagedBudgetRow, mapTransactionsToGroupedFeed, type BudgetTableItem } from '@/helpers/budget-feed';
 
 export type BudgetTransactionFeedProps = {
   items: CashTransaction[];
@@ -51,10 +52,11 @@ export type BudgetTransactionFeedProps = {
   onOpenLedger: (txId: number | string) => void;
   onOpenGoalPayment: (goalRow: CashTransaction) => void;
   onUpdateTransaction: (id: number, data: Partial<Omit<CashTransaction, 'id'>>) => Promise<void>;
-  onDeleteTransaction: (id: number) => Promise<void>;
-  requestDelete: (options: { title: string; message: string; onConfirm: () => void }) => void;
+  onDeleteTransaction: (id: number | string) => Promise<void>;
+  requestDelete: (options: { title: string; message: string; onConfirm: () => void | Promise<void> }) => void;
   wrapTxPending: (id: number, fn: () => Promise<void>) => Promise<void>;
   isTxPending: (id: number) => boolean;
+  exchangeRates?: Record<string, number>;
 };
 
 export function BudgetTransactionFeed({
@@ -76,6 +78,7 @@ export function BudgetTransactionFeed({
   wrapTxPending,
   isTxPending,
   isReader,
+  exchangeRates = { HUF: 1 },
 }: BudgetTransactionFeedProps) {
   const grouped = mapTransactionsToGroupedFeed(items, type, includeBills, categories, monthlyBills, getBillPortion);
   const totalCount = Object.values(grouped).reduce((s, arr) => s + arr.length, 0);
@@ -201,8 +204,12 @@ export function BudgetTransactionFeed({
       align: 'right',
       width: '14%',
       cell: (t) => {
-        const spent = t.isBudget && t.subItems ? t.subItems.reduce((acc, si) => acc + Math.abs(si.amount), 0) : 0;
-        const remaining = t.amount - spent;
+        const spent =
+          t.isBudget && t.subItems
+            ? t.subItems.reduce((acc, si) => acc + Math.abs(toHuf(si.amount, t.currency, exchangeRates)), 0)
+            : 0;
+        const remaining = toHuf(t.amount, t.currency, exchangeRates) - spent;
+        const display = formatTransactionAmount(t.amount, t.currency, exchangeRates);
         return (
           <div className="flex flex-col items-end">
             <span
@@ -211,7 +218,7 @@ export function BudgetTransactionFeed({
                 type === 'income' ? 'text-emerald-600' : 'text-foreground',
               )}
             >
-              {type === 'income' ? '+' : '−'} {formatHUF(t.amount)}
+              {type === 'income' ? '+' : '−'} {display}
             </span>
             {t.isBudget && (
               <span
@@ -220,7 +227,7 @@ export function BudgetTransactionFeed({
                   remaining < 0 ? 'text-rose-600 font-semibold' : 'text-muted-foreground',
                 )}
               >
-                marad {formatHUF(remaining)}
+                marad {formatHUF(Math.round(remaining))}
               </span>
             )}
           </div>
@@ -338,17 +345,21 @@ export function BudgetTransactionFeed({
       align: 'right',
       width: '8%',
       cell: (t) =>
-        !t.isBill && !t.isSavingsGoal && !isReader ? (
+        !t.isBill && !t.isSavingsGoal && !isExternallyManagedBudgetRow(t.id) && !isReader ? (
           <RowActions
             onEdit={() => onEdit(t as unknown as CashTransaction)}
             onDelete={() =>
               requestDelete({
                 title: 'Tétel törlése',
                 message: `Biztosan törlöd a „${t.description}" tételt? Ez a művelet nem vonható vissza.`,
-                onConfirm: () => void onDeleteTransaction(t.id as number),
+                onConfirm: () => onDeleteTransaction(t.id as number),
               })
             }
           />
+        ) : isExternallyManagedBudgetRow(t.id) ? (
+          <span className="text-[0.65rem] text-muted-foreground" title="A Tartozások / Biztosítások modulban szerkeszthető">
+            szinkron
+          </span>
         ) : null,
     },
   ];
@@ -361,7 +372,7 @@ export function BudgetTransactionFeed({
         rowKey={(t) => `${t._category}-${t.id}`}
         groupBy={(t) => t._category}
         groupHeader={(group, rows) => {
-          const groupTotal = rows.reduce((s, r) => s + r.amount, 0);
+          const groupTotal = rows.reduce((s, r) => s + toHuf(r.amount, r.currency, exchangeRates), 0);
           const color = categoryColor?.(group);
           return (
             <div className="flex items-center justify-between">

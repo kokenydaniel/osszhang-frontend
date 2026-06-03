@@ -18,25 +18,28 @@ export const PRO_TIER_BULLETS: readonly string[] = [
   'Tartozások és hátralékos számlák nyomon követése',
   'Rezsi és közműóra modulok',
   'Rezsimegosztás és havi elszámolás partnerrel',
+  'Zsebpénz, biztosítások és bérbeadás modulok',
 ];
 
 /** Premium: az ingyeneshez képest (teljes lista). */
 export const PREMIUM_TIER_BULLETS: readonly string[] = [
-  'Minden Pro funkció (privát kasszák, megtakarítás, tartozás, rezsi, órák)',
+  'Minden Pro funkció (privát kasszák, megtakarítás, tartozás, rezsi, órák, zsebpénz, biztosítás, bérbeadás)',
   'Vállalkozás modul — rendelések és bevételek',
-  'Shopify webshop import és szinkron',
-  'AI pénzügyi tanácsadó — CFO, előrejelzés, anomáliafigyelés',
+  'Shopify, WooCommerce és UNAS webshop import',
+  'AI pénzügyi funkciók — tanácsadó, fizetési sorrend, ÁFA kimutatás, spórolás',
   'Automatikus tranzakció-kategorizálás',
-  'AI utazástervező és mentés megtakarítási célként',
+  'AI utazástervező',
+  'Számla és nyugta csatolás, havi könyvelési ZIP',
 ];
 
 /** Premium: Pro felhasználónak — csak a ráadás. */
 export const PREMIUM_ONLY_BULLETS: readonly string[] = [
   'Vállalkozás modul — rendelések és bevételek',
-  'Shopify webshop import és szinkron',
-  'AI pénzügyi tanácsadó — CFO, előrejelzés, anomáliafigyelés',
+  'Shopify, WooCommerce és UNAS webshop import',
+  'AI pénzügyi funkciók — tanácsadó, fizetési sorrend, ÁFA kimutatás, spórolás',
   'Automatikus tranzakció-kategorizálás',
-  'AI utazástervező és mentés megtakarítási célként',
+  'AI utazástervező',
+  'Számla és nyugta csatolás, havi könyvelési ZIP',
 ];
 
 const FEATURE_UPGRADE_CONTEXT: Record<PremiumFeatureId, string> = {
@@ -46,7 +49,15 @@ const FEATURE_UPGRADE_CONTEXT: Record<PremiumFeatureId, string> = {
     'A Pro-val beállíthatod, ki melyik rezsi tételt viseli, és havi elszámolást rögzíthetsz a partnereddel.',
   shopify_import:
     'A Premium-mal a Shopify rendeléseid automatikusan bekerülnek a vállalkozás modulba.',
+  woocommerce_import:
+    'A Premium-mal a WooCommerce rendeléseid importálhatók a vállalkozás modulba.',
+  unas_import:
+    'A Premium-mal az UNAS rendeléseid importálhatók a vállalkozás modulba.',
   ai: 'A Premium-mal AI elemzéseket, előrejelzést, automatikus kategorizálást és utazástervezést kapsz.',
+  attachments:
+    'A Premium-mal nyugtát és számlát csatolhatsz költségvetési ledger tételekhez, és havi könyvelési csomagot tölthetsz fel a vállalkozás modulban.',
+  sumup_import:
+    'A Premium-mal a SumUp API-ból importálhatod a havi tranzakció- és kifizetés-kimutatást a könyvelési dokumentumok közé.',
 };
 
 const MODULE_UPGRADE_CONTEXT: Partial<Record<ModuleId, string>> = {
@@ -54,6 +65,9 @@ const MODULE_UPGRADE_CONTEXT: Partial<Record<ModuleId, string>> = {
   debts: 'A Pro-val tartozásokat, részleteket és visszafizetési tervet követhetsz.',
   utilities: 'A Pro-val rezsi tételeket, határidőket és kifizetéseket rögzíthetsz.',
   meters: 'A Pro-val közműóra állásokat és fogyasztást követhetsz.',
+  pocket_money: 'A Pro-val zsebpénz modult kapcsolhatsz be a háztartásban.',
+  insurance: 'A Pro-val biztosítás modult kapcsolhatsz be.',
+  rental: 'A Pro-val bérbeadás modult kapcsolhatsz be.',
   business: 'A Premium-mal a vállalkozás modult és a rendelésnaplót használhatod.',
 };
 

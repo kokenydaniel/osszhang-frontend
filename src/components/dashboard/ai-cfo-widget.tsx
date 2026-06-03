@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useAiCfoWidget } from '@/hooks/useAiCfoWidget';
 import { AiCfoLoadingState } from './ai-cfo-loading-state';
 import { AlertTriangle, Bot, Lightbulb, RefreshCw } from 'lucide-react';
+import { aiFeatureLabel } from '@/config/ai-features';
 import type { AiCfoContextPayload } from '@/types';
 
 interface AiCfoWidgetProps {
@@ -18,10 +19,10 @@ export function AiCfoWidget({ context, financialDataReady }: AiCfoWidgetProps) {
 
   return (
     <TierGatedAiPanel
-      featureLabel="AI CFO"
+      featureLabel={aiFeatureLabel('monthly_advisor')}
       icon={Bot}
-      title="AI CFO — Pénzügyi asszisztens"
-      description="Személyre szabott havi összefoglaló, tanácsok és figyelmeztetések"
+      title={aiFeatureLabel('monthly_advisor')}
+      description="Személyre szabott havi összefoglaló, tanácsok és figyelmeztetések a rögzített adataidból"
       glow
       action={
         !isLoading ? (

@@ -1,16 +1,19 @@
 'use client';
 
+import { useState } from 'react';
 import { formatHUF, formatDate } from '@/utils';
 import { BusinessOrder } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
   DataTable,
   EmptyState,
-  StatusPill,
   EntityCell,
   RowActions,
+  StatusPill,
   type DataTableColumn,
 } from '@/components/design';
+import { OptionsSelect } from '@/components/ui/OptionsSelect';
+import { resolveOrderStatusTone } from '@/settings/business';
 import {
   ShoppingBag,
   Plus,
@@ -20,13 +23,13 @@ import {
   Calendar,
 } from 'lucide-react';
 import type { useConfirmDelete } from '@/hooks/useConfirmDelete';
-import { orderStatusPillTone } from '@/settings/business';
 import type { BusinessSettings } from '@/settings/business';
 
 export type BusinessOrdersTableProps = {
   filteredOrders: BusinessOrder[];
   openForm: (order?: BusinessOrder) => void;
   deleteOrder: (id: number) => void | Promise<void>;
+  updateOrderStatus: (id: number, orderStatus: string) => void | Promise<void>;
   requestDelete: ReturnType<typeof useConfirmDelete>['requestDelete'];
   isReader: boolean;
   bizOptions: BusinessSettings;
@@ -44,10 +47,24 @@ export function BusinessOrdersTable({
   filteredOrders,
   openForm,
   deleteOrder,
+  updateOrderStatus,
   requestDelete,
   isReader,
   bizOptions,
 }: BusinessOrdersTableProps) {
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+  const handleStatusChange = async (order: BusinessOrder, orderStatus: string) => {
+    const current =
+      order.orderStatus?.trim() || bizOptions.order_statuses[0] || '';
+    if (current === orderStatus) return;
+    setUpdatingId(order.id);
+    try {
+      await updateOrderStatus(order.id, orderStatus);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
   const orderColumns: DataTableColumn<BusinessOrder>[] = [
     {
       key: 'customer',
@@ -123,13 +140,26 @@ export function BusinessOrdersTable({
       key: 'state',
       header: 'Státusz',
       align: 'center',
-      width: '8%',
+      width: '12%',
       cell: (order) => {
         const label = order.orderStatus?.trim() || bizOptions.order_statuses[0] || '—';
+        const tone = resolveOrderStatusTone(bizOptions, label);
+        if (isReader) {
+          return (
+            <StatusPill status={tone} size="xs" dot>
+              {label}
+            </StatusPill>
+          );
+        }
         return (
-          <StatusPill status={orderStatusPillTone(label, bizOptions.order_statuses)} dot>
-            {label}
-          </StatusPill>
+          <OptionsSelect
+            value={label}
+            onChange={(status) => void handleStatusChange(order, status)}
+            options={bizOptions.order_statuses}
+            tone={tone}
+            className="h-8 min-w-[9rem] text-xs"
+            disabled={updatingId === order.id}
+          />
         );
       },
     },

@@ -8,7 +8,12 @@ import { AccentPanel, SectionPanel, ProgressBar } from '@/components/design';
 import { TierGatedAiPanel } from '@/components/subscription/TierGatedAiPanel';
 import { TierGatedButton } from '@/components/subscription/TierGatedButton';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Legend } from 'recharts';
+import { aiFeatureLabel } from '@/config/ai-features';
 import { RefreshCw, Cpu, BarChart3, PieChart } from 'lucide-react';
+import { BusinessAnnualTaxPanel } from '@/components/business/business-annual-tax-panel';
+import type { BusinessSettings } from '@/settings/business';
+import type { BusinessOrder } from '@/types/business';
+
 export type BusinessSummaryTabProps = {
   businessName: string;
   selectedYear: number;
@@ -19,9 +24,27 @@ export type BusinessSummaryTabProps = {
   chartData: Array<{ name: string; bevetel: number; kintlevoseg: number }>;
   channelData: Array<{ name: string; value: number }>;
   totalYTD: number;
+  orders: BusinessOrder[];
+  bizSettings: BusinessSettings;
+  channelTotal?: number;
 };
 
 const channelColors = ['oklch(0.55 0.22 275)', 'oklch(0.62 0.22 25)', 'oklch(0.72 0.16 60)', 'oklch(0.65 0.18 150)'];
+
+function cashflowBarKey(dataKey: unknown, name: unknown): string {
+  if (typeof dataKey === 'string' || typeof dataKey === 'number') return String(dataKey);
+  if (typeof name === 'string') return name;
+  return '';
+}
+
+function cashflowBarMeta(dataKey: unknown, name: unknown) {
+  const key = cashflowBarKey(dataKey, name);
+  const isBevetel = key === 'bevetel' || key === 'Bevétel';
+  return {
+    label: isBevetel ? 'Bevétel' : 'Kintlévőség',
+    isBevetel,
+  };
+}
 
 export function BusinessSummaryTab({
   businessName,
@@ -33,13 +56,23 @@ export function BusinessSummaryTab({
   chartData,
   channelData,
   totalYTD,
+  orders,
+  bizSettings,
+  channelTotal,
 }: BusinessSummaryTabProps) {
-  const aiTitle = `${businessName} AI stratéga`;
+  const pieTotal = channelTotal ?? totalYTD;
+  const aiTitle = `${businessName} — ${aiFeatureLabel('business_revenue_analysis')}`;
 
   return (
     <div className="flex flex-col gap-7">
+      <BusinessAnnualTaxPanel
+        selectedYear={selectedYear}
+        orders={orders}
+        bizSettings={bizSettings}
+      />
+
       <TierGatedAiPanel
-        featureLabel="AI stratéga"
+        featureLabel={aiFeatureLabel('business_revenue_analysis')}
         icon={Cpu}
         title={aiTitle}
         titleInfo={HELP.business.aiStrategist}
@@ -48,7 +81,7 @@ export function BusinessSummaryTab({
         action={
           <TierGatedButton
             feature="ai"
-            featureLabel="AI stratéga"
+            featureLabel={aiFeatureLabel('business_revenue_analysis')}
             variant="ghost"
             size="xs"
             onClick={requestAiAdvice}
@@ -102,14 +135,22 @@ export function BusinessSummaryTab({
                             <p className="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
                               {label} havi mérleg
                             </p>
-                            {(payload as unknown as Array<{ name: string; value: number }>).map((p) => (
-                              <div key={p.name} className="flex items-center justify-between gap-4 text-xs">
-                                <span className="text-foreground/70">{p.name === 'bevetel' ? 'Bevétel' : 'Kintlévőség'}</span>
-                                <span className={classNames('font-semibold tabular-nums', p.name === 'bevetel' ? 'text-primary' : 'text-rose-600')}>
-                                  {formatHUF(p.value)}
-                                </span>
-                              </div>
-                            ))}
+                            {payload.map((p, i) => {
+                                const meta = cashflowBarMeta(p.dataKey, p.name);
+                                return (
+                                  <div key={`${String(p.dataKey ?? i)}-${i}`} className="flex items-center justify-between gap-4 text-xs">
+                                    <span className="text-foreground/70">{meta.label}</span>
+                                    <span
+                                      className={classNames(
+                                        'font-semibold tabular-nums',
+                                        meta.isBevetel ? 'text-primary' : 'text-rose-600',
+                                      )}
+                                    >
+                                      {formatHUF(Number(p.value) || 0)}
+                                    </span>
+                                  </div>
+                                );
+                              })}
                           </div>
                         );
                       }
@@ -153,7 +194,7 @@ export function BusinessSummaryTab({
                             {percentage}% · {formatHUF(c.value)}
                           </span>
                         </div>
-                        <ProgressBar value={c.value} max={totalYTD} size="md" barStyle={{ backgroundColor: color }} />
+                        <ProgressBar value={c.value} max={pieTotal} size="md" barStyle={{ backgroundColor: color }} />
                       </div>
                     );
                   })}

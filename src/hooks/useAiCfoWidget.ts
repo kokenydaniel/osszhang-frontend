@@ -1,5 +1,7 @@
 'use client';
 
+import { aiFeatureLabel } from '@/config/ai-features';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   buildAiCfoCacheKeyFromPayload,
@@ -50,7 +52,7 @@ export function useAiCfoWidget(context: AiCfoContextPayload | null, financialDat
     const payload = contextRef.current;
     if (!payload) {
       setIsFetching(false);
-      setError('Válassz pénztárcát az AI CFO betöltéséhez.');
+      setError(`Válassz pénztárcát a ${aiFeatureLabel('monthly_advisor').toLowerCase()} betöltéséhez.`);
       return;
     }
 
@@ -58,12 +60,12 @@ export function useAiCfoWidget(context: AiCfoContextPayload | null, financialDat
       .then((result) => {
         if (cancelled) return;
         if (!result) {
-          setError('Az AI CFO jelenleg nem érhető el. Ellenőrizd az előfizetésedet, vagy próbáld újra később.');
+          setError(`A ${aiFeatureLabel('monthly_advisor').toLowerCase()} jelenleg nem érhető el.`);
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setError('Hiba történt az AI CFO betöltése közben.');
+          setError(`Hiba történt a ${aiFeatureLabel('monthly_advisor').toLowerCase()} betöltése közben.`);
         }
       })
       .finally(() => {
@@ -86,11 +88,11 @@ export function useAiCfoWidget(context: AiCfoContextPayload | null, financialDat
     void ensureAiCfoAdviceLoaded(contextRef.current, { force: true, silent: true })
       .then((result) => {
         if (!result) {
-          setError('Az AI CFO jelenleg nem érhető el. Ellenőrizd az előfizetésedet, vagy próbáld újra később.');
+          setError(`A ${aiFeatureLabel('monthly_advisor').toLowerCase()} jelenleg nem érhető el.`);
         }
       })
       .catch(() => {
-        setError('Hiba történt az AI CFO betöltése közben.');
+        setError(`Hiba történt a ${aiFeatureLabel('monthly_advisor').toLowerCase()} betöltése közben.`);
       })
       .finally(() => {
         setIsFetching(false);

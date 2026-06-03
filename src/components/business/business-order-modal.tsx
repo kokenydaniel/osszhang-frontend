@@ -34,8 +34,8 @@ function emptyValues(bizOptions: BusinessSettings): BusinessOrderFormValues {
     provider: pickDefaultProvider(bizOptions),
     destination: pickDefaultDestination(bizOptions),
     paidDate: '',
+    hasInvoice: false,
     invoiceId: '',
-    orderStatus: pickDefaultOrderStatus(bizOptions),
   };
 }
 
@@ -49,12 +49,16 @@ function orderToValues(order: BusinessOrder, bizOptions: BusinessSettings): Busi
     provider: order.provider || pickDefaultProvider(bizOptions),
     destination: order.destination || pickDefaultDestination(bizOptions),
     paidDate: order.paidDate || '',
+    hasInvoice: Boolean(order.hasInvoice) || Boolean(order.invoiceId?.trim()),
     invoiceId: order.invoiceId || '',
-    orderStatus: order.orderStatus || pickDefaultOrderStatus(bizOptions),
   };
 }
 
-function toPayload(values: BusinessOrderFormValues): CreateBusinessOrderPayload {
+function toPayload(
+  values: BusinessOrderFormValues,
+  order: BusinessOrder | null,
+  bizOptions: BusinessSettings,
+): CreateBusinessOrderPayload {
   const paidDate = values.paidDate.trim() || null;
   return {
     date: values.orderDate,
@@ -65,9 +69,10 @@ function toPayload(values: BusinessOrderFormValues): CreateBusinessOrderPayload 
     destination: values.destination,
     amount: Number(values.amount),
     paidDate,
+    hasInvoice: values.hasInvoice || Boolean(values.invoiceId.trim()),
     invoiceId: values.invoiceId.trim(),
     state: businessCalculations.deriveOrderState(paidDate),
-    orderStatus: values.orderStatus,
+    orderStatus: order?.orderStatus || pickDefaultOrderStatus(bizOptions),
   };
 }
 
@@ -86,7 +91,7 @@ export function BusinessOrderModal({ open, order, bizOptions, onClose, onSave }:
     if (!values.amount.trim() || !values.customer.trim()) return;
 
     try {
-      await onSave(toPayload(values), order?.id ?? null);
+      await onSave(toPayload(values, order, bizOptions), order?.id ?? null);
       onClose();
     } catch {
       form.setError('root', { message: 'A rendelés mentése nem sikerült.' });

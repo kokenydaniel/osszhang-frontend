@@ -2,12 +2,14 @@
 
 import { useCallback, useState } from 'react';
 import { PageHeader, MetricStrip, SegmentedControl, ModulePageSkeleton } from '@/components/design';
-import { List, BarChart3 } from 'lucide-react';
+import { List, BarChart3, FolderOpen } from 'lucide-react';
 import { useBusinessPageData } from '@/hooks/useBusinessPageData';
 import { canEditHousehold } from '@/utils/household-role';
 import type { BusinessOrder } from '@/types/business';
 import { BusinessMonthlyTab } from './business-monthly-tab';
 import { BusinessSummaryTab } from './business-summary-tab';
+import { BusinessDocumentsTab } from './business-documents-tab';
+import { BusinessVatEstimatePanel } from './business-vat-estimate-panel';
 import { BusinessOrderModal } from './business-order-modal';
 
 type OrderModalState = BusinessOrder | 'create' | null;
@@ -16,7 +18,7 @@ export function BusinessPage() {
   const data = useBusinessPageData();
   const { ConfirmDeleteModal } = data;
 
-  const [activeTab, setActiveTab] = useState<'monthly' | 'summary'>('monthly');
+  const [activeTab, setActiveTab] = useState<'monthly' | 'summary' | 'documents'>('monthly');
   const [orderModal, setOrderModal] = useState<OrderModalState>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -61,10 +63,11 @@ export function BusinessPage() {
         actions={
           <SegmentedControl
             value={activeTab}
-            onChange={(value) => setActiveTab(value as 'monthly' | 'summary')}
+            onChange={(value) => setActiveTab(value as 'monthly' | 'summary' | 'documents')}
             options={[
               { value: 'monthly', label: 'Rendelések', icon: List, count: data.filteredOrders.length },
               { value: 'summary', label: 'Éves trendek', icon: BarChart3 },
+              { value: 'documents', label: 'Dokumentumok', icon: FolderOpen },
             ]}
           />
         }
@@ -74,11 +77,22 @@ export function BusinessPage() {
         <ModulePageSkeleton />
       ) : (
         <>
-          <MetricStrip
-            items={activeTab === 'monthly' ? data.monthlyMetrics : data.summaryMetrics}
-            columns={4}
-            variant="separated"
-          />
+          {activeTab !== 'documents' ? (
+            <MetricStrip
+              items={activeTab === 'monthly' ? data.monthlyMetrics : data.summaryMetrics}
+              columns={4}
+              variant="separated"
+            />
+          ) : null}
+
+          {activeTab === 'monthly' ? (
+            <BusinessVatEstimatePanel
+              year={data.selectedYear}
+              month={data.selectedMonth}
+              orders={data.orders}
+              bizSettings={data.bizOptions}
+            />
+          ) : null}
 
           {activeTab === 'monthly' && (
             <BusinessMonthlyTab
@@ -90,9 +104,19 @@ export function BusinessPage() {
               syncShopify={handleSyncShopify}
               openForm={openForm}
               deleteOrder={data.deleteOrder}
+              updateOrderStatus={data.updateOrderStatus}
               requestDelete={data.requestDelete}
               isReader={data.isReader}
               bizOptions={data.bizOptions}
+            />
+          )}
+          {activeTab === 'documents' && (
+            <BusinessDocumentsTab
+              selectedYear={data.selectedYear}
+              selectedMonth={data.selectedMonth}
+              filteredOrders={data.filteredOrders}
+              user={data.user}
+              requestDelete={data.requestDelete}
             />
           )}
           {activeTab === 'summary' && (
@@ -106,6 +130,13 @@ export function BusinessPage() {
               chartData={data.chartData}
               channelData={data.channelData}
               totalYTD={data.totalYTD}
+              orders={data.orders}
+              bizSettings={data.bizOptions}
+              channelTotal={
+                data.bizOptions.tax_regime === 'aam'
+                  ? data.annualTaxRevenue.totalAllOrdersNet
+                  : data.totalYTD
+              }
             />
           )}
         </>

@@ -35,7 +35,7 @@ interface AuthState {
 
   setAuthToken: (token: string | null) => void;
   setStatus: (status: LoadableStatus) => void;
-  fetchMe: () => Promise<UserProfile | null> | null;
+  fetchMe: (options?: { force?: boolean }) => Promise<UserProfile | null> | null;
   refreshSessionQuiet: () => Promise<void>;
   login: (credentials: { username: string; password?: string }) => Promise<UserProfile | null>;
   register: (data: {
@@ -72,8 +72,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setStatus: (status) => set({ status }),
 
-  fetchMe: () => {
-    if (fetchUserPromise) {
+  fetchMe: (options) => {
+    if (options?.force) {
+      fetchUserPromise = null;
+    } else if (fetchUserPromise) {
       return fetchUserPromise;
     }
 

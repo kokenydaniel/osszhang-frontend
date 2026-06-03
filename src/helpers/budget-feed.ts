@@ -1,9 +1,23 @@
 import type { CashTransaction } from '@/types';
+import { isDebtInstallmentTransaction } from '@/helpers/debt-budget';
+import { isInsurancePremiumTransaction } from '@/helpers/insurance-budget';
+import { isRentalIncomeTransaction } from '@/helpers/rental-budget';
+
+/** Tartozás / biztosítás / bérbeadás szinkron sor — nem szerkeszthető és nem törölhető a költségvetésből. */
+export function isExternallyManagedBudgetRow(id: string | number): boolean {
+  if (typeof id !== 'string') return false;
+  return (
+    isInsurancePremiumTransaction({ id }) ||
+    isDebtInstallmentTransaction({ id }) ||
+    isRentalIncomeTransaction({ id })
+  );
+}
 
 export interface BudgetTableItem {
   id: string | number;
   description: string;
   amount: number;
+  currency?: string;
   dueDate: string;
   paidDate: string | null;
   isBill?: boolean;
@@ -35,6 +49,7 @@ export function mapTransactionsToGroupedFeed(
       id: item.id,
       description: item.description,
       amount: Math.abs(item.amount),
+      currency: item.currency,
       dueDate: item.dueDate || '',
       paidDate: item.paidDate || null,
       isSavingsGoal: item.isSavingsGoal,
@@ -59,6 +74,7 @@ export function mapTransactionsToGroupedFeed(
         id: `bill-${bill.id}`,
         description: bill.type || '',
         amount: portion,
+        currency: 'HUF',
         dueDate: bill.dueDate || '',
         paidDate: bill.paidDate || null,
         isBill: true,

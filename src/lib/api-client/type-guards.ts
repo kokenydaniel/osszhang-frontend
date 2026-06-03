@@ -55,6 +55,23 @@ export function isCollectionApiResponse<T>(
   return true;
 }
 
+/** `{ data: T[] }` vagy közvetlen tömb. */
+export function unwrapApiCollection<T>(
+  response: unknown,
+  requiredItemKeys: (keyof T)[] = [],
+): T[] | null {
+  if (isCollectionApiResponse<T>(response, requiredItemKeys)) {
+    return response;
+  }
+  if (isObject(response) && isArray(response.data)) {
+    const nested = response.data;
+    if (isCollectionApiResponse<T>(nested, requiredItemKeys)) {
+      return nested;
+    }
+  }
+  return null;
+}
+
 export function isValidationErrorApiResponse(
   subject: unknown,
 ): subject is ValidationErrorApiResponse {

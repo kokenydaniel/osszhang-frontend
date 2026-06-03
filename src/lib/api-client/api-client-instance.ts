@@ -13,6 +13,10 @@ import {
   WalletClient,
   SubscriptionClient,
   AdminClient,
+  AttachmentsClient,
+  PocketMoneyClient,
+  InsuranceClient,
+  RentalClient,
 } from './clients';
 import { API_URL } from './public-env';
 
@@ -30,6 +34,10 @@ export class ApiClientFacade extends ApiClient {
   readonly wallets: WalletClient;
   readonly subscription: SubscriptionClient;
   readonly admin: AdminClient;
+  readonly attachments: AttachmentsClient;
+  readonly pocketMoney: PocketMoneyClient;
+  readonly insurance: InsuranceClient;
+  readonly rental: RentalClient;
 
   constructor(baseUrl: string = API_URL) {
     super(baseUrl);
@@ -46,6 +54,10 @@ export class ApiClientFacade extends ApiClient {
     this.wallets = new WalletClient(this);
     this.subscription = new SubscriptionClient(this);
     this.admin = new AdminClient(this);
+    this.attachments = new AttachmentsClient(this);
+    this.pocketMoney = new PocketMoneyClient(this);
+    this.insurance = new InsuranceClient(this);
+    this.rental = new RentalClient(this);
   }
 }
 

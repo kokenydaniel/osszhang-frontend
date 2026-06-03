@@ -196,4 +196,74 @@ export class AiFinanceClient {
     }
     return null;
   }
+
+  async paymentPriority(
+    params: { year: number; month: number; walletId?: number },
+    options?: RequestOptions,
+  ): SingleEntityResponse<AiEnvelope<import('@/types/ai').AiPaymentPriority>> {
+    try {
+      const query = new URLSearchParams({
+        year: String(params.year),
+        month: String(params.month),
+      });
+      if (params.walletId != null) query.set('wallet_id', String(params.walletId));
+      const [status, response] = await this.apiClient.getJson(
+        `${this.baseEndpoint}/v1/budget/payment-priority?${query}`,
+        options,
+      );
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<AiEnvelope<import('@/types/ai').AiPaymentPriority>>(response, ['data'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async vatEstimate(
+    params: { year: number; month: number },
+    options?: RequestOptions,
+  ): SingleEntityResponse<AiEnvelope<import('@/types/ai').AiVatEstimate>> {
+    try {
+      const query = new URLSearchParams({
+        year: String(params.year),
+        month: String(params.month),
+      });
+      const [status, response] = await this.apiClient.getJson(
+        `${this.baseEndpoint}/v1/budget/vat-estimate?${query}`,
+        options,
+      );
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<AiEnvelope<import('@/types/ai').AiVatEstimate>>(response, ['data'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async costReductionSuggestions(
+    params: { year: number; month: number; walletId?: number },
+    options?: RequestOptions,
+  ): SingleEntityResponse<AiEnvelope<import('@/types/ai').AiCostReduction>> {
+    try {
+      const query = new URLSearchParams({
+        year: String(params.year),
+        month: String(params.month),
+      });
+      if (params.walletId != null) query.set('wallet_id', String(params.walletId));
+      const [status, response] = await this.apiClient.getJson(
+        `${this.baseEndpoint}/v1/budget/cost-reduction?${query}`,
+        {
+        ...options,
+        timeoutMs: options?.timeoutMs ?? AI_REQUEST_TIMEOUT_MS,
+      });
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<AiEnvelope<import('@/types/ai').AiCostReduction>>(response, ['data'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
 }

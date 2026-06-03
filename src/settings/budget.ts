@@ -8,12 +8,15 @@ export type BudgetCategoryGroup = {
   categories: string[];
 };
 
+export type HouseholdCurrency = 'HUF' | 'EUR' | 'USD';
+
 export type BudgetSettings = {
   category_groups: BudgetCategoryGroup[];
   category_colors: Record<string, string>;
   clone_mode: BudgetCloneMode;
   missed_income_enabled: boolean;
   missed_income_grace_days: number;
+  default_currency: HouseholdCurrency;
 };
 
 export const DEFAULT_BUDGET_SETTINGS: BudgetSettings = {
@@ -79,7 +82,14 @@ export function resolveBudgetSettings(household?: HouseholdLike | null): BudgetS
     clone_mode: cloneMode,
     missed_income_enabled: raw.missed_income_enabled ?? DEFAULT_BUDGET_SETTINGS.missed_income_enabled,
     missed_income_grace_days: Math.max(0, Math.min(60, Number(raw.missed_income_grace_days) || 0)),
+    default_currency: (['HUF', 'EUR', 'USD'] as const).includes(raw.default_currency as HouseholdCurrency)
+      ? (raw.default_currency as HouseholdCurrency)
+      : DEFAULT_BUDGET_SETTINGS.default_currency,
   };
+}
+
+export function resolveDefaultCurrency(household?: HouseholdLike | null): HouseholdCurrency {
+  return resolveBudgetSettings(household).default_currency;
 }
 
 export function budgetSettingsForApi(settings: BudgetSettings): BudgetSettings {

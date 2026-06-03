@@ -4,10 +4,10 @@ export const subscriptionConfig = {
     pro: 'pro' as const,
     premium: 'premium' as const,
   },
-  proModules: ['savings', 'debts', 'utilities', 'meters'] as const,
+  proModules: ['savings', 'debts', 'utilities', 'meters', 'pocket_money', 'insurance', 'rental'] as const,
   premiumModules: ['business'] as const,
   proFeatures: ['private_wallet', 'utility_split'] as const,
-  premiumFeatures: ['shopify_import', 'ai'] as const,
+  premiumFeatures: ['shopify_import', 'woocommerce_import', 'unas_import', 'ai', 'attachments', 'sumup_import'] as const,
   tierRank: { free: 0, pro: 1, premium: 2 } as const,
 } as const;
 

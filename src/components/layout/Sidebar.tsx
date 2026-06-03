@@ -14,11 +14,13 @@ import {
 import { useUpgradeModalStore } from '@/stores/useUpgradeModalStore';
 import { isPlatformAdmin } from '@/config/platform-admin';
 import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
+import { aiFeatureLabel } from '@/config/ai-features';
 import classNames from 'classnames';
 import {
   LayoutDashboard, Wallet, Home, Settings,
   TrendingUp, Gauge, PanelLeftClose, PanelLeftOpen, X, Command,
   PiggyBank, TrendingDown, Users, ToggleLeft, Megaphone, MapPinned,
+  Coins, Shield, Building2, Plug, Bot, ScrollText, Webhook,
 } from 'lucide-react';
 import { TierBadge } from '@/components/subscription/TierBadge';
 
@@ -48,6 +50,9 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
         { href: '/budget', icon: Wallet, label: 'Költségvetés', id: 'budget' as const },
         { href: '/savings', icon: PiggyBank, label: 'Megtakarítások', id: 'savings' as const },
         { href: '/debts', icon: TrendingDown, label: 'Tartozások', id: 'debts' as const },
+        { href: '/pocket-money', icon: Coins, label: 'Zsebpénz', id: 'pocket_money' as const },
+        { href: '/insurance', icon: Shield, label: 'Biztosítások', id: 'insurance' as const },
+        { href: '/rental', icon: Building2, label: 'Bérbeadás', id: 'rental' as const },
       ],
     },
     {
@@ -69,7 +74,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
               {
                 href: '/tools/travel',
                 icon: MapPinned,
-                label: 'Utazástervező',
+                label: aiFeatureLabel('travel_planner'),
                 id: 'tools-travel' as const,
               },
             ],
@@ -87,6 +92,10 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
             items: [
               { href: '/admin/users', icon: Users, label: 'Felhasználók', id: 'admin-users' as const },
               { href: '/admin/features', icon: ToggleLeft, label: 'Rendszer funkciók', id: 'admin-features' as const },
+              { href: '/admin/integrations', icon: Plug, label: 'Integrációk', id: 'admin-integrations' as const },
+              { href: '/admin/ai-features', icon: Bot, label: 'AI kapcsolók', id: 'admin-ai-features' as const },
+              { href: '/admin/webhooks', icon: Webhook, label: 'Webhook-ok', id: 'admin-webhooks' as const },
+              { href: '/admin/audit-logs', icon: ScrollText, label: 'Audit napló', id: 'admin-audit-logs' as const },
               { href: '/admin/announcements', icon: Megaphone, label: 'Rendszerüzenetek', id: 'admin-announcements' as const },
             ],
           },
@@ -99,7 +108,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   const isNavVisible = (id: string) => {
     if (!user) return false;
     if (id === 'tools-travel') return isPlatformFeatureEnabled(user, 'enable_ai_travel_planner');
-    if (['dashboard', 'settings', 'admin-users', 'admin-features', 'admin-announcements'].includes(id)) return true;
+    if (['dashboard', 'settings', 'admin-users', 'admin-features', 'admin-announcements', 'admin-integrations', 'admin-ai-features', 'admin-webhooks', 'admin-audit-logs'].includes(id)) return true;
     return isModuleEnabled(user.household, id as ModuleId);
   };
 
@@ -111,7 +120,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   ) => {
     if (
       !user ||
-      ['dashboard', 'settings', 'admin-users', 'admin-features', 'admin-announcements'].includes(moduleId)
+      ['dashboard', 'settings', 'admin-users', 'admin-features', 'admin-announcements', 'admin-integrations', 'admin-ai-features', 'admin-webhooks', 'admin-audit-logs'].includes(moduleId)
     ) {
       onMobileClose?.();
       return;
@@ -213,13 +222,13 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                   const mod = item.id as ModuleId;
                   const tierLocked =
                     user &&
-                    !['dashboard', 'settings', 'admin-users', 'admin-features', 'admin-announcements', 'tools-travel'].includes(
+                    !['dashboard', 'settings', 'admin-users', 'admin-features', 'admin-announcements', 'admin-integrations', 'admin-ai-features', 'admin-webhooks', 'admin-audit-logs', 'tools-travel'].includes(
                       item.id,
                     ) &&
                     canAccessModule(user, mod) &&
                     !canAccessModuleByTier(user, mod);
                   const badgeTier =
-                    !['admin-users', 'admin-features', 'admin-announcements', 'tools-travel'].includes(item.id) &&
+                    !['admin-users', 'admin-features', 'admin-announcements', 'admin-integrations', 'admin-ai-features', 'admin-webhooks', 'admin-audit-logs', 'tools-travel'].includes(item.id) &&
                     showTierBadgeForModule(user, mod);
 
                   return (

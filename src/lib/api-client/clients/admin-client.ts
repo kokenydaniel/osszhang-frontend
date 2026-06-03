@@ -1,5 +1,5 @@
 import type { ApiClient } from '../api-client';
-import { StatusCodes, SingleEntityResponse, isSingleEntityApiResponse } from '../response';
+import { StatusCodes, SingleEntityResponse, EmptyResponse, isSingleEntityApiResponse } from '../response';
 import type { RequestOptions } from '../response';
 import type {
   AdminTierGrantPayload,
@@ -206,6 +206,54 @@ export class AdminClient {
       );
       if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ data: SystemAnnouncement }>(response, ['data'])) {
         return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async listAuditLogs(): SingleEntityResponse<{ data: unknown[] }> {
+    try {
+      const [status, response] = await this.apiClient.getJson(`${this.baseEndpoint}/audit-logs`);
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ data: unknown[] }>(response, ['data'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async listWebhooks(): SingleEntityResponse<{ data: unknown[] }> {
+    try {
+      const [status, response] = await this.apiClient.getJson(`${this.baseEndpoint}/webhooks`);
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ data: unknown[] }>(response, ['data'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async createWebhook(body: { url: string; events: string[] }): SingleEntityResponse<{ data: { id: number; secret: string } }> {
+    try {
+      const [status, response] = await this.apiClient.postJson(`${this.baseEndpoint}/webhooks`, body);
+      if (status === StatusCodes.Http201 && isSingleEntityApiResponse<{ data: { id: number; secret: string } }>(response, ['data'])) {
+        return this.apiClient.response(status as StatusCodes.Http201, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async deleteWebhook(id: number): EmptyResponse {
+    try {
+      const [status, response] = await this.apiClient.deleteJson(`${this.baseEndpoint}/webhooks/${id}`);
+      if (status === StatusCodes.Http204 || status === StatusCodes.Http200) {
+        return this.apiClient.response(status as StatusCodes.Http204, null);
       }
     } catch (err) {
       console.log('err', err);
