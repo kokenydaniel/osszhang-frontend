@@ -33,8 +33,8 @@ export async function GET(
     return NextResponse.json({ message: 'Letöltés sikertelen.' }, { status: upstream.status });
   }
 
-  const contentType = upstream.headers.get('content-type') ?? '';
-  if (contentType.includes('application/json')) {
+  const rawType = upstream.headers.get('content-type') ?? '';
+  if (rawType.includes('application/json')) {
     return NextResponse.json({ message: 'Letöltés sikertelen.' }, { status: 502 });
   }
 
@@ -43,11 +43,16 @@ export async function GET(
     return NextResponse.json({ message: 'Letöltés sikertelen.' }, { status: 502 });
   }
 
+  const baseType = rawType.split(';')[0]?.trim() || 'application/octet-stream';
+  const contentType =
+    baseType.includes('json') || baseType.startsWith('text/') ? 'application/octet-stream' : baseType;
+
   const headers = new Headers();
   const disposition = upstream.headers.get('content-disposition');
   if (disposition) headers.set('Content-Disposition', disposition);
-  if (contentType) headers.set('Content-Type', contentType);
+  headers.set('Content-Type', contentType);
   headers.set('Content-Length', String(buffer.byteLength));
+  headers.set('Content-Transfer-Encoding', 'binary');
 
   return new NextResponse(buffer, {
     status: upstream.status,

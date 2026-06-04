@@ -20,6 +20,15 @@ function isJsonErrorPayload(contentType: string | null): boolean {
   return contentType.includes('application/json') || contentType.includes('text/json');
 }
 
+function binaryContentType(contentType: string | null): string {
+  if (!contentType) return 'application/octet-stream';
+  const base = contentType.split(';')[0]?.trim().toLowerCase() ?? '';
+  if (!base || base.includes('json') || base.startsWith('text/')) {
+    return 'application/octet-stream';
+  }
+  return base;
+}
+
 function buildProxyDownloadUrl(
   endpoint: string,
   params?: Record<string, string | number | boolean | undefined | null>,
@@ -77,10 +86,12 @@ export async function downloadAuthenticatedFile(
       return false;
     }
 
-    const blob = await response.blob();
-    if (blob.size === 0) {
+    const buffer = await response.arrayBuffer();
+    if (buffer.byteLength === 0) {
       return false;
     }
+
+    const blob = new Blob([buffer], { type: binaryContentType(contentType) });
 
     const fromHeader = response.headers.get('Content-Disposition');
     const headerName = fromHeader?.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i)?.[1];
