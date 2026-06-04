@@ -10,6 +10,8 @@ import type { Debt } from '@/types';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { resolveDebtsSettings } from '@/settings/debts';
 import { DebtForm, type DebtFormValues } from './debt-form';
+import { DebtAttachments } from './debt-attachments';
+import { canEditHousehold } from '@/utils/household-role';
 
 const currentMonthValue = () => {
   const d = new Date();
@@ -58,8 +60,10 @@ type DebtFormModalProps = {
 };
 
 export function DebtFormModal({ open, debt, walletId, onClose, onSaved }: DebtFormModalProps) {
+  const user = useAuthStore((s) => s.user);
   const form = useForm<DebtFormValues>({ defaultValues: emptyValues() });
   const isEdit = debt !== null;
+  const canEdit = canEditHousehold(user);
 
   useEffect(() => {
     if (!open) return;
@@ -111,6 +115,7 @@ export function DebtFormModal({ open, debt, walletId, onClose, onSaved }: DebtFo
         onSubmit={submit}
         typeTemplates={resolveDebtsSettings(useAuthStore.getState().user?.household).debt_type_templates}
       />
+      <DebtAttachments debtId={debt?.id ?? 0} canEdit={canEdit} />
     </Modal>
   );
 }

@@ -144,6 +144,34 @@ export class AttachmentsClient {
     return null;
   }
 
+  async listForDebt(debtId: number): CollectionResponse<FileAttachment> {
+    try {
+      const [status, response] = await this.apiClient.getJson(`debts/${debtId}/attachments`);
+      const items = unwrapApiCollection<FileAttachment>(response, ['id']);
+      if (status === StatusCodes.Http200 && items) {
+        return this.apiClient.response(status, items);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async uploadToDebt(debtId: number, file: File): SingleEntityResponse<FileAttachment> {
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const [status, response] = await this.apiClient.postFormData(`debts/${debtId}/attachments`, form);
+      const entity = unwrapApiEntity<FileAttachment>(response, ['id']);
+      if (status === StatusCodes.Http201 && entity) {
+        return this.apiClient.response(StatusCodes.Http201, entity);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
   async uploadToRentalProperty(propertyId: number, file: File): SingleEntityResponse<FileAttachment> {
     try {
       const form = new FormData();
