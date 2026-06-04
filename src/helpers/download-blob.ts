@@ -1,4 +1,6 @@
 import { getAuthToken } from '@/helpers/auth-token';
+import { buildApiUrl } from '@/lib/api-client/build-api-url';
+import { API_URL } from '@/lib/api-client/public-env';
 
 function triggerBrowserDownload(blob: Blob, filename: string): void {
   const safeName = filename.trim() || 'letoltes';
@@ -18,7 +20,7 @@ function isJsonErrorPayload(contentType: string | null): boolean {
   return contentType.includes('application/json') || contentType.includes('text/json');
 }
 
-function buildDownloadUrl(
+function buildProxyDownloadUrl(
   endpoint: string,
   params?: Record<string, string | number | boolean | undefined | null>,
 ): string {
@@ -36,6 +38,16 @@ function buildDownloadUrl(
   return url.toString();
 }
 
+async function fetchDownload(url: string, token: string | null): Promise<Response> {
+  return fetch(url, {
+    method: 'GET',
+    headers: token
+      ? { Authorization: `Bearer ${token}`, Accept: '*/*' }
+      : { Accept: '*/*' },
+    cache: 'no-store',
+  });
+}
+
 export async function downloadAuthenticatedFile(
   endpoint: string,
   filename: string,
@@ -46,16 +58,15 @@ export async function downloadAuthenticatedFile(
   }
 
   const token = getAuthToken();
-  const url = buildDownloadUrl(endpoint, params);
+  const directUrl = buildApiUrl(endpoint, params, API_URL);
+  const proxyUrl = buildProxyDownloadUrl(endpoint, params);
 
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: token
-        ? { Authorization: `Bearer ${token}`, Accept: '*/*' }
-        : { Accept: '*/*' },
-      cache: 'no-store',
-    });
+    let response = await fetchDownload(directUrl, token);
+
+    if (!response.ok && typeof window !== 'undefined') {
+      response = await fetchDownload(proxyUrl, token);
+    }
 
     if (!response.ok) {
       return false;

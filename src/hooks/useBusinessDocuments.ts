@@ -96,8 +96,9 @@ export function useBusinessDocuments(year: number, month: number) {
     try {
       const monthLabel = String(month).padStart(2, '0');
       const ok = await downloadAuthenticatedFile(
-        `business-documents/bundle?year=${year}&month=${month}`,
+        'business-documents/bundle',
         `konyvelesi-anyag-${year}-${monthLabel}.zip`,
+        { year, month },
       );
       if (!ok) {
         addNotification('Nincs letölthető csomag, vagy a letöltés sikertelen.', 'error');

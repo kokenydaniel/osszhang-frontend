@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { API_URL } from '@/lib/api-client/public-env';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const BACKEND_API =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'https://osszhang-backend.fly.dev/api';
 
 export async function GET(
   request: NextRequest,
@@ -20,7 +18,7 @@ export async function GET(
       ? `Bearer ${request.headers.get('x-auth-token')}`
       : null);
 
-  const target = `${BACKEND_API}/${segment}${search}`;
+  const target = `${API_URL.replace(/\/$/, '')}/${segment}${search}`;
 
   const upstream = await fetch(target, {
     method: 'GET',
