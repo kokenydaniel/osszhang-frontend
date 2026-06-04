@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Download, MessageSquareWarning } from 'lucide-react';
+import { MessageSquareWarning } from 'lucide-react';
 import {
   PageHeader,
   DataTable,
@@ -10,10 +10,8 @@ import {
   StatusPill,
   type DataTableColumn,
 } from '@/components/design';
-import { Button } from '@/components/ui/button';
 import { FeedbackReportDetailModal } from '@/components/feedback/feedback-report-detail-modal';
 import { useAdminFeedbackReportsPageData } from '@/hooks/useAdminFeedbackReportsPageData';
-import { downloadAuthenticatedFile } from '@/helpers/download-blob';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import {
   FEEDBACK_CATEGORIES,
@@ -23,15 +21,9 @@ import {
   type FeedbackCategory,
   type FeedbackStatus,
 } from '@/config/feedback';
-import type { FeedbackReport, FeedbackReportAttachment } from '@/types/feedback';
+import type { FeedbackReport } from '@/types/feedback';
+import { formatBytes } from '@/utils/format-bytes';
 import { formatDisplayName } from '@/utils/person-name';
-
-function attachmentDownloadPath(reportId: number, file: FeedbackReportAttachment): string {
-  if (file.legacy || file.id <= 0) {
-    return `admin/feedback-reports/${reportId}/legacy-attachment`;
-  }
-  return `admin/feedback-reports/attachments/${file.id}/download`;
-}
 
 export function FeedbackReportsPage() {
   const { addNotification } = useNotificationStore();
@@ -39,7 +31,6 @@ export function FeedbackReportsPage() {
   const [categoryFilter, setCategoryFilter] = useState<FeedbackCategory | 'all'>('all');
   const [modalReport, setModalReport] = useState<FeedbackReport | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
-  const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
 
   const { rows, attentionCount, loading, refreshing, refresh, updateStatus, loadDetail, sendReply } =
     useAdminFeedbackReportsPageData(statusFilter, categoryFilter);
@@ -57,18 +48,6 @@ export function FeedbackReportsPage() {
       if (detail) setModalReport(detail);
     } finally {
       setModalLoading(false);
-    }
-  };
-
-  const handleDownload = async (row: FeedbackReport, file: FeedbackReportAttachment) => {
-    const name = file.originalName ?? 'csatolmany';
-    const key = `${row.id}-${file.id}`;
-    setDownloadingKey(key);
-    try {
-      const ok = await downloadAuthenticatedFile(attachmentDownloadPath(row.id, file), name);
-      if (!ok) addNotification('A letöltés nem sikerült.', 'error');
-    } finally {
-      setDownloadingKey(null);
     }
   };
 
@@ -145,26 +124,10 @@ export function FeedbackReportsPage() {
       header: 'Csatolmány',
       cell: (row) =>
         row.attachments.length > 0 ? (
-          <div className="flex flex-col gap-1">
-            {row.attachments.map((file) => {
-              const key = `${row.id}-${file.id}`;
-              return (
-                <Button
-                  key={key}
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs justify-start px-1"
-                  loading={downloadingKey === key}
-                  disabled={downloadingKey !== null}
-                  onClick={() => void handleDownload(row, file)}
-                >
-                  <Download size={12} />
-                  <span className="truncate max-w-[120px]">{file.originalName ?? 'fájl'}</span>
-                </Button>
-              );
-            })}
-          </div>
+          <span className="text-xs text-muted-foreground">
+            {row.attachments.length} fájl (
+            {formatBytes(row.attachments.reduce((sum, f) => sum + (f.sizeBytes ?? 0), 0))})
+          </span>
         ) : (
           <span className="text-xs text-muted-foreground">—</span>
         ),
@@ -179,7 +142,7 @@ export function FeedbackReportsPage() {
           { label: 'Bejelentések' },
         ]}
         title="Felhasználói bejelentések"
-        description="Hibák, funkciókérések, ötletek — csak platform admin láthatja."
+        description="Hibák, funkciókérések, ötletek. A csatolmányok tartalma nem megtekinthető."
         actions={
           <button
             type="button"
@@ -259,7 +222,7 @@ export function FeedbackReportsPage() {
         report={modalReport}
         mode="admin"
         loading={modalLoading}
-        attachmentDownloadPath={attachmentDownloadPath}
+        attachmentDownloadPath={() => ''}
         onStatusChange={async (status) => {
           if (!modalReport) return false;
           const updated = await updateStatus(modalReport.id, status);
