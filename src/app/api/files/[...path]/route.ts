@@ -40,14 +40,18 @@ export async function GET(
     return NextResponse.json({ message: 'Letöltés sikertelen.' }, { status: 502 });
   }
 
+  const buffer = await upstream.arrayBuffer();
+  if (buffer.byteLength === 0) {
+    return NextResponse.json({ message: 'Letöltés sikertelen.' }, { status: 502 });
+  }
+
   const headers = new Headers();
   const disposition = upstream.headers.get('content-disposition');
-  const length = upstream.headers.get('content-length');
   if (disposition) headers.set('Content-Disposition', disposition);
   if (contentType) headers.set('Content-Type', contentType);
-  if (length) headers.set('Content-Length', length);
+  headers.set('Content-Length', String(buffer.byteLength));
 
-  return new NextResponse(upstream.body, {
+  return new NextResponse(buffer, {
     status: upstream.status,
     headers,
   });
