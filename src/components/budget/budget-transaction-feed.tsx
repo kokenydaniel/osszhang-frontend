@@ -51,11 +51,14 @@ export type BudgetTransactionFeedProps = {
   onEdit: (tx: CashTransaction) => void;
   onOpenLedger: (txId: number | string) => void;
   onOpenGoalPayment: (goalRow: CashTransaction) => void;
-  onUpdateTransaction: (id: number, data: Partial<Omit<CashTransaction, 'id'>>) => Promise<void>;
+  onUpdateTransaction: (
+    id: number | string,
+    data: Partial<Omit<CashTransaction, 'id'>>,
+  ) => Promise<void>;
   onDeleteTransaction: (id: number | string) => Promise<void>;
   requestDelete: (options: { title: string; message: string; onConfirm: () => void | Promise<void> }) => void;
-  wrapTxPending: (id: number, fn: () => Promise<void>) => Promise<void>;
-  isTxPending: (id: number) => boolean;
+  wrapTxPending: (id: number | string, fn: () => Promise<void>) => Promise<void>;
+  isTxPending: (id: number | string) => boolean;
   exchangeRates?: Record<string, number>;
 };
 
@@ -317,7 +320,7 @@ export function BudgetTransactionFeed({
             disabled={isReader}
             onClick={() => {
               if (isReader) return;
-              void onUpdateTransaction(t.id as number, {
+              void onUpdateTransaction(t.id, {
                 paidDate: settled ? null : todayDate(),
               });
             }}

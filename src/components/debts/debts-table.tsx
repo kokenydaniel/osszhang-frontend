@@ -22,7 +22,9 @@ import {
   CreditCard,
   Sparkles,
   AlertTriangle,
+  History,
 } from 'lucide-react';
+import { resolveInstallmentPayments } from '@/helpers/debt-installment-payments';
 import type { DebtWithPayoff } from '@/calculations/debts';
 
 export type DebtsTableProps = {
@@ -33,6 +35,7 @@ export type DebtsTableProps = {
   onPay: (debt: DebtWithPayoff) => void;
   onEdit: (debt: DebtWithPayoff) => void;
   onViewDocuments: (debt: DebtWithPayoff) => void;
+  onViewPaymentHistory: (debt: DebtWithPayoff) => void;
   onDelete: (id: number) => void;
   requestDelete: (options: { title: string; message: string; onConfirm: () => void }) => void;
 };
@@ -45,6 +48,7 @@ export function DebtsTable({
   onPay,
   onEdit,
   onViewDocuments,
+  onViewPaymentHistory,
   onDelete,
   requestDelete,
 }: DebtsTableProps) {
@@ -135,10 +139,29 @@ export function DebtsTable({
         ),
     },
     {
+      key: 'payments',
+      header: 'Befizetések',
+      align: 'center',
+      width: '10%',
+      cell: (d) => {
+        const count = resolveInstallmentPayments(d).length;
+        return (
+          <button
+            type="button"
+            onClick={() => onViewPaymentHistory(d)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          >
+            <History size={13} />
+            <span className="tabular-nums">{count > 0 ? count : '—'}</span>
+          </button>
+        );
+      },
+    },
+    {
       key: 'documents',
       header: 'Dokumentum',
       align: 'center',
-      width: '10%',
+      width: '9%',
       cell: (d) => (
         <AttachmentDocumentsCell
           count={d.attachmentCount ?? 0}
@@ -234,7 +257,7 @@ export function DebtsTable({
           columns={columns}
           data={debtsWithPayoff.slice().sort((a, b) => b.remaining - a.remaining)}
           rowKey={(d) => d.id}
-          minWidth="980px"
+          minWidth="1040px"
         />
       )}
     </Section>

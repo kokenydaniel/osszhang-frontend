@@ -8,9 +8,8 @@ import { Modal } from '@/components/ui/Modal';
 import { budgetClient, debtsClient } from '@/lib/api-client';
 import { StatusCodes } from '@/types/api';
 import { debtsCalculations } from '@/calculations/debts';
-import { withInstallmentMonthPaid } from '@/helpers/debt-budget';
+import { buildDebtPayRecordUpdate } from '@/helpers/debt-installment-payments';
 import { matchPaymentCategory, resolveDebtsSettings } from '@/settings/debts';
-import { yearMonthPrefix } from '@/utils/dates';
 import type { Debt, UserProfile } from '@/types';
 import { DebtPayForm, type DebtPayFormValues } from './debt-pay-form';
 
@@ -74,18 +73,17 @@ export function DebtPayModal({
       return;
     }
 
-    const updatePayload = debtsCalculations.buildPaymentUpdate(debt, amt);
-    const ym = yearMonthPrefix(selectedYear, selectedMonth);
-    let nextDebt = withInstallmentMonthPaid(debt, selectedYear, selectedMonth);
-    if (values.payAddToBudget || debt.budgetSyncEnabled) {
-      const months = new Set(nextDebt.paidInstallmentMonths ?? []);
-      months.add(ym);
-      nextDebt = { ...nextDebt, paidInstallmentMonths: [...months] };
-    }
-    const resUpdate = await debtsClient.update(debt.id, {
-      ...updatePayload,
-      paidInstallmentMonths: nextDebt.paidInstallmentMonths,
-    });
+    const resUpdate = await debtsClient.update(
+      debt.id,
+      buildDebtPayRecordUpdate(
+        debt,
+        selectedYear,
+        selectedMonth,
+        amt,
+        values.payDate,
+        values.payAddToBudget || !!debt.budgetSyncEnabled,
+      ),
+    );
     if (!resUpdate || resUpdate[0] !== StatusCodes.Http200) {
       form.setError('root', { message: 'Nem sikerült rögzíteni a törlesztést.' });
       return;

@@ -1,7 +1,13 @@
 import { dayjs, toDayjs, yearMonthPrefix } from '@/utils/dates';
 import { matchPaymentCategory } from '@/settings/debts';
+import { isInstallmentPeriodPaid } from '@/helpers/debt-installment-payments';
 import type { CashTransaction } from '@/types';
 import type { Debt } from '@/types/debts';
+
+export {
+  buildDebtInstallmentBudgetUpdate,
+  buildDebtPayRecordUpdate,
+} from '@/helpers/debt-installment-payments';
 
 export const DEBT_BUDGET_ID_PREFIX = 'debt-installment-';
 
@@ -52,7 +58,7 @@ export function buildDebtBudgetExpenses(
     })
     .map((debt) => {
       const ym = yearMonthPrefix(year, month);
-      const paid = debt.paidInstallmentMonths?.includes(ym) ?? false;
+      const paid = isInstallmentPeriodPaid(debt, year, month);
       const dueDate = installmentDueDate(debt, year, month);
       return {
         id: debtInstallmentId(debt.id, year, month),

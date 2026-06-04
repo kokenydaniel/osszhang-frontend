@@ -23,6 +23,7 @@ import { DebtsStrategySection } from './debts-strategy-section';
 import { DebtFormModal } from './debt-form-modal';
 import { DebtPayModal } from './debt-pay-modal';
 import { DebtDocumentsModal } from './debt-documents-modal';
+import { DebtPaymentHistoryModal } from './debt-payment-history-modal';
 
 export function DebtsPage() {
   const activeWalletId = useWalletStore((s) => s.activeWalletId);
@@ -44,6 +45,7 @@ export function DebtsPage() {
   const [formDebt, setFormDebt] = useState<Debt | 'create' | null>(null);
   const [payDebt, setPayDebt] = useState<Debt | null>(null);
   const [documentsDebt, setDocumentsDebt] = useState<Debt | null>(null);
+  const [historyDebt, setHistoryDebt] = useState<Debt | null>(null);
 
   const isReader = isHouseholdReader(user);
   const debtsSettings = useMemo(() => resolveDebtsSettings(user?.household), [user?.household]);
@@ -178,6 +180,7 @@ export function DebtsPage() {
               setFormDebt(debt);
             }}
             onViewDocuments={(debt) => setDocumentsDebt(debt)}
+            onViewPaymentHistory={(debt) => setHistoryDebt(debt)}
             onDelete={handleDelete}
             requestDelete={requestDelete}
           />
@@ -190,6 +193,16 @@ export function DebtsPage() {
         walletId={activeWalletId}
         onClose={() => setFormDebt(null)}
         onSaved={handleDebtSaved}
+      />
+
+      <DebtPaymentHistoryModal
+        open={historyDebt !== null}
+        debt={historyDebt}
+        selectedYear={selectedYear}
+        selectedMonth={selectedMonth}
+        canEdit={!isReader}
+        onClose={() => setHistoryDebt(null)}
+        onDebtUpdated={(updated) => setHistoryDebt(updated)}
       />
 
       <DebtDocumentsModal

@@ -12,11 +12,7 @@ import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import { useAsyncAction, usePendingIds } from '@/hooks/useAsyncAction';
 import { budgetClient, debtsClient, insuranceClient, rentalClient, walletClient } from '@/lib/api-client';
-import {
-  parseDebtInstallmentId,
-  withInstallmentMonthPaid,
-  withInstallmentMonthUnpaid,
-} from '@/helpers/debt-budget';
+import { buildDebtInstallmentBudgetUpdate, parseDebtInstallmentId } from '@/helpers/debt-budget';
 import { isExternallyManagedBudgetRow } from '@/helpers/budget-feed';
 import {
   parseInsurancePremiumId,
@@ -182,17 +178,18 @@ export function BudgetPage() {
       if (!debt) return;
       try {
         const paid = !!patch.paidDate;
-        const nextDebt = paid
-          ? withInstallmentMonthPaid(debt, installment.year, installment.month)
-          : withInstallmentMonthUnpaid(debt, installment.year, installment.month);
-        const res = await debtsClient.update(debt.id, {
-          paidInstallmentMonths: nextDebt.paidInstallmentMonths,
-        });
-        if (!res || res[0] !== StatusCodes.Http200) throw new Error();
-        useDebtsStore.getState().setDebts(
-          data.debts.map((d) => (d.id === debt.id ? res[1] : d)),
-          data.activeWalletId ?? debt.walletId ?? 0,
+        const res = await debtsClient.update(
+          debt.id,
+          buildDebtInstallmentBudgetUpdate(
+            debt,
+            installment.year,
+            installment.month,
+            paid,
+            patch.paidDate ?? todayDate(),
+          ),
         );
+        if (!res || res[0] !== StatusCodes.Http200) throw new Error();
+        useDebtsStore.getState().patchDebt(debt.id, res[1]);
         if (paid && patch.paidDate) {
           addNotification('Tartozás részlet kifizetve.', 'success');
         }

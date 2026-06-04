@@ -13,10 +13,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { StatusCodes } from '@/types/api';
 import type { UtilityBill } from '@/types';
 import type { DashboardUnpaidItem } from '@/helpers/dashboard-types';
-import {
-  parseDebtInstallmentId,
-  withInstallmentMonthPaid,
-} from '@/helpers/debt-budget';
+import { buildDebtInstallmentBudgetUpdate, parseDebtInstallmentId } from '@/helpers/debt-budget';
 import {
   parseInsurancePremiumId,
   withInsurancePeriodPaid,
@@ -32,7 +29,7 @@ export function useDashboardPayActions() {
   const bills = useUtilitiesStore((s) => s.bills);
   const patchBill = useUtilitiesStore((s) => s.patchBill);
   const debts = useDebtsStore((s) => s.debts);
-  const setDebts = useDebtsStore((s) => s.setDebts);
+  const patchDebt = useDebtsStore((s) => s.patchDebt);
 
   const handlePayItem = useCallback(
     async (item: DashboardUnpaidItem) => {
@@ -44,15 +41,18 @@ export function useDashboardPayActions() {
         if (installment) {
           const debt = debts.find((d) => d.id === installment.debtId);
           if (!debt || activeWalletId === null) return;
-          const nextDebt = withInstallmentMonthPaid(debt, installment.year, installment.month);
-          const res = await debtsClient.update(debt.id, {
-            paidInstallmentMonths: nextDebt.paidInstallmentMonths,
-          });
-          if (!res || res[0] !== StatusCodes.Http200) return;
-          setDebts(
-            debts.map((d) => (d.id === debt.id ? res[1] : d)),
-            activeWalletId,
+          const res = await debtsClient.update(
+            debt.id,
+            buildDebtInstallmentBudgetUpdate(
+              debt,
+              installment.year,
+              installment.month,
+              true,
+              paidOn,
+            ),
           );
+          if (!res || res[0] !== StatusCodes.Http200) return;
+          patchDebt(debt.id, res[1]);
           return;
         }
 
@@ -100,7 +100,7 @@ export function useDashboardPayActions() {
         console.error('[dashboard] utility bill pay failed', error);
       }
     },
-    [activeWalletId, bills, debts, isReader, patchBill, setDebts, setTransactions, transactions],
+    [activeWalletId, bills, debts, isReader, patchBill, patchDebt, setTransactions, transactions],
   );
 
   return { handlePayItem, isReader };

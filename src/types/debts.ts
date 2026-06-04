@@ -1,3 +1,12 @@
+export type DebtInstallmentPaymentSource = 'budget' | 'debt_pay';
+
+export interface DebtInstallmentPayment {
+  period: string;
+  paidAt: string | null;
+  amount: number;
+  source: DebtInstallmentPaymentSource;
+}
+
 export interface Debt {
   id: number;
   walletId?: number | null;
@@ -12,6 +21,7 @@ export interface Debt {
   budgetStartYear?: number | null;
   budgetStartMonth?: number | null;
   paidInstallmentMonths?: string[];
+  installmentPayments?: DebtInstallmentPayment[];
   attachmentCount?: number;
 }
 
@@ -28,6 +38,7 @@ export interface CreateDebtPayload {
   budgetStartYear?: number | null;
   budgetStartMonth?: number | null;
   paidInstallmentMonths?: string[];
+  installmentPayments?: DebtInstallmentPayment[];
 }
 
 export type UpdateDebtPayload = Partial<CreateDebtPayload>;

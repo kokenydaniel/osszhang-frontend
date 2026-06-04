@@ -73,6 +73,7 @@ export function DebtFormModal({ open, debt, walletId, onClose, onSaved }: DebtFo
       const res = await debtsClient.update(debt.id, {
         ...payload,
         paidInstallmentMonths: debt.paidInstallmentMonths,
+        installmentPayments: debt.installmentPayments,
       });
       if (!res || res[0] !== StatusCodes.Http200) {
         form.setError('root', { message: 'A tartozás mentése nem sikerült.' });
