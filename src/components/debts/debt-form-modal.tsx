@@ -114,8 +114,16 @@ export function DebtFormModal({ open, debt, walletId, onClose, onSaved }: DebtFo
         onCancel={onClose}
         onSubmit={submit}
         typeTemplates={resolveDebtsSettings(useAuthStore.getState().user?.household).debt_type_templates}
+        attachmentsSlot={
+          isEdit && debt ? (
+            <DebtAttachments debtId={debt.id} canEdit={canEdit} />
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Dokumentumok (szerződés, hitelkérelem stb.) a mentés után, szerkesztéskor tölthetők fel.
+            </p>
+          )
+        }
       />
-      <DebtAttachments debtId={debt?.id ?? 0} canEdit={canEdit} />
     </Modal>
   );
 }
