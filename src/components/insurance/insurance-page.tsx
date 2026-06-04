@@ -19,6 +19,7 @@ import { InsuranceReminderBanner } from './insurance-reminder-banner';
 import { InsurancePolicyCard } from './insurance-policy-card';
 import { InsurancePoliciesTable } from './insurance-policies-table';
 import { InsurancePolicyModal } from './insurance-policy-modal';
+import { InsuranceDocumentsModal } from './insurance-documents-modal';
 
 type StatusFilter = 'all' | 'active' | 'inactive';
 
@@ -32,6 +33,7 @@ export function InsurancePage() {
   const status = useInsuranceStore((s) => s.status);
 
   const [modalPolicy, setModalPolicy] = useState<InsurancePolicy | 'create' | null>(null);
+  const [documentsPolicy, setDocumentsPolicy] = useState<InsurancePolicy | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   const settings = useMemo(() => resolveInsuranceSettings(user?.household), [user?.household]);
@@ -138,6 +140,12 @@ export function InsurancePage() {
                   policy={p}
                   canEdit={canEdit}
                   onEdit={canEdit ? () => setModalPolicy(p) : undefined}
+                  onAttachmentCountChange={(policyId, count) => {
+                    const current = useInsuranceStore.getState().policies.find((x) => x.id === policyId);
+                    if (current) {
+                      useInsuranceStore.getState().upsertPolicy({ ...current, attachmentCount: count });
+                    }
+                  }}
                 />
               ))}
             </div>
@@ -146,6 +154,7 @@ export function InsurancePage() {
                 policies={filteredPolicies}
                 isReader={isReader}
                 onEdit={(p) => setModalPolicy(p)}
+                onViewDocuments={(p) => setDocumentsPolicy(p)}
                 onDelete={(p) =>
                   requestDelete({
                     title: 'Szerződés törlése',
@@ -164,6 +173,7 @@ export function InsurancePage() {
                   policies={filteredPolicies}
                   isReader={isReader}
                   onEdit={(p) => setModalPolicy(p)}
+                  onViewDocuments={(p) => setDocumentsPolicy(p)}
                   onDelete={(p) =>
                     requestDelete({
                       title: 'Szerződés törlése',
@@ -183,6 +193,20 @@ export function InsurancePage() {
         policy={modalPolicyEntity}
         onClose={() => setModalPolicy(null)}
         onSaved={handleSaved}
+      />
+
+      <InsuranceDocumentsModal
+        open={documentsPolicy !== null}
+        policy={documentsPolicy}
+        canEdit={canEdit}
+        onClose={() => setDocumentsPolicy(null)}
+        onCountChange={(policyId, count) => {
+          const current = useInsuranceStore.getState().policies.find((x) => x.id === policyId);
+          if (current) {
+            useInsuranceStore.getState().upsertPolicy({ ...current, attachmentCount: count });
+          }
+          setDocumentsPolicy((p) => (p?.id === policyId ? { ...p, attachmentCount: count } : p));
+        }}
       />
 
       <ConfirmDeleteModal />

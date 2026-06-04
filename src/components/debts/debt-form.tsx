@@ -1,6 +1,5 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { ModalFormFooter } from '@/components/design';
 import { Input } from '@/components/ui/input';
@@ -26,7 +25,6 @@ type DebtFormProps = {
   onCancel: () => void;
   onSubmit: ReturnType<UseFormReturn<DebtFormValues>['handleSubmit']>;
   typeTemplates?: Array<{ label: string; default_interest_rate_annual: number }>;
-  attachmentsSlot?: ReactNode;
 };
 
 export function DebtForm({
@@ -35,7 +33,6 @@ export function DebtForm({
   onCancel,
   onSubmit,
   typeTemplates = [],
-  attachmentsSlot,
 }: DebtFormProps) {
   const {
     register,
@@ -127,8 +124,6 @@ export function DebtForm({
           </FormField>
         ) : null}
       </div>
-
-      {attachmentsSlot}
 
       <ModalFormFooter
         onCancel={onCancel}

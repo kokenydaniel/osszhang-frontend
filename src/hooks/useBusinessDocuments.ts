@@ -6,9 +6,11 @@ import { downloadAuthenticatedFile } from '@/helpers/download-blob';
 import { StatusCodes } from '@/types/api';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { businessAccountingBundleBaseName } from '@/settings/business';
 import type { BusinessDocument, BusinessDocumentType } from '@/types/attachments';
 
 export function useBusinessDocuments(year: number, month: number) {
+  const household = useAuthStore((s) => s.user?.household);
   const { addNotification } = useNotificationStore();
   const [documents, setDocuments] = useState<BusinessDocument[]>([]);
   const [loading, setLoading] = useState(false);
@@ -94,10 +96,9 @@ export function useBusinessDocuments(year: number, month: number) {
   const downloadBundle = useCallback(async () => {
     setDownloadingBundle(true);
     try {
-      const monthLabel = String(month).padStart(2, '0');
       const ok = await downloadAuthenticatedFile(
         'business-documents/bundle',
-        `konyvelesi-anyag-${year}-${monthLabel}.zip`,
+        `${businessAccountingBundleBaseName(household, year, month)}.zip`,
         { year, month },
       );
       if (!ok) {
@@ -106,7 +107,7 @@ export function useBusinessDocuments(year: number, month: number) {
     } finally {
       setDownloadingBundle(false);
     }
-  }, [addNotification, month, year]);
+  }, [addNotification, household, month, year]);
 
   const syncSumup = useCallback(async () => {
     setSyncingSumup(true);

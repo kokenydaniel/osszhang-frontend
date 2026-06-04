@@ -218,3 +218,23 @@ export function businessDisplayName(household: { business_name?: string } | null
   const name = (household?.business_name ?? '').trim();
   return name || 'Vállalkozás';
 }
+
+export function businessNameSlug(household: { business_name?: string } | null | undefined): string {
+  const raw = (household?.business_name ?? '').trim() || 'vallalkozas';
+  const slug = raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug || 'vallalkozas';
+}
+
+export function businessAccountingBundleBaseName(
+  household: { business_name?: string } | null | undefined,
+  year: number,
+  month: number,
+): string {
+  const monthLabel = String(month).padStart(2, '0');
+  return `${businessNameSlug(household)}-konyvelesi-anyag-${year}-${monthLabel}`;
+}

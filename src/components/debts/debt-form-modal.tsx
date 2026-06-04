@@ -10,8 +10,6 @@ import type { Debt } from '@/types';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { resolveDebtsSettings } from '@/settings/debts';
 import { DebtForm, type DebtFormValues } from './debt-form';
-import { DebtAttachments } from './debt-attachments';
-import { canEditHousehold } from '@/utils/household-role';
 
 const currentMonthValue = () => {
   const d = new Date();
@@ -60,10 +58,8 @@ type DebtFormModalProps = {
 };
 
 export function DebtFormModal({ open, debt, walletId, onClose, onSaved }: DebtFormModalProps) {
-  const user = useAuthStore((s) => s.user);
   const form = useForm<DebtFormValues>({ defaultValues: emptyValues() });
   const isEdit = debt !== null;
-  const canEdit = canEditHousehold(user);
 
   useEffect(() => {
     if (!open) return;
@@ -114,16 +110,13 @@ export function DebtFormModal({ open, debt, walletId, onClose, onSaved }: DebtFo
         onCancel={onClose}
         onSubmit={submit}
         typeTemplates={resolveDebtsSettings(useAuthStore.getState().user?.household).debt_type_templates}
-        attachmentsSlot={
-          isEdit && debt ? (
-            <DebtAttachments debtId={debt.id} canEdit={canEdit} />
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Dokumentumok (szerződés, hitelkérelem stb.) a mentés után, szerkesztéskor tölthetők fel.
-            </p>
-          )
-        }
       />
+      {!isEdit ? (
+        <p className="text-xs text-muted-foreground mt-3">
+          Dokumentumok (szerződés, hitelkérelem stb.) a mentés után a táblázat „Dokumentum” oszlopából
+          érhetők el.
+        </p>
+      ) : null}
     </Modal>
   );
 }

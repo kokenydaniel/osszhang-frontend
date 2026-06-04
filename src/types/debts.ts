@@ -12,6 +12,7 @@ export interface Debt {
   budgetStartYear?: number | null;
   budgetStartMonth?: number | null;
   paidInstallmentMonths?: string[];
+  attachmentCount?: number;
 }
 
 export interface CreateDebtPayload {

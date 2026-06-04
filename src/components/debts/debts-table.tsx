@@ -3,6 +3,10 @@
 import classNames from 'classnames';
 import { formatHUF } from '@/utils';
 import { debtsCalculations } from '@/calculations/debts';
+import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
+import { canUseFeature } from '@/helpers/check-access';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { AttachmentDocumentsCell } from '@/components/attachments/attachment-documents-cell';
 import { Button } from '@/components/ui/button';
 import {
   DataTable,
@@ -28,6 +32,7 @@ export type DebtsTableProps = {
   isReader: boolean;
   onPay: (debt: DebtWithPayoff) => void;
   onEdit: (debt: DebtWithPayoff) => void;
+  onViewDocuments: (debt: DebtWithPayoff) => void;
   onDelete: (id: number) => void;
   requestDelete: (options: { title: string; message: string; onConfirm: () => void }) => void;
 };
@@ -39,9 +44,14 @@ export function DebtsTable({
   isReader,
   onPay,
   onEdit,
+  onViewDocuments,
   onDelete,
   requestDelete,
 }: DebtsTableProps) {
+  const user = useAuthStore((s) => s.user);
+  const attachmentsEnabled =
+    isPlatformFeatureEnabled(user, 'enable_attachments') && canUseFeature(user, 'attachments');
+
   const columns: DataTableColumn<DebtWithPayoff>[] = [
     {
       key: 'name',
@@ -125,10 +135,23 @@ export function DebtsTable({
         ),
     },
     {
+      key: 'documents',
+      header: 'Dokumentum',
+      align: 'center',
+      width: '10%',
+      cell: (d) => (
+        <AttachmentDocumentsCell
+          count={d.attachmentCount ?? 0}
+          enabled={attachmentsEnabled}
+          onOpen={() => onViewDocuments(d)}
+        />
+      ),
+    },
+    {
       key: 'payoff',
       header: 'Lejár',
       align: 'right',
-      width: '16%',
+      width: '14%',
       cell: (d) => {
         if (d.payoff.isUnderwater) {
           return (
@@ -160,7 +183,7 @@ export function DebtsTable({
       key: 'actions',
       header: '',
       align: 'right',
-      width: '15%',
+      width: '13%',
       cell: (d) =>
         !isReader ? (
           <div className="flex items-center justify-end gap-1">
@@ -211,7 +234,7 @@ export function DebtsTable({
           columns={columns}
           data={debtsWithPayoff.slice().sort((a, b) => b.remaining - a.remaining)}
           rowKey={(d) => d.id}
-          minWidth="900px"
+          minWidth="980px"
         />
       )}
     </Section>

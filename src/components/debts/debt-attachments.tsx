@@ -12,19 +12,23 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import type { FileAttachment } from '@/types/attachments';
 import { AttachmentFileRow } from '@/components/attachments/attachment-file-row';
+import { AttachmentsListLoading } from '@/components/attachments/attachments-list-loading';
 
 type DebtAttachmentsProps = {
   debtId: number;
   canEdit?: boolean;
+  onCountChange?: (count: number) => void;
 };
 
-export function DebtAttachments({ debtId, canEdit = true }: DebtAttachmentsProps) {
+export function DebtAttachments({ debtId, canEdit = true, onCountChange }: DebtAttachmentsProps) {
   const user = useAuthStore((s) => s.user);
   const { addNotification } = useNotificationStore();
   const inputRef = useRef<HTMLInputElement>(null);
+  const onCountChangeRef = useRef(onCountChange);
+  onCountChangeRef.current = onCountChange;
 
   const [files, setFiles] = useState<FileAttachment[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
@@ -32,12 +36,17 @@ export function DebtAttachments({ debtId, canEdit = true }: DebtAttachmentsProps
     isPlatformFeatureEnabled(user, 'enable_attachments') && canUseFeature(user, 'attachments');
 
   const refresh = useCallback(async () => {
-    if (!enabled || debtId <= 0) return;
+    if (!enabled || debtId <= 0) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await attachmentsClient.listForDebt(debtId);
       if (res && res[0] === StatusCodes.Http200) {
-        setFiles(res[1] ?? []);
+        const list = res[1] ?? [];
+        setFiles(list);
+        onCountChangeRef.current?.(list.length);
       }
     } finally {
       setLoading(false);
@@ -45,6 +54,8 @@ export function DebtAttachments({ debtId, canEdit = true }: DebtAttachmentsProps
   }, [enabled, debtId]);
 
   useEffect(() => {
+    setFiles([]);
+    setLoading(true);
     void refresh();
   }, [debtId, enabled, refresh]);
 
@@ -68,7 +79,11 @@ export function DebtAttachments({ debtId, canEdit = true }: DebtAttachmentsProps
   const handleDelete = async (attachmentId: number) => {
     const res = await attachmentsClient.deleteAttachment(attachmentId);
     if (res && res[0] === StatusCodes.Http200) {
-      setFiles((prev) => prev.filter((f) => f.id !== attachmentId));
+      setFiles((prev) => {
+        const next = prev.filter((f) => f.id !== attachmentId);
+        onCountChangeRef.current?.(next.length);
+        return next;
+      });
     }
   };
 
@@ -97,7 +112,12 @@ export function DebtAttachments({ debtId, canEdit = true }: DebtAttachmentsProps
       <p className="text-xs text-muted-foreground">
         Pl. hitelszerződés, hitelkérelem, banki igazolás — PDF vagy kép formátumban, több fájl is feltölthető.
       </p>
-      {files.map((file) => (
+      {loading ? <AttachmentsListLoading /> : null}
+      {!loading && files.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-2">Nincs csatolt dokumentum.</p>
+      ) : null}
+      {!loading
+        ? files.map((file) => (
         <AttachmentFileRow
           key={file.id}
           file={file}
@@ -117,8 +137,9 @@ export function DebtAttachments({ debtId, canEdit = true }: DebtAttachmentsProps
           }}
           onDelete={canEdit ? () => void handleDelete(file.id) : undefined}
         />
-      ))}
-      {canEdit ? (
+          ))
+        : null}
+      {!loading && canEdit ? (
         <>
           <input
             ref={inputRef}

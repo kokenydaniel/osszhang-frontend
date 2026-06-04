@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import type { FileAttachment } from '@/types/attachments';
 import { AttachmentFileRow } from '@/components/attachments/attachment-file-row';
+import { AttachmentsListLoading } from '@/components/attachments/attachments-list-loading';
 
 type InsurancePolicyAttachmentsProps = {
   policyId: number;
@@ -31,7 +32,7 @@ export function InsurancePolicyAttachments({
   onCountChangeRef.current = onCountChange;
 
   const [files, setFiles] = useState<FileAttachment[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
@@ -39,7 +40,10 @@ export function InsurancePolicyAttachments({
     isPlatformFeatureEnabled(user, 'enable_attachments') && canUseFeature(user, 'attachments');
 
   const refresh = useCallback(async () => {
-    if (!enabled || policyId <= 0) return;
+    if (!enabled || policyId <= 0) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await attachmentsClient.listForInsurancePolicy(policyId);
@@ -54,6 +58,8 @@ export function InsurancePolicyAttachments({
   }, [enabled, policyId]);
 
   useEffect(() => {
+    setFiles([]);
+    setLoading(true);
     void refresh();
   }, [policyId, enabled, refresh]);
 
@@ -106,7 +112,12 @@ export function InsurancePolicyAttachments({
       <p className="text-xs text-muted-foreground">
         Pl. kötvény, ajánlat, melléklet — PDF formátumban.
       </p>
-      {files.map((file) => (
+      {loading ? <AttachmentsListLoading /> : null}
+      {!loading && files.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-2">Nincs csatolt dokumentum.</p>
+      ) : null}
+      {!loading
+        ? files.map((file) => (
         <AttachmentFileRow
           key={file.id}
           file={file}
@@ -126,8 +137,9 @@ export function InsurancePolicyAttachments({
           }}
           onDelete={canEdit ? () => void handleDelete(file.id) : undefined}
         />
-      ))}
-      {canEdit ? (
+          ))
+        : null}
+      {!loading && canEdit ? (
         <>
           <input
             ref={inputRef}

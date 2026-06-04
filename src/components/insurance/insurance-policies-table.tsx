@@ -3,6 +3,10 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusPill } from '@/components/design';
+import { AttachmentDocumentsCell } from '@/components/attachments/attachment-documents-cell';
+import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
+import { canUseFeature } from '@/helpers/check-access';
+import { useAuthStore } from '@/stores/useAuthStore';
 import {
   insuranceCalculations,
   effectiveAnnualPremium,
@@ -16,6 +20,7 @@ type InsurancePoliciesTableProps = {
   policies: InsurancePolicy[];
   isReader?: boolean;
   onEdit: (policy: InsurancePolicy) => void;
+  onViewDocuments: (policy: InsurancePolicy) => void;
   onDelete: (policy: InsurancePolicy) => void;
 };
 
@@ -28,8 +33,13 @@ export function InsurancePoliciesTable({
   policies,
   isReader,
   onEdit,
+  onViewDocuments,
   onDelete,
 }: InsurancePoliciesTableProps) {
+  const user = useAuthStore((s) => s.user);
+  const attachmentsEnabled =
+    isPlatformFeatureEnabled(user, 'enable_attachments') && canUseFeature(user, 'attachments');
+
   if (policies.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center">
@@ -50,6 +60,7 @@ export function InsurancePoliciesTable({
             <th className="py-2 px-2 font-medium">Megújítás</th>
             <th className="py-2 px-2 font-medium">Fedezet</th>
             <th className="py-2 px-2 font-medium">Állapot</th>
+            <th className="py-2 px-2 font-medium text-center">Dokumentum</th>
             <th className="py-2 px-2 font-medium w-24" />
           </tr>
         </thead>
@@ -90,6 +101,13 @@ export function InsurancePoliciesTable({
                 >
                   {policyStatusLabel(p)}
                 </StatusPill>
+              </td>
+              <td className="py-2.5 px-2 text-center">
+                <AttachmentDocumentsCell
+                  count={p.attachmentCount}
+                  enabled={attachmentsEnabled}
+                  onOpen={() => onViewDocuments(p)}
+                />
               </td>
               <td className="py-2.5 px-2">
                 {!isReader ? (

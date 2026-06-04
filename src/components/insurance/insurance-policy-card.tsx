@@ -1,16 +1,22 @@
 'use client';
 
+import { useState } from 'react';
 import { Calendar, Pencil, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusPill } from '@/components/design';
 import { insuranceCalculations, isPolicyEffectivelyActive } from '@/calculations/insurance';
 import { paymentFrequencyLabel } from '@/helpers/insurance-budget';
+import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
+import { canUseFeature } from '@/helpers/check-access';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { InsurancePolicyAttachments } from './insurance-policy-attachments';
 import type { InsurancePolicy } from '@/types/insurance';
 
 type InsurancePolicyCardProps = {
   policy: InsurancePolicy;
   canEdit?: boolean;
   onEdit?: () => void;
+  onAttachmentCountChange?: (policyId: number, count: number) => void;
 };
 
 function formatDate(value: string | null): string {
@@ -18,11 +24,19 @@ function formatDate(value: string | null): string {
   return value.replace(/-/g, '.');
 }
 
-export function InsurancePolicyCard({ policy, canEdit, onEdit }: InsurancePolicyCardProps) {
+export function InsurancePolicyCard({
+  policy,
+  canEdit,
+  onEdit,
+  onAttachmentCountChange,
+}: InsurancePolicyCardProps) {
+  const user = useAuthStore((s) => s.user);
   const p = policy;
   const annual = insuranceCalculations.effectiveAnnualPremium(p);
   const active = isPolicyEffectivelyActive(p);
-  const statusLabel = insuranceCalculations.policyStatusLabel(p);
+  const attachmentsEnabled =
+    isPlatformFeatureEnabled(user, 'enable_attachments') && canUseFeature(user, 'attachments');
+  const [docsOpen, setDocsOpen] = useState(false);
 
   return (
     <article
@@ -112,10 +126,30 @@ export function InsurancePolicyCard({ policy, canEdit, onEdit }: InsurancePolicy
         </p>
       ) : null}
 
-      {p.attachmentCount > 0 ? (
-        <p className="text-[0.65rem] text-muted-foreground mb-2">
-          {p.attachmentCount} csatolt dokumentum
-        </p>
+      {attachmentsEnabled ? (
+        <details
+          className="border-t border-border/50 pt-3 mb-2 group"
+          open={docsOpen}
+          onToggle={(e) => setDocsOpen((e.target as HTMLDetailsElement).open)}
+        >
+          <summary className="text-xs font-medium text-muted-foreground cursor-pointer list-none flex items-center justify-between gap-2 hover:text-foreground [&::-webkit-details-marker]:hidden">
+            <span>
+              Dokumentumok
+              <span className="tabular-nums text-foreground/80"> ({p.attachmentCount})</span>
+            </span>
+            <span className="text-[0.65rem] text-primary group-open:hidden">Megnyitás</span>
+            <span className="text-[0.65rem] text-primary hidden group-open:inline">Bezárás</span>
+          </summary>
+          <div className="pt-3">
+            {docsOpen ? (
+              <InsurancePolicyAttachments
+                policyId={p.id}
+                canEdit={!!canEdit}
+                onCountChange={(count) => onAttachmentCountChange?.(p.id, count)}
+              />
+            ) : null}
+          </div>
+        </details>
       ) : null}
 
       {canEdit && onEdit ? (

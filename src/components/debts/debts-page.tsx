@@ -22,6 +22,7 @@ import { DebtsTable } from './debts-table';
 import { DebtsStrategySection } from './debts-strategy-section';
 import { DebtFormModal } from './debt-form-modal';
 import { DebtPayModal } from './debt-pay-modal';
+import { DebtDocumentsModal } from './debt-documents-modal';
 
 export function DebtsPage() {
   const activeWalletId = useWalletStore((s) => s.activeWalletId);
@@ -42,6 +43,7 @@ export function DebtsPage() {
 
   const [formDebt, setFormDebt] = useState<Debt | 'create' | null>(null);
   const [payDebt, setPayDebt] = useState<Debt | null>(null);
+  const [documentsDebt, setDocumentsDebt] = useState<Debt | null>(null);
 
   const isReader = isHouseholdReader(user);
   const debtsSettings = useMemo(() => resolveDebtsSettings(user?.household), [user?.household]);
@@ -175,6 +177,7 @@ export function DebtsPage() {
               if (!canEditHousehold(user)) return;
               setFormDebt(debt);
             }}
+            onViewDocuments={(debt) => setDocumentsDebt(debt)}
             onDelete={handleDelete}
             requestDelete={requestDelete}
           />
@@ -187,6 +190,23 @@ export function DebtsPage() {
         walletId={activeWalletId}
         onClose={() => setFormDebt(null)}
         onSaved={handleDebtSaved}
+      />
+
+      <DebtDocumentsModal
+        open={documentsDebt !== null}
+        debt={documentsDebt}
+        canEdit={!isReader}
+        onClose={() => setDocumentsDebt(null)}
+        onCountChange={(debtId, count) => {
+          if (!activeWalletId) return;
+          setDebts(
+            debts.map((d) => (d.id === debtId ? { ...d, attachmentCount: count } : d)),
+            activeWalletId,
+          );
+          setDocumentsDebt((current) =>
+            current?.id === debtId ? { ...current, attachmentCount: count } : current,
+          );
+        }}
       />
 
       <DebtPayModal

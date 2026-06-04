@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { ModalFormFooter } from '@/components/design';
 import { Modal } from '@/components/ui/Modal';
@@ -12,7 +12,6 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useInsuranceStore } from '@/stores/insuranceStore';
 import type { InsurancePolicy, InsurancePolicyFormValues } from '@/types/insurance';
 import { InsurancePolicyForm } from './insurance-policy-form';
-import { InsurancePolicyAttachments } from './insurance-policy-attachments';
 
 type InsurancePolicyModalProps = {
   open: boolean;
@@ -64,14 +63,6 @@ export function InsurancePolicyModal({ open, policy, onClose, onSaved }: Insuran
     });
   };
 
-  const handleAttachmentCountChange = useCallback(
-    (count: number) => {
-      if (!policy) return;
-      useInsuranceStore.getState().upsertPolicy({ ...policy, attachmentCount: count });
-    },
-    [policy],
-  );
-
   const submit = form.handleSubmit(async (formValues) => {
     if (!formValues.name.trim()) return;
     const payload = insuranceCalculations.payloadFromForm(formValues);
@@ -114,17 +105,11 @@ export function InsurancePolicyModal({ open, policy, onClose, onSaved }: Insuran
           onChange={patchForm}
         />
 
-        {isEdit && policy ? (
-          <InsurancePolicyAttachments
-            policyId={policy.id}
-            canEdit
-            onCountChange={handleAttachmentCountChange}
-          />
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            PDF dokumentumok (kötvény, ajánlat stb.) a mentés után, szerkesztéskor tölthetők fel.
-          </p>
-        )}
+        <p className="text-xs text-muted-foreground">
+          {isEdit
+            ? 'PDF dokumentumok (kötvény, ajánlat) a kártyán vagy a lista „Dokumentum” oszlopából érhetők el — nem kell a szerkesztőt megnyitni.'
+            : 'PDF dokumentumok a mentés után a kártyán vagy a lista „Dokumentum” oszlopából tölthetők fel.'}
+        </p>
 
         <ModalFormFooter
           onCancel={onClose}
