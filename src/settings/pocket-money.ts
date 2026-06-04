@@ -13,6 +13,8 @@ export type PocketMoneySettings = {
   currencies: string[];
   default_currency: string;
   members: PocketMoneyRosterMember[];
+  /** memberKey (userId|label) — rejtve marad a névsorban, még ha van régi tétel is */
+  hidden_member_keys: string[];
   interest_enabled: boolean;
   interest_rate_percent: number;
   interest_on: PocketMoneyInterestOn;
@@ -23,6 +25,7 @@ export const DEFAULT_POCKET_MONEY_SETTINGS: PocketMoneySettings = {
   currencies: [...config.moduleDefaults.pocket_money.currencies],
   default_currency: config.moduleDefaults.pocket_money.default_currency,
   members: [],
+  hidden_member_keys: [],
   interest_enabled: false,
   interest_rate_percent: 10,
   interest_on: 'balance',
@@ -76,6 +79,7 @@ export function resolvePocketMoneySettings(household?: HouseholdLike | null): Po
       ...DEFAULT_POCKET_MONEY_SETTINGS,
       currencies: [...DEFAULT_POCKET_MONEY_SETTINGS.currencies],
       members: [],
+      hidden_member_keys: [],
     };
   }
 
@@ -91,6 +95,13 @@ export function resolvePocketMoneySettings(household?: HouseholdLike | null): Po
     ? raw.members
         .map((m) => normalizeRosterMember(m as RawRosterMember))
         .filter((m): m is PocketMoneyRosterMember => m !== null)
+    : [];
+
+  const hiddenRaw =
+    (raw as { hidden_member_keys?: string[]; hiddenMemberKeys?: string[] }).hidden_member_keys ??
+    (raw as { hiddenMemberKeys?: string[] }).hiddenMemberKeys;
+  const hidden_member_keys = Array.isArray(hiddenRaw)
+    ? hiddenRaw.map((k) => String(k).trim()).filter(Boolean)
     : [];
 
   const interestEnabled = Boolean(
@@ -121,6 +132,7 @@ export function resolvePocketMoneySettings(household?: HouseholdLike | null): Po
     currencies: currencies.length > 0 ? currencies : [...DEFAULT_POCKET_MONEY_SETTINGS.currencies],
     default_currency: currencies.includes(defaultCurrency) ? defaultCurrency : currencies[0],
     members,
+    hidden_member_keys,
     interest_enabled: interestEnabled,
     interest_rate_percent: Number.isFinite(interestRate) ? Math.min(100, Math.max(0, interestRate)) : 10,
     interest_on: interestOn,
@@ -143,6 +155,7 @@ export type PocketMoneySettingsApiPayload = {
     sticker_color: string | null;
     icon_color: string | null;
   }[];
+  hidden_member_keys: string[];
 };
 
 /** API payload (Laravel snake_case a members tömbben). */
@@ -162,6 +175,7 @@ export function pocketMoneySettingsForApi(settings: PocketMoneySettings): Pocket
       sticker_color: m.stickerColor ?? null,
       icon_color: m.iconColor ?? null,
     })),
+    hidden_member_keys: settings.hidden_member_keys,
   };
 }
 
@@ -189,13 +203,15 @@ export function findRosterMemberById(
 export function mergeRosterWithEntryMembers(
   roster: PocketMoneyRosterMember[],
   entries: PocketMoneyEntry[],
+  hiddenMemberKeys: string[] = [],
 ): PocketMoneyRosterMember[] {
-  const next = [...roster];
+  const hidden = new Set(hiddenMemberKeys);
+  const next = roster.filter((m) => !hidden.has(rosterMemberKey(m)));
   const keys = new Set(next.map((m) => rosterMemberKey(m)));
 
   for (const entry of entries) {
     const key = pocketMoneyMemberKey(entry.memberUserId, entry.memberLabel);
-    if (keys.has(key)) continue;
+    if (hidden.has(key) || keys.has(key)) continue;
     next.push({
       id: `legacy-${key}`,
       label: entry.memberLabel,

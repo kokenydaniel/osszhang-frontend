@@ -11,6 +11,7 @@ import { useDebtsStore } from '@/stores/debtsStore';
 import { useInsuranceStore } from '@/stores/insuranceStore';
 import { useRentalStore } from '@/stores/rentalStore';
 import { usePocketMoneyStore } from '@/stores/pocketMoneyStore';
+import { useReceivablesStore } from '@/stores/receivablesStore';
 import { usePeriodStore } from '@/stores/usePeriodStore';
 import { useExchangeRatesStore } from '@/stores/useExchangeRatesStore';
 import { useEnsureExchangeRates } from '@/hooks/useEnsureExchangeRates';
@@ -26,6 +27,17 @@ import { useInsuranceBudgetPremiums } from '@/hooks/useInsuranceBudgetPremiums';
 import { useMissedIncomeSummary } from '@/hooks/useMissedIncomeSummary';
 import { resolveBudgetSettings } from '@/settings/budget';
 import { resolveDashboardSettings } from '@/settings/dashboard';
+import {
+  canLoadDashboardAiCfo,
+  canLoadUtilityAnomalies,
+  filterDashboardWidgetOrder,
+  needsExchangeRatesOnDashboard,
+} from '@/helpers/dashboard-access';
+import {
+  DASHBOARD_FETCH_PRIORITY,
+  DASHBOARD_MODULE_IDS,
+  ensureModulesLoaded,
+} from '@/helpers/module-data-plan';
 import { resolveDebtsSettings } from '@/settings/debts';
 import { resolveBusinessSettings } from '@/settings/business';
 import { resolveInsuranceSettings } from '@/settings/insurance';
@@ -84,6 +96,9 @@ export function useDashboardPageData() {
   const pocketMoneyStatus = usePocketMoneyStore((s) => s.status);
   const pocketMoneyLoadedPeriod = usePocketMoneyStore((s) => s.loadedPeriod);
 
+  const receivablesSummary = useReceivablesStore((s) => s.summary);
+  const receivablesStatus = useReceivablesStore((s) => s.status);
+
   const metersStatus = useMetersStore((s) => s.status);
   const metersLoadedHouseholdId = useMetersStore((s) => s.loadedHouseholdId);
 
@@ -95,43 +110,27 @@ export function useDashboardPageData() {
 
   const { handlePayItem, isReader } = useDashboardPayActions();
 
-  useEnsureExchangeRates();
+  useEnsureExchangeRates(needsExchangeRatesOnDashboard(user));
+
+  const moduleFetchCtx = useMemo(
+    () => ({
+      activeWalletId,
+      householdId: householdId ?? null,
+      selectedMonth,
+      selectedYear,
+    }),
+    [activeWalletId, householdId, selectedMonth, selectedYear],
+  );
 
   useEffect(() => {
-    const tasks: Promise<void>[] = [useUtilitiesStore.getState().fetch()];
-
-    if (activeWalletId !== null) {
-      tasks.push(
-        useBudgetStore.getState().fetch(activeWalletId, selectedYear, selectedMonth),
-        useSavingsStore.getState().fetch(activeWalletId),
-        useDebtsStore.getState().fetch(activeWalletId),
-      );
-    }
-
-    if (householdId) {
-      tasks.push(
-        useMetersStore.getState().fetch(householdId),
-        useBusinessStore.getState().fetch(householdId),
-      );
-    }
-
-    if (canUseModuleWithTier(user, 'insurance')) {
-      tasks.push(useInsuranceStore.getState().fetch());
-    }
-
-    if (canUseModuleWithTier(user, 'rental')) {
-      tasks.push(useRentalStore.getState().fetch(selectedYear, selectedMonth));
-    }
-
-    if (canUseModuleWithTier(user, 'pocket_money')) {
-      tasks.push(usePocketMoneyStore.getState().fetch(selectedYear, selectedMonth));
-    }
-
-    void Promise.all(tasks);
-  }, [activeWalletId, householdId, selectedMonth, selectedYear, user]);
+    if (!user) return;
+    void ensureModulesLoaded(user, DASHBOARD_MODULE_IDS, moduleFetchCtx, {
+      priority: DASHBOARD_FETCH_PRIORITY,
+    });
+  }, [moduleFetchCtx, user]);
 
   useEffect(() => {
-    if (!canUseFeature(user, 'ai') || !canUseModuleWithTier(user, 'meters')) return;
+    if (!canLoadUtilityAnomalies(user)) return;
     let cancelled = false;
     void aiHelpers.getUtilityAnomalies(selectedYear, selectedMonth).then((data) => {
       if (!cancelled) setAiUtilityAnomalies(data);
@@ -172,6 +171,12 @@ export function useDashboardPageData() {
   const businessSettings = useMemo(() => resolveBusinessSettings(user?.household), [user?.household]);
   const budgetSettings = useMemo(() => resolveBudgetSettings(user?.household), [user?.household]);
   const dashboardSettings = useMemo(() => resolveDashboardSettings(user?.household), [user?.household]);
+
+  const dashboardWidgetOrder = useMemo(
+    () => filterDashboardWidgetOrder(dashboardSettings.widget_order, user),
+    [dashboardSettings.widget_order, user],
+  );
+
   const metersSettings = useMemo(() => resolveMetersSettings(user?.household), [user?.household]);
   const periodLabel = useMemo(
     () => formatMonthYear(selectedMonth, selectedYear),
@@ -179,22 +184,21 @@ export function useDashboardPageData() {
   );
   const canUseAi = canUseFeature(user, 'ai');
 
-  const pocketMoneyInterestAlert = useMemo(
-    () =>
-      computeDashboardPocketMoneyInterestAlert(
-        pocketMoneyMembers,
-        pocketMoneySettings,
-        periodLabel,
-        selectedYear,
-        selectedMonth,
-      ),
-    [pocketMoneyMembers, pocketMoneySettings, periodLabel, selectedMonth, selectedYear],
-  );
+  const pocketMoneyInterestAlert = useMemo(() => {
+    if (!canUseModuleWithTier(user, 'pocket_money')) return null;
+    return computeDashboardPocketMoneyInterestAlert(
+      pocketMoneyMembers,
+      pocketMoneySettings,
+      periodLabel,
+      selectedYear,
+      selectedMonth,
+    );
+  }, [pocketMoneyMembers, pocketMoneySettings, periodLabel, selectedMonth, selectedYear, user]);
 
-  const businessTaxAlert = useMemo(
-    () => computeDashboardBusinessTaxAlert(orders, selectedYear, businessSettings),
-    [businessSettings, orders, selectedYear],
-  );
+  const businessTaxAlert = useMemo(() => {
+    if (!canUseModuleWithTier(user, 'business')) return null;
+    return computeDashboardBusinessTaxAlert(orders, selectedYear, businessSettings);
+  }, [businessSettings, orders, selectedYear, user]);
 
   const debtInstallments = useDebtBudgetInstallments({
     debts,
@@ -203,7 +207,7 @@ export function useDashboardPageData() {
     selectedMonth,
     categories,
     paymentCategoryPattern: debtsSettings.payment_category_pattern,
-    enabled: goalsReadyForMetrics && canUse('budget'),
+    enabled: goalsReadyForMetrics && canUse('budget') && canUse('debts'),
   });
 
   const insurancePremiums = useInsuranceBudgetPremiums({
@@ -213,7 +217,7 @@ export function useDashboardPageData() {
     selectedMonth,
     categories,
     paymentCategoryPattern: insuranceSettings.payment_category_pattern,
-    enabled: goalsReadyForMetrics && canUse('budget'),
+    enabled: goalsReadyForMetrics && canUse('budget') && canUse('insurance'),
   });
 
   const syncedPremiumExpenses = useMemo(
@@ -247,8 +251,11 @@ export function useDashboardPageData() {
   });
 
   const lockedSavings = useMemo(
-    () => budgetCalculations.calculateLockedSavings(savings, investments, exchangeRates),
-    [exchangeRates, investments, savings],
+    () =>
+      canUse('savings')
+        ? budgetCalculations.calculateLockedSavings(savings, investments, exchangeRates)
+        : 0,
+    [canUse, exchangeRates, investments, savings],
   );
 
   const cashflowMetrics = useMemo(
@@ -280,6 +287,7 @@ export function useDashboardPageData() {
         metersLoadedHouseholdId,
         businessStatus,
         businessLoadedHouseholdId,
+        receivablesStatus,
       }),
     [
       activeWalletId,
@@ -303,6 +311,7 @@ export function useDashboardPageData() {
       selectedMonth,
       selectedYear,
       utilitiesStatus,
+      receivablesStatus,
     ],
   );
 
@@ -333,7 +342,7 @@ export function useDashboardPageData() {
     });
 
     const aiCfoContext: AiCfoContextPayload | null =
-      activeWalletId !== null && financialDataReady
+      canLoadDashboardAiCfo(user) && activeWalletId !== null && financialDataReady
         ? { ...base.aiCfoContext, wallet_id: activeWalletId }
         : null;
 
@@ -363,6 +372,7 @@ export function useDashboardPageData() {
     todayStr,
     activeWalletId,
     financialDataReady,
+    user,
   ]);
 
   return {
@@ -385,6 +395,8 @@ export function useDashboardPageData() {
     handlePayItem,
     financialDataReady,
     missedIncomeSummary,
+    receivablesOutstanding: receivablesSummary.totalOutstanding,
+    receivablesOpenContactCount: receivablesSummary.openContactCount,
     insuranceUpcoming,
     insuranceReminderDays: insuranceSettings.reminder_days_before,
     rentalOverdueRents,
@@ -394,7 +406,7 @@ export function useDashboardPageData() {
     aiUtilityAnomalies,
     canUseAi,
     periodLabel,
-    dashboardWidgetOrder: dashboardSettings.widget_order,
+    dashboardWidgetOrder,
     metersShowAnnualOnDashboard: metersSettings.show_annual_summary_on_dashboard,
     ...snapshot,
   };

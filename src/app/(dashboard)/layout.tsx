@@ -13,7 +13,7 @@ import Link from 'next/link';
 import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { HouseholdOnboardingWizard } from '@/components/onboarding/HouseholdOnboardingWizard';
-import { canAccessModule, type ModuleId } from '@/helpers/module-access';
+import { canAccessModule, canUseModuleWithTier, type ModuleId } from '@/helpers/module-access';
 import { shouldUseMaintenanceOnlySession } from '@/config/platform-feature-flags';
 import { resolveRouteTierUpgradeRequirement } from '@/helpers/route-tier-guard';
 import { openUpgradeModal } from '@/stores/useUpgradeModalStore';
@@ -147,6 +147,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       ['/pocket-money', 'pocket_money'],
       ['/insurance', 'insurance'],
       ['/rental', 'rental'],
+      ['/receivables', 'receivables'],
+      ['/tools/travel', 'travel_planner'],
     ];
     for (const [prefix, moduleId] of routes) {
       if (pathname.startsWith(prefix)) {
@@ -168,6 +170,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       ['/pocket-money', 'pocket_money'],
       ['/insurance', 'insurance'],
       ['/rental', 'rental'],
+      ['/receivables', 'receivables'],
+      ['/tools/travel', 'travel_planner'],
     ];
     for (const [prefix, moduleId] of routes) {
       if (pathname.startsWith(prefix) && !canAccessModule(user, moduleId)) {
@@ -233,9 +237,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
               <h2 className="text-base font-semibold text-foreground mb-2">Hozzáférés megtagadva</h2>
               <p className="text-sm text-muted-foreground mb-6">
-                {blockedModule && user?.role !== 'admin' && !user?.permissions?.includes(blockedModule)
-                  ? 'Ehhez a modulhoz nincs jogosultságod. Kérd meg az adminisztrátort!'
-                  : 'Ez a modul nincs bekapcsolva a háztartásban, vagy nincs hozzáférésed hozzá.'}
+                {blockedModule &&
+                      user?.role !== 'admin' &&
+                      typeof blockedModule === 'string' &&
+                      !user?.permissions?.includes(blockedModule)
+                    ? 'Ehhez a modulhoz nincs jogosultságod. Kérd meg az adminisztrátort!'
+                    : 'Ez a modul nincs bekapcsolva a háztartásban, vagy nincs hozzáférésed hozzá.'}
               </p>
               <Link
                 href="/"

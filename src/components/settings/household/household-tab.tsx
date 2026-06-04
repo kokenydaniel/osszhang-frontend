@@ -1,7 +1,7 @@
 'use client';
 
 import { Home, Lock, Save, ShieldAlert, Trash2, UserPlus } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/FieldLabel';
@@ -19,8 +19,39 @@ import { householdClient } from '@/lib/api-client';
 import { StatusCodes } from '@/types/api';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
-import { type ModuleId } from '@/helpers/module-access';
-import { Droplets, Gauge, LayoutGrid, PiggyBank, ShoppingBag, TrendingDown, Wallet } from 'lucide-react';
+import config, { type ModuleId } from '@/config/config';
+import { isModuleEnabled } from '@/helpers/module-access';
+import {
+  Building2,
+  Coins,
+  Droplets,
+  Gauge,
+  HandCoins,
+  MapPinned,
+  PiggyBank,
+  Shield,
+  ShoppingBag,
+  TrendingDown,
+  Wallet,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
+const HOUSEHOLD_MODULE_UI: Record<
+  ModuleId,
+  { icon: LucideIcon; description: string }
+> = {
+  budget: { icon: Wallet, description: '/budget — bevételek, kiadások' },
+  savings: { icon: PiggyBank, description: '/savings — Széf, állampapírok' },
+  debts: { icon: TrendingDown, description: '/debts — hitelek, kölcsönök' },
+  utilities: { icon: Droplets, description: '/utilities — közüzemi számlák' },
+  meters: { icon: Gauge, description: '/meters — fogyasztás' },
+  business: { icon: ShoppingBag, description: '/business — webshop' },
+  pocket_money: { icon: Coins, description: '/pocket-money — gyerekek zsebpénze' },
+  insurance: { icon: Shield, description: '/insurance — kötvények, díjak' },
+  rental: { icon: Building2, description: '/rental — bérbeadás, bevételek' },
+  receivables: { icon: HandCoins, description: '/receivables — kinek adtál, mi a hátralék' },
+  travel_planner: { icon: MapPinned, description: '/tools/travel — AI utazástervező' },
+};
 
 export function SettingsHouseholdTab() {
   const { user, fetchMe } = useAuthStore();
@@ -36,9 +67,11 @@ export function SettingsHouseholdTab() {
     lastName: '',
     username: '',
     password: '',
-    role: 'editor' as 'admin' | 'editor' | 'viewer',
+    role: 'editor' as 'admin' | 'editor' | 'reader',
     permissions: ['budget', 'utilities'],
   });
+  const [pendingPermissionKeys, setPendingPermissionKeys] = useState<Set<string>>(new Set());
+  const permissionUpdateQueuesRef = useRef<Map<number, Promise<void>>>(new Map());
 
   useEffect(() => {
     if (user?.household) {
@@ -85,21 +118,38 @@ export function SettingsHouseholdTab() {
       if (!res || (res[0] !== StatusCodes.Http200 && res[0] !== StatusCodes.Http201)) throw new Error();
       await fetchMe();
       addNotification('Új családtag sikeresen létrehozva!', 'success');
-      setNewMemberData({ firstName: '', lastName: '', username: '', password: '', role: 'editor' as 'admin' | 'editor' | 'viewer', permissions: ['budget', 'utilities'] });
+      setNewMemberData({ firstName: '', lastName: '', username: '', password: '', role: 'editor' as 'admin' | 'editor' | 'reader', permissions: ['budget', 'utilities'] });
     } catch {
       addNotification('Hiba történt a regisztráció során.', 'error');
     }
   };
 
+  const permissionPendingKey = (memberId: number, moduleId: string) => `${memberId}:${moduleId}`;
+
   const toggleMemberPermission = (memberId: number, moduleId: string) => {
-    const member = user?.household?.users?.find((u) => u.id === memberId);
-    if (!member) return;
-    const currentPermissions = member.permissions || [];
-    const newPermissions = currentPermissions.includes(moduleId)
-      ? currentPermissions.filter((p) => p !== moduleId)
-      : [...currentPermissions, moduleId];
+    const pendingKey = permissionPendingKey(memberId, moduleId);
+    if (pendingPermissionKeys.has(pendingKey)) return;
+
+    setPendingPermissionKeys((prev) => new Set(prev).add(pendingKey));
+
+    const previousQueue = permissionUpdateQueuesRef.current.get(memberId) ?? Promise.resolve();
+    let releaseQueue!: () => void;
+    const queueTail = new Promise<void>((resolve) => {
+      releaseQueue = resolve;
+    });
+    permissionUpdateQueuesRef.current.set(memberId, queueTail);
+
     const updatePerms = async () => {
+      await previousQueue;
       try {
+        const member = useAuthStore.getState().user?.household?.users?.find((u) => u.id === memberId);
+        if (!member) return;
+
+        const currentPermissions = member.permissions || [];
+        const newPermissions = currentPermissions.includes(moduleId)
+          ? currentPermissions.filter((p) => p !== moduleId)
+          : [...currentPermissions, moduleId];
+
         const res = await householdClient.updateMember(memberId, { permissions: newPermissions });
         if (!res || res[0] !== StatusCodes.Http200) throw new Error();
         await fetchMe();
@@ -107,22 +157,41 @@ export function SettingsHouseholdTab() {
       } catch {
         await fetchMe();
         addNotification('A mentés nem sikerült.', 'error');
+      } finally {
+        setPendingPermissionKeys((prev) => {
+          const next = new Set(prev);
+          next.delete(pendingKey);
+          return next;
+        });
+        releaseQueue();
+        if (permissionUpdateQueuesRef.current.get(memberId) === queueTail) {
+          permissionUpdateQueuesRef.current.delete(memberId);
+        }
       }
     };
     void updatePerms();
   };
 
   const h = user?.household;
-  const modules = [
-    { id: 'budget' as ModuleId, label: 'Költségvetés', icon: Wallet, description: '/budget — bevételek, kiadások', enabled: h?.budget_enabled ?? h?.budget_enabled ?? false },
-    { id: 'savings' as ModuleId, label: 'Megtakarítások', icon: PiggyBank, description: '/savings — Széf, állampapírok', enabled: h?.savings_enabled ?? h?.savings_enabled ?? false },
-    { id: 'debts' as ModuleId, label: 'Tartozások', icon: TrendingDown, description: '/debts — hitelek, kölcsönök', enabled: h?.debts_enabled ?? h?.debts_enabled ?? false },
-    { id: 'utilities' as ModuleId, label: 'Rezsi', icon: Droplets, description: '/utilities — közüzemi számlák', enabled: h?.utilities_enabled ?? h?.utilities_enabled ?? false },
-    { id: 'meters' as ModuleId, label: 'Közműórák', icon: Gauge, description: '/meters — fogyasztás', enabled: h?.meters_enabled ?? h?.meters_enabled ?? false },
-    { id: 'business' as ModuleId, label: h?.business_name || h?.business_name || 'Vállalkozás', icon: ShoppingBag, description: '/business — webshop', enabled: h?.business_enabled ?? h?.business_enabled ?? false },
-  ];
+  const modules = config.modules.ids.map((id) => {
+    const ui = HOUSEHOLD_MODULE_UI[id];
+    const label =
+      id === 'business'
+        ? (h?.business_name || config.modules.labels.business)
+        : config.modules.labels[id];
+
+    return {
+      id,
+      label,
+      icon: ui.icon,
+      description: ui.description,
+      enabled: isModuleEnabled(h, id),
+    };
+  });
   
-  const activeMemberModules = modules.filter(m => m.enabled);
+  const activeMemberModules = modules.filter((m) => m.enabled);
+
+  const activeAssignablePermissions = activeMemberModules;
 
   return (
     <>
@@ -255,10 +324,11 @@ export function SettingsHouseholdTab() {
                     </>
                   ) : undefined
                 }
-                permissions={activeMemberModules.map((mod) => {
+                permissions={activeAssignablePermissions.map((mod) => {
                   const hasAccess = isMemberAdmin || memberPermissions.includes(mod.id);
                   const Icon = mod.icon;
                   const disabled = !isAdmin || member.id === user?.id || isMemberAdmin;
+                  const pending = pendingPermissionKeys.has(permissionPendingKey(member.id, mod.id));
                   return (
                     <PermissionChip
                       key={mod.id}
@@ -266,7 +336,8 @@ export function SettingsHouseholdTab() {
                       icon={Icon}
                       active={hasAccess}
                       disabled={disabled}
-                      onClick={disabled ? undefined : () => toggleMemberPermission(member.id, mod.id)}
+                      pending={pending}
+                      onClick={disabled || pending ? undefined : () => toggleMemberPermission(member.id, mod.id)}
                       title={mod.description}
                     />
                   );
@@ -342,10 +413,10 @@ export function SettingsHouseholdTab() {
                     className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
                     value={newMemberData.role}
                     onChange={(e) =>
-                      setNewMemberData({ ...newMemberData, role: e.target.value as 'admin' | 'editor' | 'viewer' })
+                      setNewMemberData({ ...newMemberData, role: e.target.value as 'admin' | 'editor' | 'reader' })
                     }
                   >
-                    <option value="viewer">Olvasó (csak megtekintés)</option>
+                    <option value="reader">Olvasó (csak megtekintés)</option>
                     <option value="editor">Szerkesztő (kezelheti a pénzügyeket)</option>
                     <option value="admin">Adminisztrátor (teljes hozzáférés)</option>
                   </select>
@@ -355,7 +426,7 @@ export function SettingsHouseholdTab() {
             <div className="space-y-2 pt-2 border-t border-border">
               <FieldLabel info={HELP.settings.invitePermissions}>Alapértelmezett modul jogosultságok</FieldLabel>
               <div className="flex flex-wrap gap-1.5">
-                {activeMemberModules.map((mod) => {
+                {activeAssignablePermissions.map((mod) => {
                   const Icon = mod.icon;
                   const active = newMemberData.permissions.includes(mod.id);
                   return (

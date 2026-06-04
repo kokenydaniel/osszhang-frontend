@@ -4,25 +4,24 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import config from '@/config/config';
-import { canAccessModule, isModuleEnabled, type ModuleId } from '@/helpers/module-access';
+import { canAccessModule, isHouseholdModuleId, type ModuleId } from '@/helpers/module-access';
 import {
   canAccessModuleByTier,
-  requiresUpgradeForFeature,
   requiresUpgradeForModule,
   showTierBadgeForModule,
 } from '@/helpers/check-access';
 import { useUpgradeModalStore } from '@/stores/useUpgradeModalStore';
 import { isPlatformAdmin } from '@/config/platform-admin';
-import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
-import { aiFeatureLabel } from '@/config/ai-features';
 import classNames from 'classnames';
 import {
   LayoutDashboard, Wallet, Home, Settings,
   TrendingUp, Gauge, PanelLeftClose, PanelLeftOpen, X, Command,
   PiggyBank, TrendingDown, Users, ToggleLeft, Megaphone, MapPinned,
-  Coins, Shield, Building2, Plug, Bot, ScrollText, Webhook,
+  Coins, Shield, Building2, HandCoins, Plug, Bot, ScrollText, Webhook, MessageSquareWarning,
 } from 'lucide-react';
 import { TierBadge } from '@/components/subscription/TierBadge';
+import { useAdminFeedbackAttentionCount } from '@/hooks/useAdminFeedbackAttentionCount';
+import { useUserFeedbackUnreadCount } from '@/hooks/useUserFeedbackUnreadCount';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -35,6 +34,9 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   const pathname = usePathname();
   const { user } = useAuthStore();
   const openUpgrade = useUpgradeModalStore((s) => s.open);
+  const platformAdmin = isPlatformAdmin(user);
+  const { count: feedbackAttentionCount } = useAdminFeedbackAttentionCount(platformAdmin);
+  const { count: feedbackUnreadCount } = useUserFeedbackUnreadCount(!platformAdmin && !!user);
 
   const appName = config.branding.appName;
   const businessName = user?.household?.business_name ?? user?.household?.business_name ?? 'Vállalkozás';
@@ -50,6 +52,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
         { href: '/budget', icon: Wallet, label: 'Költségvetés', id: 'budget' as const },
         { href: '/savings', icon: PiggyBank, label: 'Megtakarítások', id: 'savings' as const },
         { href: '/debts', icon: TrendingDown, label: 'Tartozások', id: 'debts' as const },
+        { href: '/receivables', icon: HandCoins, label: 'Kintlévőség', id: 'receivables' as const },
         { href: '/pocket-money', icon: Coins, label: 'Zsebpénz', id: 'pocket_money' as const },
         { href: '/insurance', icon: Shield, label: 'Biztosítások', id: 'insurance' as const },
         { href: '/rental', icon: Building2, label: 'Bérbeadás', id: 'rental' as const },
@@ -66,21 +69,17 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       section: 'Vállalkozás',
       items: [{ href: '/business', icon: TrendingUp, label: businessName, id: 'business' as const }],
     },
-    ...(isPlatformFeatureEnabled(user, 'enable_ai_travel_planner')
-      ? [
-          {
-            section: 'Okos eszközök',
-            items: [
-              {
-                href: '/tools/travel',
-                icon: MapPinned,
-                label: aiFeatureLabel('travel_planner'),
-                id: 'tools-travel' as const,
-              },
-            ],
-          },
-        ]
-      : []),
+    {
+      section: 'Okos eszközök',
+      items: [
+        {
+          href: '/tools/travel',
+          icon: MapPinned,
+          label: config.modules.labels.travel_planner,
+          id: 'travel_planner' as const,
+        },
+      ],
+    },
     {
       section: 'Rendszer',
       items: [{ href: '/settings', icon: Settings, label: 'Beállítások', id: 'settings' as const }],
@@ -97,19 +96,45 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
               { href: '/admin/webhooks', icon: Webhook, label: 'Webhook-ok', id: 'admin-webhooks' as const },
               { href: '/admin/audit-logs', icon: ScrollText, label: 'Audit napló', id: 'admin-audit-logs' as const },
               { href: '/admin/announcements', icon: Megaphone, label: 'Rendszerüzenetek', id: 'admin-announcements' as const },
+              {
+                href: '/admin/feedback-reports',
+                icon: MessageSquareWarning,
+                label: 'Bejelentések',
+                id: 'admin-feedback-reports' as const,
+              },
             ],
           },
         ]
       : []),
   ];
 
+  const globalNavIds = [
+    'dashboard',
+    'settings',
+    'feedback',
+    ...([
+      'admin-users',
+      'admin-features',
+      'admin-announcements',
+      'admin-feedback-reports',
+      'admin-integrations',
+      'admin-ai-features',
+      'admin-webhooks',
+      'admin-audit-logs',
+    ] as const),
+  ];
+
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
 
   const isNavVisible = (id: string) => {
     if (!user) return false;
-    if (id === 'tools-travel') return isPlatformFeatureEnabled(user, 'enable_ai_travel_planner');
-    if (['dashboard', 'settings', 'admin-users', 'admin-features', 'admin-announcements', 'admin-integrations', 'admin-ai-features', 'admin-webhooks', 'admin-audit-logs'].includes(id)) return true;
-    return isModuleEnabled(user.household, id as ModuleId);
+    if (globalNavIds.includes(id as (typeof globalNavIds)[number])) {
+      return true;
+    }
+    if (isHouseholdModuleId(id)) {
+      return canAccessModule(user, id);
+    }
+    return false;
   };
 
   const handleNavClick = (
@@ -119,44 +144,28 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
     label: string,
   ) => {
     if (
-      !user ||
-      ['dashboard', 'settings', 'admin-users', 'admin-features', 'admin-announcements', 'admin-integrations', 'admin-ai-features', 'admin-webhooks', 'admin-audit-logs'].includes(moduleId)
+      !user || globalNavIds.includes(moduleId as (typeof globalNavIds)[number])
     ) {
       onMobileClose?.();
       return;
     }
 
-    if (moduleId === 'tools-travel') {
-      const upgradeTier = requiresUpgradeForFeature(user, 'ai');
+    if (isHouseholdModuleId(moduleId) && !canAccessModule(user, moduleId)) {
+      e.preventDefault();
+      return;
+    }
+
+    if (isHouseholdModuleId(moduleId)) {
+      const upgradeTier = requiresUpgradeForModule(user, moduleId);
       if (upgradeTier) {
         e.preventDefault();
         openUpgrade({
-          requiredTier: 'premium',
+          requiredTier: upgradeTier === 'premium' ? 'premium' : 'pro',
           featureLabel: label,
-          featureId: 'ai',
+          moduleId,
         });
         return;
       }
-      onMobileClose?.();
-      return;
-    }
-
-    const mod = moduleId as ModuleId;
-
-    if (!canAccessModule(user, mod)) {
-      e.preventDefault();
-      return;
-    }
-
-    const upgradeTier = requiresUpgradeForModule(user, mod);
-    if (upgradeTier) {
-      e.preventDefault();
-      openUpgrade({
-        requiredTier: upgradeTier === 'premium' ? 'premium' : 'pro',
-        featureLabel: label,
-        moduleId: mod,
-      });
-      return;
     }
 
     onMobileClose?.();
@@ -205,7 +214,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           )}
         </div>
 
-        <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
+        <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4 min-h-0">
           {navGroups.map((group, gi) => {
             const items = group.items.filter((i) => isNavVisible(i.id));
             if (!items.length) return null;
@@ -219,17 +228,18 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                 {items.map((item) => {
                   const active = isActive(item.href);
                   const Icon = item.icon;
-                  const mod = item.id as ModuleId;
+                  const isGlobalNav = globalNavIds.includes(item.id as (typeof globalNavIds)[number]);
+                  const moduleId = item.id as ModuleId;
                   const tierLocked =
                     user &&
-                    !['dashboard', 'settings', 'admin-users', 'admin-features', 'admin-announcements', 'admin-integrations', 'admin-ai-features', 'admin-webhooks', 'admin-audit-logs', 'tools-travel'].includes(
-                      item.id,
-                    ) &&
-                    canAccessModule(user, mod) &&
-                    !canAccessModuleByTier(user, mod);
+                    !isGlobalNav &&
+                    isHouseholdModuleId(moduleId) &&
+                    canAccessModule(user, moduleId) &&
+                    !canAccessModuleByTier(user, moduleId);
                   const badgeTier =
-                    !['admin-users', 'admin-features', 'admin-announcements', 'admin-integrations', 'admin-ai-features', 'admin-webhooks', 'admin-audit-logs', 'tools-travel'].includes(item.id) &&
-                    showTierBadgeForModule(user, mod);
+                    !isGlobalNav && isHouseholdModuleId(moduleId)
+                      ? showTierBadgeForModule(user, moduleId)
+                      : null;
 
                   return (
                     <Link
@@ -248,6 +258,11 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                       {showLabels && (
                         <span className="truncate flex-1">{item.label}</span>
                       )}
+                      {showLabels && item.id === 'admin-feedback-reports' && feedbackAttentionCount > 0 ? (
+                        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[0.65rem] font-semibold text-white">
+                          {feedbackAttentionCount > 99 ? '99+' : feedbackAttentionCount}
+                        </span>
+                      ) : null}
                       {showLabels && badgeTier && (
                         <TierBadge tier={badgeTier === 'premium' ? 'premium' : 'pro'} />
                       )}
@@ -258,6 +273,29 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
             );
           })}
         </nav>
+
+        {!platformAdmin ? (
+          <div className="shrink-0 border-t border-border/80 px-3 py-3 mt-auto">
+            <Link
+              href="/feedback"
+              onClick={() => onMobileClose?.()}
+              title={!showLabels ? 'Visszajelzés' : undefined}
+              className={classNames(
+                'nav-item',
+                isActive('/feedback') && 'active',
+                !showLabels && 'justify-center px-2',
+              )}
+            >
+              <MessageSquareWarning size={16} strokeWidth={2} className="nav-icon shrink-0" />
+              {showLabels && <span className="truncate flex-1">Visszajelzés</span>}
+              {showLabels && feedbackUnreadCount > 0 ? (
+                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[0.65rem] font-semibold text-primary-foreground">
+                  {feedbackUnreadCount > 9 ? '9+' : feedbackUnreadCount}
+                </span>
+              ) : null}
+            </Link>
+          </div>
+        ) : null}
 
         <div className="shrink-0 border-t border-border p-2">
           <button

@@ -1,5 +1,7 @@
 import type { UserProfile } from '@/types';
 
 export function isPlatformAdmin(user: UserProfile | null | undefined): boolean {
-  return Boolean(user?.lifetime_admin);
+  if (!user) return false;
+  const record = user as UserProfile & { lifetimeAdmin?: boolean };
+  return Boolean(record.lifetime_admin ?? record.lifetimeAdmin);
 }

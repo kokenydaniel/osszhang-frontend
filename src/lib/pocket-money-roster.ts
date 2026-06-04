@@ -4,20 +4,27 @@ import {
   createRosterMemberId,
   pocketMoneySettingsForApi,
   resolvePocketMoneySettings,
+  rosterMemberKey,
 } from '@/settings/pocket-money';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { pocketMoneyMemberKey } from '@/calculations/pocket-money';
 import type { PocketMoneyRosterMember } from '@/types/pocket-money';
 
-export async function persistPocketMoneyRoster(members: PocketMoneyRosterMember[]): Promise<boolean> {
-  const user = useAuthStore.getState().user;
-  const settings = resolvePocketMoneySettings(user?.household);
+export async function persistPocketMoneySettings(
+  settings: ReturnType<typeof resolvePocketMoneySettings>,
+): Promise<boolean> {
   const res = await householdClient.update({
-    pocket_money_settings: pocketMoneySettingsForApi({ ...settings, members }),
+    pocket_money_settings: pocketMoneySettingsForApi(settings),
   });
   if (!res || res[0] !== StatusCodes.Http200) return false;
   useAuthStore.getState().patchHousehold(res[1] as Record<string, unknown>);
   return true;
+}
+
+export async function persistPocketMoneyRoster(members: PocketMoneyRosterMember[]): Promise<boolean> {
+  const user = useAuthStore.getState().user;
+  const settings = resolvePocketMoneySettings(user?.household);
+  return persistPocketMoneySettings({ ...settings, members });
 }
 
 export function upsertRosterMember(
@@ -41,4 +48,12 @@ export function upsertRosterMember(
   );
 
   return [...withoutDupes, { ...member, id }].sort((a, b) => a.label.localeCompare(b.label, 'hu'));
+}
+
+export function removeRosterMember(
+  roster: PocketMoneyRosterMember[],
+  member: Pick<PocketMoneyRosterMember, 'id' | 'memberUserId' | 'label'>,
+): PocketMoneyRosterMember[] {
+  const key = pocketMoneyMemberKey(member.memberUserId, member.label);
+  return roster.filter((m) => m.id !== member.id && rosterMemberKey(m) !== key);
 }

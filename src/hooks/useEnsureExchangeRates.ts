@@ -6,10 +6,12 @@ import { fetchExchangeRates } from '@/utils/exchange-rates';
 
 const REFRESH_MS = 30 * 60 * 1000;
 
-export function useEnsureExchangeRates() {
+export function useEnsureExchangeRates(enabled = true) {
   const setRates = useExchangeRatesStore((s) => s.setRates);
 
   useEffect(() => {
+    if (!enabled) return;
+
     let cancelled = false;
 
     const load = async () => {
@@ -24,5 +26,5 @@ export function useEnsureExchangeRates() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [setRates]);
+  }, [enabled, setRates]);
 }

@@ -87,16 +87,18 @@ export function RentalPropertyForm({ values, currencies, onChange }: Props) {
           placeholder="Pl. kaució, felújítási egyezmény, rezsi elszámolás módja…"
         />
       </FormField>
-      <MiniSwitch
-        label="Költségvetés szinkron (bevétel)"
-        checked={values.budgetSyncEnabled}
-        onChange={(checked) => onChange({ budgetSyncEnabled: checked })}
-      />
-      <MiniSwitch
-        label="Aktív ingatlan"
-        checked={values.isActive}
-        onChange={(checked) => onChange({ isActive: checked })}
-      />
+      <div className="flex flex-col gap-3">
+        <MiniSwitch
+          label="Költségvetés szinkron (bevétel)"
+          checked={values.budgetSyncEnabled}
+          onChange={(checked) => onChange({ budgetSyncEnabled: checked })}
+        />
+        <MiniSwitch
+          label="Aktív ingatlan"
+          checked={values.isActive}
+          onChange={(checked) => onChange({ isActive: checked })}
+        />
+      </div>
     </div>
   );
 }

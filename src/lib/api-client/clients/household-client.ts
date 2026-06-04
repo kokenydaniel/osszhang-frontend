@@ -36,6 +36,8 @@ export class HouseholdClient {
     insurance_enabled?: boolean;
     insurance_settings?: import('@/settings/insurance').InsuranceSettings;
     rental_enabled?: boolean;
+    receivables_enabled?: boolean;
+    travel_planner_enabled?: boolean;
     rental_settings?: import('@/settings/rental').RentalSettings;
     meters_settings?: import('@/settings/meters').MetersSettings;
     onboarding_completed?: boolean;

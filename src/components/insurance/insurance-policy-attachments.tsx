@@ -9,6 +9,7 @@ import { StatusCodes } from '@/types/api';
 import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
 import { canUseFeature } from '@/helpers/check-access';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useNotificationStore } from '@/stores/useNotificationStore';
 import type { FileAttachment } from '@/types/attachments';
 import { AttachmentFileRow } from '@/components/attachments/attachment-file-row';
 
@@ -24,6 +25,7 @@ export function InsurancePolicyAttachments({
   onCountChange,
 }: InsurancePolicyAttachmentsProps) {
   const user = useAuthStore((s) => s.user);
+  const { addNotification } = useNotificationStore();
   const inputRef = useRef<HTMLInputElement>(null);
   const onCountChangeRef = useRef(onCountChange);
   onCountChangeRef.current = onCountChange;
@@ -110,11 +112,17 @@ export function InsurancePolicyAttachments({
           file={file}
           disabled={loading || uploading || downloadingId !== null}
           downloading={downloadingId === file.id}
-          onDownload={() => {
+          onDownload={async () => {
             setDownloadingId(file.id);
-            void downloadAuthenticatedFile(`attachments/${file.id}/download`, file.originalName).finally(
-              () => setDownloadingId(null),
-            );
+            try {
+              const ok = await downloadAuthenticatedFile(
+                `attachments/${file.id}/download`,
+                file.originalName,
+              );
+              if (!ok) addNotification('A letöltés nem sikerült.', 'error');
+            } finally {
+              setDownloadingId(null);
+            }
           }}
           onDelete={canEdit ? () => void handleDelete(file.id) : undefined}
         />

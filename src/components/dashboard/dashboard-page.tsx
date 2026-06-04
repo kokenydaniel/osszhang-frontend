@@ -5,8 +5,11 @@ import classNames from 'classnames';
 import { formatDisplayInitials, formatDisplayName, formatGivenName } from '@/utils/person-name';
 import { HELP } from '@/config/help';
 import { PageHeader, MetricStrip, AccentPanel, ModulePageSkeleton } from '@/components/design';
-import { TierGatedAiPanel } from '@/components/subscription/TierGatedAiPanel';
-import { useTierFeature } from '@/components/subscription/TierFeatureGate';
+import {
+  canLoadDashboardAiCfo,
+  canShowDashboardAiBriefing,
+  isDashboardContentReady,
+} from '@/helpers/dashboard-access';
 import { Sparkles } from 'lucide-react';
 import { useDashboardPageData } from '@/hooks/useDashboardPageData';
 import type { DashboardWidgetId } from '@/settings/dashboard';
@@ -18,15 +21,14 @@ import { DashboardBusinessChart } from './dashboard-business-chart';
 import { AiCfoWidget } from './ai-cfo-widget';
 import { WalletSwitcherContainer as WalletSwitcher } from '@/components/layout/wallet-switcher-container';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
 import { aiFeatureLabel } from '@/config/ai-features';
 
 export function DashboardPage() {
   const state = useDashboardPageData();
   const user = useAuthStore((s) => s.user);
   const { GreetingIcon } = state;
-  const { allowed: canUseAi } = useTierFeature('ai');
-  const showAiCfo = isPlatformFeatureEnabled(user, 'enable_ai_cfo');
+  const showAiCfo = canLoadDashboardAiCfo(user);
+  const showAiBriefing = canShowDashboardAiBriefing(user);
 
   const orderedWidgets = useMemo(() => {
     const widgets: Record<DashboardWidgetId, ReactNode | null> = {
@@ -39,6 +41,8 @@ export function DashboardPage() {
           utilitySplitEnabled={state.utilitySplitEnabled}
           rezsiBalance={state.rezsiBalance}
           counterpartyLabel={state.counterpartyLabel}
+          receivablesOutstanding={state.receivablesOutstanding}
+          receivablesOpenContactCount={state.receivablesOpenContactCount}
           insuranceUpcoming={state.insuranceUpcoming}
           insuranceReminderDays={state.insuranceReminderDays}
           rentalOverdueRents={state.rentalOverdueRents}
@@ -108,45 +112,32 @@ export function DashboardPage() {
       business_chart: (
         <DashboardBusinessChart key="business_chart" businessEnabled={state.businessEnabled} chartData={state.chartData} />
       ),
-      ai_briefing: state.canUse('budget')
-        ? canUseAi && state.aiDashboardAdvice
-          ? (
-              <AccentPanel
-                key="ai_briefing"
-                tone="ai"
-                icon={Sparkles}
-                title={aiFeatureLabel('weekly_report')}
-                titleInfo={HELP.dashboard.aiBriefing}
-                description="Az aktuális adatokra szabott összegzés"
-                glow
-              >
-                {state.aiDashboardAdvice}
-              </AccentPanel>
-            )
-          : !canUseAi
-            ? (
-                <TierGatedAiPanel
-                  key="ai_briefing"
-                  featureLabel={aiFeatureLabel('weekly_report')}
-                  icon={Sparkles}
-                  title={aiFeatureLabel('weekly_report')}
-                  titleInfo={HELP.dashboard.aiBriefing}
-                  description="Az aktuális adatokra szabott összegzés"
-                  glow
-                >
-                  {null}
-                </TierGatedAiPanel>
-              )
-            : null
-        : null,
+      ai_briefing:
+        showAiBriefing && state.aiDashboardAdvice ? (
+          <AccentPanel
+            key="ai_briefing"
+            tone="ai"
+            icon={Sparkles}
+            title={aiFeatureLabel('weekly_report')}
+            titleInfo={HELP.dashboard.aiBriefing}
+            description="Az aktuális adatokra szabott összegzés"
+            glow
+          >
+            {state.aiDashboardAdvice}
+          </AccentPanel>
+        ) : null,
     };
 
     return state.dashboardWidgetOrder
       .map((id) => widgets[id])
       .filter((node): node is ReactNode => node != null);
-  }, [state, showAiCfo, canUseAi]);
+  }, [state, showAiBriefing, showAiCfo]);
 
-  const contentReady = state.financialDataReady && state.activeWalletId !== null;
+  const contentReady = isDashboardContentReady({
+    financialDataReady: state.financialDataReady,
+    canUse: state.canUse,
+    activeWalletId: state.activeWalletId,
+  });
 
   return (
     <div className="flex flex-col gap-7 w-full max-w-[1500px] mx-auto">

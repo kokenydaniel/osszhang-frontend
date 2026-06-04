@@ -6,6 +6,7 @@ import {
   isInsuranceDataReady,
   isRentalPeriodReady,
   isPocketMoneyPeriodReady,
+  isReceivablesDataReady,
   isUtilitiesLoaded,
   isWalletDebtsReady,
   isWalletSavingsReady,
@@ -35,6 +36,7 @@ export function isDashboardFinancialDataReady(params: {
   metersLoadedHouseholdId: number | null;
   businessStatus: LoadableStatus;
   businessLoadedHouseholdId: number | null;
+  receivablesStatus: LoadableStatus;
 }): boolean {
   const {
     activeWalletId,
@@ -58,6 +60,7 @@ export function isDashboardFinancialDataReady(params: {
     metersLoadedHouseholdId,
     businessStatus,
     businessLoadedHouseholdId,
+    receivablesStatus,
   } = params;
 
   if (activeWalletId === null) return false;
@@ -116,6 +119,10 @@ export function isDashboardFinancialDataReady(params: {
     if (!isHouseholdResourceReady(householdId, businessLoadedHouseholdId, businessStatus)) {
       return false;
     }
+  }
+
+  if (needs('receivables')) {
+    if (!isReceivablesDataReady(receivablesStatus)) return false;
   }
 
   return true;

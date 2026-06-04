@@ -1,6 +1,6 @@
 'use client';
 
-import { Pencil } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { pocketMoneyCalculations } from '@/calculations/pocket-money';
 import type { PocketMoneyDisplayMember } from '@/types/pocket-money';
@@ -12,6 +12,7 @@ type PocketMoneyMemberCardProps = {
   canEdit?: boolean;
   onSelect: () => void;
   onEdit?: () => void;
+  onDelete?: () => void;
 };
 
 export function PocketMoneyMemberCard({
@@ -20,6 +21,7 @@ export function PocketMoneyMemberCard({
   canEdit,
   onSelect,
   onEdit,
+  onDelete,
 }: PocketMoneyMemberCardProps) {
   const m = member;
 
@@ -84,21 +86,38 @@ export function PocketMoneyMemberCard({
         </div>
       </button>
 
-      {canEdit && onEdit ? (
-        <div className="relative z-10 flex items-center justify-end border-t border-border/50 bg-muted/30 px-3 py-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-          >
-            <Pencil size={13} />
-            Szerkesztés
-          </Button>
+      {canEdit && (onEdit || onDelete) ? (
+        <div className="relative z-10 flex items-center justify-end gap-1 border-t border-border/50 bg-muted/30 px-3 py-2">
+          {onEdit ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+            >
+              <Pencil size={13} />
+              Szerkesztés
+            </Button>
+          ) : null}
+          {onDelete ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            >
+              <Trash2 size={13} />
+              Törlés
+            </Button>
+          ) : null}
         </div>
       ) : null}
     </article>

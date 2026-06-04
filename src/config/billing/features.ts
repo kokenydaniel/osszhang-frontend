@@ -107,6 +107,12 @@ export const BILLING_FEATURE_MATRIX: BillingFeatureRow[] = [
     upgradeHint: 'Pro: bérleti ingatlanok és bevételek.',
     minTier: 'pro',
   },
+  {
+    id: 'receivables',
+    label: 'Kintlévőség',
+    upgradeHint: 'Pro: magán kölcsönök és kintlévőségek nyilvántartása.',
+    minTier: 'pro',
+  },
 ];
 
 const TIER_RANK: Record<BillingFeatureTier, number> = {

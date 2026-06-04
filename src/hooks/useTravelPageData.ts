@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { aiFinanceClient, savingsClient } from '@/lib/api-client';
-import { getApiErrorMessage } from '@/lib/api-client';
+import { getApiErrorMessage } from '@/helpers/api-error-message';
 import { unwrapApiData } from '@/utils/unwrap-api-data';
 import type { AiTravelPlan } from '@/types';
 import { StatusCodes } from '@/types/api';
@@ -40,18 +40,24 @@ export function useTravelPageData() {
       }
 
       try {
-        const res = await aiFinanceClient.planTravel({
-          destination,
-          duration_days: durationDays,
-          total_budget: totalBudget,
-        });
-        if (!res || res[0] !== StatusCodes.Http200) throw new Error('API Error');
-        return unwrapApiData<AiTravelPlan>(res[1]);
-      } catch (error) {
-        addNotification(
-          getApiErrorMessage(error, 'Az utazástervezés nem sikerült. Próbáld újra később.'),
-          'error',
+        const res = await aiFinanceClient.planTravel(
+          {
+            destination,
+            duration_days: durationDays,
+            total_budget: totalBudget,
+          },
+          { silent: true },
         );
+        if (!res || res[0] !== StatusCodes.Http200) {
+          addNotification(
+            getApiErrorMessage(res?.[0] ?? 0, res?.[1] ?? null, 'Az utazástervezés nem sikerült. Próbáld újra később.'),
+            'error',
+          );
+          return null;
+        }
+        return unwrapApiData<AiTravelPlan>(res[1]);
+      } catch {
+        addNotification('Az utazástervezés nem sikerült. Próbáld újra később.', 'error');
         return null;
       }
     },
@@ -80,7 +86,11 @@ export function useTravelPageData() {
           count_in_savings: true,
         });
         if (!res || (res[0] !== StatusCodes.Http200 && res[0] !== StatusCodes.Http201)) {
-          throw new Error('API Error');
+          addNotification(
+            getApiErrorMessage(res?.[0] ?? 0, res?.[1] ?? null, 'A megtakarítási cél mentése nem sikerült.'),
+            'error',
+          );
+          return false;
         }
 
         addNotification(
@@ -88,11 +98,8 @@ export function useTravelPageData() {
           'success',
         );
         return true;
-      } catch (error) {
-        addNotification(
-          getApiErrorMessage(error, 'A megtakarítási cél mentése nem sikerült.'),
-          'error',
-        );
+      } catch {
+        addNotification('A megtakarítási cél mentése nem sikerült.', 'error');
         return false;
       }
     },

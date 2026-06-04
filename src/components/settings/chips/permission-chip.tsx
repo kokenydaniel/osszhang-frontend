@@ -1,6 +1,6 @@
 'use client';
 
-import type { LucideIcon } from 'lucide-react';
+import { Loader2, type LucideIcon } from 'lucide-react';
 import classNames from 'classnames';
 
 export function PermissionChip({
@@ -36,7 +36,11 @@ export function PermissionChip({
         pending && 'opacity-60 pointer-events-none',
       )}
     >
-      <Icon size={12} strokeWidth={2.4} />
+      {pending ? (
+        <Loader2 size={12} className="animate-spin shrink-0" aria-hidden />
+      ) : (
+        <Icon size={12} strokeWidth={2.4} className="shrink-0" />
+      )}
       {label}
     </button>
   );

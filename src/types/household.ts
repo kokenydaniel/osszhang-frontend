@@ -43,6 +43,8 @@ export interface HouseholdProfile {
   insurance_enabled?: boolean;
   insurance_settings?: import('@/settings/insurance').InsuranceSettings;
   rental_enabled?: boolean;
+  receivables_enabled?: boolean;
+  travel_planner_enabled?: boolean;
   rental_settings?: import('@/settings/rental').RentalSettings;
   utility_split_enabled?: boolean;
   utility_split_partner_id?: number | null;

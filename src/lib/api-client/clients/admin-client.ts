@@ -1,6 +1,7 @@
 import type { ApiClient } from '../api-client';
 import { StatusCodes, SingleEntityResponse, EmptyResponse, isSingleEntityApiResponse } from '../response';
 import type { RequestOptions } from '../response';
+import { unwrapApiCollection, unwrapApiEntity } from '../type-guards';
 import type {
   AdminTierGrantPayload,
   AdminUsersQuery,
@@ -11,6 +12,8 @@ import type {
   SystemAnnouncement,
 } from '@/types/admin';
 import type { RawApiUser } from '@/types';
+import type { FeedbackCategory, FeedbackStatus } from '@/config/feedback';
+import type { FeedbackReport } from '@/types/feedback';
 
 export class AdminClient {
   constructor(protected apiClient: ApiClient, protected baseEndpoint = 'admin') {}
@@ -254,6 +257,95 @@ export class AdminClient {
       const [status, response] = await this.apiClient.deleteJson(`${this.baseEndpoint}/webhooks/${id}`);
       if (status === StatusCodes.Http204 || status === StatusCodes.Http200) {
         return this.apiClient.response(status as StatusCodes.Http204, null);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async listFeedbackReports(query?: {
+    status?: FeedbackStatus | 'all';
+    category?: FeedbackCategory | 'all';
+  }): SingleEntityResponse<{ items: FeedbackReport[]; attentionCount: number }> {
+    const params: Record<string, string> = {};
+    if (query?.status && query.status !== 'all') params.status = query.status;
+    if (query?.category && query.category !== 'all') params.category = query.category;
+
+    try {
+      const [status, response] = await this.apiClient.getJson(`${this.baseEndpoint}/feedback-reports`, { params });
+      const items = unwrapApiCollection<FeedbackReport>(response, ['id']);
+      if (status === StatusCodes.Http200 && items) {
+        const attentionCount =
+          typeof response === 'object' &&
+          response !== null &&
+          'meta' in response &&
+          typeof (response as { meta?: { attentionCount?: number } }).meta?.attentionCount === 'number'
+            ? (response as { meta: { attentionCount: number } }).meta.attentionCount
+            : 0;
+        return this.apiClient.response(status, { items, attentionCount });
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async feedbackAttentionCount(): SingleEntityResponse<{ count: number }> {
+    try {
+      const [status, response] = await this.apiClient.getJson(
+        `${this.baseEndpoint}/feedback-reports/attention-count`,
+      );
+      const entity = unwrapApiEntity<{ count: number }>(response, ['count']);
+      if (status === StatusCodes.Http200 && entity) {
+        return this.apiClient.response(status, entity);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async showFeedbackReport(id: number): SingleEntityResponse<FeedbackReport> {
+    try {
+      const [status, response] = await this.apiClient.getJson(`${this.baseEndpoint}/feedback-reports/${id}`);
+      const entity = unwrapApiEntity<FeedbackReport>(response, ['id']);
+      if (status === StatusCodes.Http200 && entity) {
+        return this.apiClient.response(status, entity);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async replyFeedbackReport(id: number, body: string): SingleEntityResponse<FeedbackReport> {
+    try {
+      const [statusCode, response] = await this.apiClient.postJson(
+        `${this.baseEndpoint}/feedback-reports/${id}/messages`,
+        { body },
+      );
+      const entity = unwrapApiEntity<FeedbackReport>(response, ['id']);
+      if (statusCode === StatusCodes.Http200 && entity) {
+        return this.apiClient.response(statusCode, entity);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async updateFeedbackReportStatus(
+    id: number,
+    status: FeedbackStatus,
+  ): SingleEntityResponse<FeedbackReport> {
+    try {
+      const [statusCode, response] = await this.apiClient.patchJson(`${this.baseEndpoint}/feedback-reports/${id}`, {
+        status,
+      });
+      const entity = unwrapApiEntity<FeedbackReport>(response, ['id']);
+      if (statusCode === StatusCodes.Http200 && entity) {
+        return this.apiClient.response(statusCode, entity);
       }
     } catch (err) {
       console.log('err', err);

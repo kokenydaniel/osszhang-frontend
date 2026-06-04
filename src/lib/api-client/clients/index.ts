@@ -15,3 +15,5 @@ export { AttachmentsClient } from './attachments-client';
 export { PocketMoneyClient } from './pocket-money-client';
 export { InsuranceClient } from './insurance-client';
 export { RentalClient } from './rental-client';
+export { FeedbackClient } from './feedback-client';
+export { ReceivablesClient } from './receivables-client';

@@ -6,11 +6,13 @@ import { PageHeader, EmptyState } from '@/components/design';
 import { TierGatedAiPanel } from '@/components/subscription/TierGatedAiPanel';
 import { useTravelPageData, type TravelFormInput } from '@/hooks/useTravelPageData';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
+import { canAccessModule, canUseModuleWithTier } from '@/helpers/module-access';
+import { canEditHousehold } from '@/utils/household-role';
 import type { AiTravelPlan } from '@/types';
-import { MapPinned } from 'lucide-react';
+import { Lock, MapPinned } from 'lucide-react';
 import { TravelForm } from './travel-form';
 import { TravelResult } from './travel-result';
+import Link from 'next/link';
 
 const defaultFormValues: TravelFormInput = {
   destination: '',
@@ -22,7 +24,9 @@ const defaultFormValues: TravelFormInput = {
 export function TravelPage() {
   const user = useAuthStore((s) => s.user);
   const { generatePlan, saveAsGoal } = useTravelPageData();
-  const enabled = isPlatformFeatureEnabled(user, 'enable_ai_travel_planner');
+  const hasPermission = canUseModuleWithTier(user, 'travel_planner');
+  const canSaveGoal =
+    !!user && canEditHousehold(user) && canUseModuleWithTier(user, 'savings');
 
   const [plan, setPlan] = useState<AiTravelPlan | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -42,7 +46,7 @@ export function TravelPage() {
   });
 
   const handleSaveGoal = async () => {
-    if (!plan) return;
+    if (!plan || !canSaveGoal) return;
     setIsSavingGoal(true);
     try {
       await saveAsGoal(plan, form.getValues('targetDate'));
@@ -51,7 +55,9 @@ export function TravelPage() {
     }
   };
 
-  if (!enabled) {
+  if (!hasPermission) {
+    const noModuleAccess = user && !canAccessModule(user, 'travel_planner');
+
     return (
       <div className="flex flex-col gap-7 w-full max-w-[1500px] mx-auto">
         <PageHeader
@@ -60,9 +66,21 @@ export function TravelPage() {
           description="Költségvetés, útvonal és szállás — intelligens tervezéssel."
         />
         <EmptyState
-          icon={MapPinned}
-          title="Nem elérhető"
-          description="Az AI utazástervező jelenleg nem aktív a platformon."
+          icon={noModuleAccess ? Lock : MapPinned}
+          title={noModuleAccess ? 'Hozzáférés megtagadva' : 'Nem elérhető'}
+          description={
+            noModuleAccess
+              ? 'Az utazástervezőhöz nincs jogosultságod. Kérd meg a háztartás adminisztrátorát a Beállításokban.'
+              : 'Az utazástervező modul nincs bekapcsolva, vagy a csomagod nem tartalmazza.'
+          }
+          action={
+            <Link
+              href="/"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              Vissza a vezérlőpultra
+            </Link>
+          }
         />
       </div>
     );
@@ -73,7 +91,11 @@ export function TravelPage() {
       <PageHeader
         breadcrumbs={[{ label: 'Okos eszközök' }, { label: 'Utazástervező' }]}
         title="AI Utazástervező"
-        description="Tervezd meg az utazásodat költségvetéssel — majd mentsd el megtakarítási célként."
+        description={
+          canSaveGoal
+            ? 'Tervezd meg az utazásodat költségvetéssel — majd mentsd el megtakarítási célként.'
+            : 'Tervezd meg az utazásodat költségvetéssel. Olvasó jogosultsággal a terv nem menthető megtakarításba.'
+        }
       />
 
       <TierGatedAiPanel
@@ -87,7 +109,12 @@ export function TravelPage() {
           <TravelForm form={form} isGenerating={isGenerating} onSubmit={handleGenerate} />
 
           {plan ? (
-            <TravelResult plan={plan} isSavingGoal={isSavingGoal} onSaveAsGoal={() => void handleSaveGoal()} />
+            <TravelResult
+              plan={plan}
+              canSaveGoal={canSaveGoal}
+              isSavingGoal={isSavingGoal}
+              onSaveAsGoal={() => void handleSaveGoal()}
+            />
           ) : null}
         </div>
       </TierGatedAiPanel>

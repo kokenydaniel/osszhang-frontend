@@ -9,6 +9,8 @@ import {
   Coins,
   Shield,
   Building2,
+  HandCoins,
+  MapPinned,
   Gauge,
   Home,
   PiggyBank,
@@ -80,6 +82,8 @@ const MODULE_ICONS: Record<OnboardingModuleId, React.ComponentType<{ size?: numb
   pocket_money: Coins,
   insurance: Shield,
   rental: Building2,
+  receivables: HandCoins,
+  travel_planner: MapPinned,
 };
 
 type ModuleSelection = Record<OnboardingModuleId, boolean>;
@@ -107,6 +111,8 @@ export function HouseholdOnboardingWizard() {
     pocket_money: false,
     insurance: false,
     rental: false,
+    receivables: false,
+    travel_planner: false,
   });
   const [personalization, setPersonalization] = useState<PersonalizationAnswers>(
     () => ({ ...DEFAULT_PERSONALIZATION_ANSWERS }),

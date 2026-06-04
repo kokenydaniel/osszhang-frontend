@@ -40,6 +40,10 @@ export const help = {
     rentalReceived: 'Az adott hónapban befizetés napjával rögzített bevételek összege.',
     rentalOutstanding: 'Várható bérleti díj mínusz befolyt — ami még nem érkezett be.',
     rentalOverdue: 'Esedékesség után (türelmi nap) még nem befizetett bérleti díjak.',
+    receivablesOutstanding:
+      'Magán kölcsönök és előlegek — összesen ennyi pénz van még nálad másoknál (a Kintlévőség modulból).',
+    expectedInflows:
+      'Nettó várható pénz: elmaradt bevétel + kintlévőség + rezsi egyenleg. Ha a rezsi negatív, te tartozol a partnernek — ez csökkenti az összeget.',
   },
 
   budget: {

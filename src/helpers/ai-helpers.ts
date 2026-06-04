@@ -1,6 +1,8 @@
 import { aiFinanceClient } from '@/lib/api-client';
 import { isTimeoutError } from '@/lib/api-client/abortError';
+import { getApiErrorMessage } from '@/helpers/api-error-message';
 import { unwrapApiData } from '@/utils/unwrap-api-data';
+import { isObject } from '@/lib/api-client/type-guards';
 import { metersCalculations } from '@/calculations/meters';
 import { StatusCodes } from '@/types/api';
 import type {
@@ -13,6 +15,26 @@ import type {
   AiTravelPlan,
   AiCfoContextPayload,
 } from '@/types';
+
+function unwrapAiCfoBrief(payload: unknown): AiCfoBrief | null {
+  const direct = unwrapApiData<AiCfoBrief>(payload);
+  if (direct && typeof direct.summary === 'string' && direct.summary.trim()) {
+    return direct;
+  }
+
+  if (isObject(payload) && isObject(payload.data)) {
+    const nested = payload.data as Record<string, unknown>;
+    if (typeof nested.summary === 'string' && nested.summary.trim()) {
+      return {
+        summary: nested.summary,
+        tips: Array.isArray(nested.tips) ? (nested.tips as string[]) : [],
+        warnings: Array.isArray(nested.warnings) ? (nested.warnings as string[]) : [],
+      };
+    }
+  }
+
+  return null;
+}
 
 export const aiHelpers = {
   async getOverspendRootCause(
@@ -128,16 +150,34 @@ export const aiHelpers = {
   async getAiCfo(
     payload: AiCfoContextPayload,
     options?: { silent?: boolean },
-  ): Promise<AiCfoBrief | null> {
+  ): Promise<{ brief: AiCfoBrief | null; errorMessage: string | null }> {
     try {
       const res = await aiFinanceClient.getAiCfo(payload, {
         silent: options?.silent,
       });
-      if (!res || res[0] !== StatusCodes.Http200) throw new Error('API Error');
-      return unwrapApiData<AiCfoBrief>(res[1]);
+      if (!res) {
+        return { brief: null, errorMessage: null };
+      }
+      if (res[0] === StatusCodes.Http200) {
+        const brief = unwrapAiCfoBrief(res[1]);
+        if (brief) {
+          return { brief, errorMessage: null };
+        }
+      }
+      const message = getApiErrorMessage(
+        res[0],
+        res[1],
+        'A havi pénzügyi tanácsadó jelenleg nem érhető el.',
+      );
+      if (!options?.silent) {
+        console.warn('[aiHelpers] getAiCfo unavailable', res[0], message);
+      }
+      return { brief: null, errorMessage: null };
     } catch (error) {
-      console.error('[aiHelpers] getAiCfo failed', error);
-      return null;
+      if (!options?.silent || !isTimeoutError(error)) {
+        console.error('[aiHelpers] getAiCfo failed', error);
+      }
+      return { brief: null, errorMessage: null };
     }
   },
 

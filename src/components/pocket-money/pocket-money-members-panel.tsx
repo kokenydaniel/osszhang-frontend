@@ -13,6 +13,7 @@ type PocketMoneyMembersPanelProps = {
   canEdit?: boolean;
   onAddMember?: () => void;
   onEditMember?: (member: PocketMoneyDisplayMember) => void;
+  onDeleteMember?: (member: PocketMoneyDisplayMember) => void;
 };
 
 export function PocketMoneyMembersPanel({
@@ -22,6 +23,7 @@ export function PocketMoneyMembersPanel({
   canEdit,
   onAddMember,
   onEditMember,
+  onDeleteMember,
 }: PocketMoneyMembersPanelProps) {
   const hasMembers = members.length > 0;
 
@@ -63,6 +65,7 @@ export function PocketMoneyMembersPanel({
               canEdit={canEdit}
               onSelect={() => onSelectMember(selectedMemberKey === m.memberKey ? null : m.memberKey)}
               onEdit={onEditMember ? () => onEditMember(m) : undefined}
+              onDelete={onDeleteMember ? () => onDeleteMember(m) : undefined}
             />
           ))
         ) : (

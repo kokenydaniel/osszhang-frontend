@@ -106,6 +106,7 @@ export function formatHouseholdRole(role: string): string {
       return 'Háztartás admin';
     case 'editor':
       return 'Szerkesztő';
+    case 'reader':
     case 'viewer':
       return 'Olvasó';
     default:

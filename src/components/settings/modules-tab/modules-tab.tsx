@@ -5,8 +5,10 @@ import {
   Droplets,
   FolderTree,
   Gauge,
+  HandCoins,
   Home,
   Lock,
+  MapPinned,
   PiggyBank,
   Plus,
   Save,
@@ -95,6 +97,8 @@ export function SettingsModulesTab() {
   const [pocketMoneyEnabled, setPocketMoneyEnabled] = useState(false);
   const [insuranceEnabled, setInsuranceEnabled] = useState(false);
   const [rentalEnabled, setRentalEnabled] = useState(false);
+  const [receivablesEnabled, setReceivablesEnabled] = useState(false);
+  const [travelPlannerEnabled, setTravelPlannerEnabled] = useState(false);
 
   const [businessName, setBusinessName] = useState('');
   const [shopifyImportEnabled, setShopifyImportEnabled] = useState(false);
@@ -135,6 +139,8 @@ export function SettingsModulesTab() {
   const [isPocketMoneySaving, setIsPocketMoneySaving] = useState(false);
   const [isInsuranceSaving, setIsInsuranceSaving] = useState(false);
   const [isRentalSaving, setIsRentalSaving] = useState(false);
+  const [isReceivablesSaving, setIsReceivablesSaving] = useState(false);
+  const [isTravelPlannerSaving, setIsTravelPlannerSaving] = useState(false);
   const [newCat, setNewCat] = useState('');
 
   useEffect(() => {
@@ -151,6 +157,8 @@ export function SettingsModulesTab() {
       );
       setInsuranceEnabled(h.insurance_enabled ?? false);
       setRentalEnabled(h.rental_enabled ?? false);
+      setReceivablesEnabled(h.receivables_enabled ?? false);
+      setTravelPlannerEnabled(h.travel_planner_enabled ?? false);
       setBusinessName(h.business_name ?? h.business_name ?? '');
 
       const rawShopify = h.shopify_import_enabled ?? false;
@@ -547,6 +555,9 @@ export function SettingsModulesTab() {
   const pocketMoneyProps = moduleCardProps('pocket_money', pocketMoneyEnabled, setPocketMoneyEnabled);
   const insuranceProps = moduleCardProps('insurance', insuranceEnabled, setInsuranceEnabled);
   const rentalProps = moduleCardProps('rental', rentalEnabled, setRentalEnabled);
+  const receivablesProps = moduleCardProps('receivables', receivablesEnabled, setReceivablesEnabled);
+  const travelPlannerProps = moduleCardProps('travel_planner', travelPlannerEnabled, setTravelPlannerEnabled);
+  const travelPlannerPlatformEnabled = isPlatformFeatureEnabled(user, 'enable_ai_travel_planner');
 
   return (
     <>
@@ -1171,6 +1182,84 @@ export function SettingsModulesTab() {
               </SettingsCollapsibleSection>
             )}
           </ModuleFeatureCard>
+
+          <ModuleFeatureCard
+            title="Kintlévőség"
+            description="Magán kölcsönök és előlegek — kinek adtál, miből, mennyi van még nála."
+            enabled={receivablesEnabled}
+            tierBadge={receivablesProps.tierBadge}
+            onToggle={receivablesProps.onToggle}
+            icon={<HandCoins size={22} strokeWidth={2} />}
+            iconClassName="bg-teal-500/12 text-teal-600 border border-teal-500/20"
+            footer={
+              <Button
+                type="button"
+                onClick={() =>
+                  void handleModuleSave(
+                    'receivables_enabled',
+                    receivablesEnabled,
+                    setIsReceivablesSaving,
+                    'Kintlévőség',
+                  )
+                }
+                loading={isReceivablesSaving}
+                disabled={isReceivablesSaving}
+              >
+                <Save size={13} />
+                {isReceivablesSaving ? 'Mentés…' : 'Kintlévőség mentése'}
+              </Button>
+            }
+          >
+            {receivablesProps.tierLocked ? (
+              <InsightBanner tone="warning" icon={ShieldAlert} title="Nincs a csomagodban">
+                Ez a modul a Pro csomag része.
+              </InsightBanner>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                A Pénzügyek menüben jelenik meg. Nem keveredik a Tartozások modullal (amit te tartozol).
+              </p>
+            )}
+          </ModuleFeatureCard>
+
+          {travelPlannerPlatformEnabled ? (
+            <ModuleFeatureCard
+              title="Utazástervező"
+              description="AI utazásköltség-tervező — olvasó is generálhat tervet, megtakarításba mentés szerkesztőnek."
+              enabled={travelPlannerEnabled}
+              tierBadge={travelPlannerProps.tierBadge}
+              onToggle={travelPlannerProps.onToggle}
+              icon={<MapPinned size={22} strokeWidth={2} />}
+              iconClassName="bg-violet-500/12 text-violet-600 border border-violet-500/20"
+              footer={
+                <Button
+                  type="button"
+                  onClick={() =>
+                    void handleModuleSave(
+                      'travel_planner_enabled',
+                      travelPlannerEnabled,
+                      setIsTravelPlannerSaving,
+                      'Utazástervező',
+                    )
+                  }
+                  loading={isTravelPlannerSaving}
+                  disabled={isTravelPlannerSaving}
+                >
+                  <Save size={13} />
+                  {isTravelPlannerSaving ? 'Mentés…' : 'Utazástervező mentése'}
+                </Button>
+              }
+            >
+              {travelPlannerProps.tierLocked ? (
+                <InsightBanner tone="warning" icon={ShieldAlert} title="Nincs a csomagodban">
+                  Ez a modul a Premium csomag része.
+                </InsightBanner>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Az Okos eszközök menüben jelenik meg. A tagoknak külön jogosultságot kell adni a Háztartás fülön.
+                </p>
+              )}
+            </ModuleFeatureCard>
+          ) : null}
         </div>
       )}
 

@@ -67,3 +67,7 @@ export function isRentalPeriodReady(
   const key = `${year}-${month}`;
   return status === LoadableStatus.Loaded && loadedPeriod === key;
 }
+
+export function isReceivablesDataReady(status: LoadableStatus): boolean {
+  return status === LoadableStatus.Loaded;
+}

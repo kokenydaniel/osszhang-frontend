@@ -44,5 +44,7 @@ export const attachmentsClient = apiClient.attachments;
 export const pocketMoneyClient = apiClient.pocketMoney;
 export const insuranceClient = apiClient.insurance;
 export const rentalClient = apiClient.rental;
+export const feedbackClient = apiClient.feedback;
+export const receivablesClient = apiClient.receivables;
 export { getLastInsuranceApiFailure } from './clients/insurance-client';
 export { getLastRentalApiFailure } from './clients/rental-client';

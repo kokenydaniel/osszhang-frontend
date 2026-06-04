@@ -17,6 +17,7 @@ export const ONBOARDING_MODULE_TIERS: Partial<Record<OnboardingModuleId, 'pro' |
   pocket_money: 'pro',
   insurance: 'pro',
   rental: 'pro',
+  receivables: 'pro',
   business: 'premium',
 };
 
@@ -77,6 +78,12 @@ export const ONBOARDING_MODULE_OPTIONS: {
     id: 'rental',
     label: 'Bérbeadás',
     description: 'Bérbe adott ingatlanok és bevételi tételek.',
+    tier: 'pro',
+  },
+  {
+    id: 'receivables',
+    label: 'Kintlévőség',
+    description: 'Kinek adtál pénzt, mennyi van még nála, visszafizetések.',
     tier: 'pro',
   },
 ];

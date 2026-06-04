@@ -8,6 +8,7 @@ import { AlertTriangle, CalendarDays, Loader2, PiggyBank, Wallet } from 'lucide-
 
 interface TravelResultProps {
   plan: AiTravelPlan;
+  canSaveGoal: boolean;
   isSavingGoal: boolean;
   onSaveAsGoal: () => void;
 }
@@ -19,7 +20,7 @@ const COST_LABELS: Record<keyof AiTravelPlan['cost_breakdown'], string> = {
   transport: 'Közlekedés',
 };
 
-export function TravelResult({ plan, isSavingGoal, onSaveAsGoal }: TravelResultProps) {
+export function TravelResult({ plan, canSaveGoal, isSavingGoal, onSaveAsGoal }: TravelResultProps) {
   const breakdownEntries = Object.entries(plan.cost_breakdown) as Array<
     [keyof AiTravelPlan['cost_breakdown'], number]
   >;
@@ -37,10 +38,12 @@ export function TravelResult({ plan, isSavingGoal, onSaveAsGoal }: TravelResultP
           <h2 className="text-lg font-semibold text-foreground">{plan.destination}</h2>
           {plan.summary ? <p className="text-sm text-muted-foreground mt-1">{plan.summary}</p> : null}
         </div>
-        <Button type="button" variant="outline" onClick={onSaveAsGoal} disabled={isSavingGoal} className="gap-2 shrink-0">
-          {isSavingGoal ? <Loader2 size={16} className="animate-spin" /> : <PiggyBank size={16} />}
-          Mentés megtakarítási célként
-        </Button>
+        {canSaveGoal ? (
+          <Button type="button" variant="outline" onClick={onSaveAsGoal} disabled={isSavingGoal} className="gap-2 shrink-0">
+            {isSavingGoal ? <Loader2 size={16} className="animate-spin" /> : <PiggyBank size={16} />}
+            Mentés megtakarítási célként
+          </Button>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

@@ -39,7 +39,7 @@ export function PocketMoneyEntryModal({
   const entries = usePocketMoneyStore((s) => s.entries);
   const settings = useMemo(() => resolvePocketMoneySettings(user?.household), [user?.household]);
   const roster = useMemo(
-    () => mergeRosterWithEntryMembers(settings.members, entries),
+    () => mergeRosterWithEntryMembers(settings.members, entries, settings.hidden_member_keys),
     [settings.members, entries],
   );
   const isEdit = entry !== null;

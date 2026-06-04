@@ -17,6 +17,8 @@ import {
   PocketMoneyClient,
   InsuranceClient,
   RentalClient,
+  FeedbackClient,
+  ReceivablesClient,
 } from './clients';
 import { API_URL } from './public-env';
 
@@ -38,6 +40,8 @@ export class ApiClientFacade extends ApiClient {
   readonly pocketMoney: PocketMoneyClient;
   readonly insurance: InsuranceClient;
   readonly rental: RentalClient;
+  readonly feedback: FeedbackClient;
+  readonly receivables: ReceivablesClient;
 
   constructor(baseUrl: string = API_URL) {
     super(baseUrl);
@@ -58,6 +62,8 @@ export class ApiClientFacade extends ApiClient {
     this.pocketMoney = new PocketMoneyClient(this);
     this.insurance = new InsuranceClient(this);
     this.rental = new RentalClient(this);
+    this.feedback = new FeedbackClient(this);
+    this.receivables = new ReceivablesClient(this);
   }
 }
 

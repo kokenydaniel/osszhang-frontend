@@ -3,7 +3,7 @@ import { buildAiCfoCacheKey } from '@/helpers/ai-cfo-cache';
 import { useDashboardStore } from '@/stores/useDashboardStore';
 import type { AiCfoBrief, AiCfoContextPayload } from '@/types';
 
-const inflightLoads = new Map<string, Promise<AiCfoBrief | null>>();
+const inflightLoads = new Map<string, Promise<{ brief: AiCfoBrief | null; errorMessage: string | null }>>();
 
 /**
  * Fingerprint of metrics that affect Marad and the AI CFO snapshot.
@@ -55,12 +55,12 @@ export function buildAiCfoCacheKeyFromPayload(payload: AiCfoContextPayload): str
 export async function ensureAiCfoAdviceLoaded(
   payload: AiCfoContextPayload,
   options?: { force?: boolean; silent?: boolean },
-): Promise<AiCfoBrief | null> {
+): Promise<{ brief: AiCfoBrief | null; errorMessage: string | null }> {
   const key = buildAiCfoCacheKeyFromPayload(payload);
   const store = useDashboardStore.getState();
 
   if (!options?.force && store.aiCfoCacheKey === key && store.aiCfoAdvice) {
-    return store.aiCfoAdvice;
+    return { brief: store.aiCfoAdvice, errorMessage: null };
   }
 
   const existing = inflightLoads.get(key);
@@ -69,11 +69,12 @@ export async function ensureAiCfoAdviceLoaded(
   }
 
   const promise = aiHelpers.getAiCfo(payload, { silent: options?.silent ?? true })
-    .then((result) => {
-      if (result) {
-        useDashboardStore.getState().setAiCfoAdvice(key, result);
+    .then(({ brief, errorMessage }) => {
+      if (brief) {
+        useDashboardStore.getState().setAiCfoAdvice(key, brief);
+        return { brief, errorMessage: null as string | null };
       }
-      return result;
+      return { brief: null, errorMessage };
     })
     .finally(() => {
       inflightLoads.delete(key);

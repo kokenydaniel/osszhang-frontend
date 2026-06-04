@@ -9,16 +9,19 @@ import { StatusCodes } from '@/types/api';
 import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
 import { canUseFeature } from '@/helpers/check-access';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useNotificationStore } from '@/stores/useNotificationStore';
 import type { FileAttachment } from '@/types/attachments';
 import { AttachmentFileRow } from './attachment-file-row';
 
 type LedgerEntryAttachmentsProps = {
   ledgerEntryId: number;
+  transactionId?: number;
   compact?: boolean;
 };
 
-export function LedgerEntryAttachments({ ledgerEntryId, compact }: LedgerEntryAttachmentsProps) {
+export function LedgerEntryAttachments({ ledgerEntryId, transactionId, compact }: LedgerEntryAttachmentsProps) {
   const user = useAuthStore((s) => s.user);
+  const { addNotification } = useNotificationStore();
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<FileAttachment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -28,18 +31,24 @@ export function LedgerEntryAttachments({ ledgerEntryId, compact }: LedgerEntryAt
   const enabled =
     isPlatformFeatureEnabled(user, 'enable_attachments') && canUseFeature(user, 'attachments');
 
+  const budgetTxId =
+    transactionId != null && Number.isFinite(transactionId) && transactionId > 0 ? transactionId : null;
+
   const refresh = useCallback(async () => {
-    if (!enabled || ledgerEntryId <= 0) return;
+    if (!enabled || ledgerEntryId === 0) return;
     setLoading(true);
     try {
-      const res = await attachmentsClient.listForLedger(ledgerEntryId);
+      const res =
+        budgetTxId != null
+          ? await attachmentsClient.listForBudgetLedgerItem(budgetTxId, ledgerEntryId)
+          : await attachmentsClient.listForLedger(ledgerEntryId);
       if (res && res[0] === StatusCodes.Http200) {
         setFiles(res[1] ?? []);
       }
     } finally {
       setLoading(false);
     }
-  }, [enabled, ledgerEntryId]);
+  }, [enabled, ledgerEntryId, budgetTxId]);
 
   useEffect(() => {
     void refresh();
@@ -48,11 +57,20 @@ export function LedgerEntryAttachments({ ledgerEntryId, compact }: LedgerEntryAt
   const handleUpload = async (fileList: FileList | null) => {
     const file = fileList?.[0];
     if (!file || !enabled) return;
+    if (budgetTxId == null && ledgerEntryId <= 0) {
+      addNotification('A nyugta csak mentett költségvetési tételhez csatolható.', 'error');
+      return;
+    }
     setUploading(true);
     try {
-      const res = await attachmentsClient.uploadToLedger(ledgerEntryId, file);
+      const res =
+        budgetTxId != null
+          ? await attachmentsClient.uploadToBudgetLedgerItem(budgetTxId, ledgerEntryId, file)
+          : await attachmentsClient.uploadToLedger(ledgerEntryId, file);
       if (res && res[0] === StatusCodes.Http201) {
         await refresh();
+      } else {
+        addNotification('A feltöltés nem sikerült.', 'error');
       }
     } finally {
       setUploading(false);
@@ -87,11 +105,17 @@ export function LedgerEntryAttachments({ ledgerEntryId, compact }: LedgerEntryAt
           file={file}
           disabled={loading || uploading || downloadingId !== null}
           downloading={downloadingId === file.id}
-          onDownload={() => {
+          onDownload={async () => {
             setDownloadingId(file.id);
-            void downloadAuthenticatedFile(`attachments/${file.id}/download`, file.originalName).finally(
-              () => setDownloadingId(null),
-            );
+            try {
+              const ok = await downloadAuthenticatedFile(
+                `attachments/${file.id}/download`,
+                file.originalName,
+              );
+              if (!ok) addNotification('A letöltés nem sikerült.', 'error');
+            } finally {
+              setDownloadingId(null);
+            }
           }}
           onDelete={() => void handleDelete(file.id)}
         />

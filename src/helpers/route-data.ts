@@ -1,80 +1,39 @@
 import type { UserProfile } from '@/types';
-import type { ModuleId } from '@/helpers/module-access';
-import { enabledModules, preloadModule } from '@/helpers/module-preload';
+import {
+  DASHBOARD_FETCH_PRIORITY,
+  ensureModulesLoaded,
+  modulesForPath,
+  modulesForUser,
+  resetModuleDataCache,
+} from '@/helpers/module-data-plan';
+import { getActiveWalletId } from '@/helpers/wallet';
+import { usePeriodStore } from '@/stores/usePeriodStore';
 
-const ROUTE_MODULES: Record<string, ModuleId[]> = {
-  '/': ['budget', 'utilities', 'debts', 'savings', 'meters', 'business'],
-  '/budget': ['budget', 'utilities'],
-  '/utilities': ['utilities'],
-  '/debts': ['debts'],
-  '/savings': ['savings'],
-  '/meters': ['meters'],
-  '/business': ['business'],
-};
-
-const DASHBOARD_PRIORITY: ModuleId[] = ['budget', 'utilities'];
-const DASHBOARD_DEFERRED: ModuleId[] = ['debts', 'savings', 'meters', 'business'];
-
-const loadedModules = new Set<ModuleId>();
-let inflight: Promise<void> | null = null;
-let inflightPath: string | null = null;
-
-function modulesForPath(pathname: string): ModuleId[] {
-  if (pathname === '/') return ROUTE_MODULES['/'];
-  for (const [prefix, modules] of Object.entries(ROUTE_MODULES)) {
-    if (prefix !== '/' && pathname.startsWith(prefix)) return modules;
-  }
-  return [];
-}
-
-export function resetRouteDataCache() {
-  loadedModules.clear();
-  inflight = null;
-  inflightPath = null;
+export function resetRouteDataCache(): void {
+  resetModuleDataCache();
 }
 
 export async function loadRouteData(pathname: string, user: UserProfile | null | undefined): Promise<void> {
   if (!user) return;
 
-  const needed = enabledModules(user, modulesForPath(pathname)).filter((id) => !loadedModules.has(id));
+  const moduleIds = modulesForPath(pathname);
+  const needed = modulesForUser(user, moduleIds);
   if (needed.length === 0) return;
 
-  if (inflight && inflightPath === pathname) {
-    await inflight;
-    return;
-  }
-
-  inflightPath = pathname;
-
-  const markLoaded = async (moduleIds: ModuleId[], options?: { silent?: boolean }) => {
-    const results = await Promise.all(moduleIds.map((id) => preloadModule(id, options)));
-    moduleIds.forEach((id, index) => {
-      if (results[index]) {
-        loadedModules.add(id);
-      }
-    });
+  const { selectedYear, selectedMonth } = usePeriodStore.getState();
+  const ctx = {
+    activeWalletId: getActiveWalletId(),
+    householdId: user.household?.id,
+    selectedYear,
+    selectedMonth,
   };
 
   if (pathname === '/') {
-    const priority = needed.filter((id) => DASHBOARD_PRIORITY.includes(id));
-    const deferred = needed.filter((id) => DASHBOARD_DEFERRED.includes(id));
-
-    inflight = (async () => {
-      await markLoaded(priority);
-      if (deferred.length > 0) {
-        void markLoaded(deferred, { silent: true });
-      }
-    })();
-  } else {
-    inflight = markLoaded(needed).then(() => undefined);
+    await ensureModulesLoaded(user, needed, ctx, {
+      priority: DASHBOARD_FETCH_PRIORITY,
+    });
+    return;
   }
 
-  try {
-    await inflight;
-  } finally {
-    if (inflightPath === pathname) {
-      inflight = null;
-      inflightPath = null;
-    }
-  }
+  await ensureModulesLoaded(user, needed, ctx);
 }

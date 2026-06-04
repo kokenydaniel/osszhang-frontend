@@ -19,7 +19,12 @@ import {
   POCKET_MONEY_ENTRY_HINTS,
 } from '@/calculations/pocket-money';
 import { mergeRosterWithEntryMembers, resolvePocketMoneySettings } from '@/settings/pocket-money';
-import { persistPocketMoneyRoster, upsertRosterMember } from '@/lib/pocket-money-roster';
+import {
+  persistPocketMoneyRoster,
+  persistPocketMoneySettings,
+  removeRosterMember,
+  upsertRosterMember,
+} from '@/lib/pocket-money-roster';
 import { isHouseholdReader, canEditHousehold } from '@/utils/household-role';
 import { LoadableStatus } from '@/utils/loadable-status';
 import { formatMonthYear } from '@/utils';
@@ -62,8 +67,8 @@ export function PocketMoneyPage() {
 
   const settings = useMemo(() => resolvePocketMoneySettings(user?.household), [user?.household]);
   const roster = useMemo(
-    () => mergeRosterWithEntryMembers(settings.members, entries),
-    [settings.members, entries],
+    () => mergeRosterWithEntryMembers(settings.members, entries, settings.hidden_member_keys),
+    [settings.members, settings.hidden_member_keys, entries],
   );
   const isReader = isHouseholdReader(user);
   const canEdit = canEditHousehold(user);
@@ -74,10 +79,12 @@ export function PocketMoneyPage() {
     void usePocketMoneyStore.getState().fetch(selectedYear, selectedMonth);
   }, [selectedYear, selectedMonth]);
 
-  const displayMembers = useMemo(
-    () => pocketMoneyCalculations.mergeDisplayMembers(roster, members, settings.default_currency),
-    [roster, members, settings.default_currency],
-  );
+  const displayMembers = useMemo(() => {
+    const hidden = new Set(settings.hidden_member_keys);
+    return pocketMoneyCalculations
+      .mergeDisplayMembers(roster, members, settings.default_currency)
+      .filter((m) => !hidden.has(m.memberKey));
+  }, [roster, members, settings.default_currency, settings.hidden_member_keys]);
 
   const filteredEntries = useMemo(() => {
     if (!selectedMemberKey) return entries;
@@ -113,12 +120,29 @@ export function PocketMoneyPage() {
   const handleSaveMember = useCallback(
     async (member: PocketMoneyRosterMember, mode: 'create' | 'update') => {
       const saveMode = member.id.startsWith('legacy-') ? 'create' : mode;
-      const next = upsertRosterMember(settings.members, member, saveMode);
-      const ok = await persistPocketMoneyRoster(next);
+      const memberKey = pocketMoneyMemberKey(member.memberUserId, member.label);
+      const nextMembers = upsertRosterMember(settings.members, member, saveMode);
+      const hidden_member_keys = settings.hidden_member_keys.filter((k) => k !== memberKey);
+      const ok = await persistPocketMoneySettings({ ...settings, members: nextMembers, hidden_member_keys });
       if (!ok) throw new Error('save failed');
       addNotification(saveMode === 'create' ? 'Gyerek hozzáadva.' : 'Gyerek frissítve.', 'success');
     },
-    [addNotification, settings.members],
+    [addNotification, settings],
+  );
+
+  const handleDeleteMember = useCallback(
+    async (member: PocketMoneyRosterMember) => {
+      const memberKey = pocketMoneyMemberKey(member.memberUserId, member.label);
+      const nextMembers = removeRosterMember(settings.members, member);
+      const hidden_member_keys = [...new Set([...settings.hidden_member_keys, memberKey])];
+      const ok = await persistPocketMoneySettings({ ...settings, members: nextMembers, hidden_member_keys });
+      if (!ok) throw new Error('delete failed');
+      if (selectedMemberKey === memberKey) {
+        setSelectedMemberKey(null);
+      }
+      addNotification('Gyerek törölve a névsorból.', 'success');
+    },
+    [addNotification, selectedMemberKey, settings],
   );
 
   const openEditMember = useCallback(
@@ -129,6 +153,34 @@ export function PocketMoneyPage() {
       if (member) setMemberModal({ mode: 'edit', member });
     },
     [roster],
+  );
+
+  const confirmDeleteMember = useCallback(
+    (display: PocketMoneyDisplayMember) => {
+      const rosterMember = roster.find((m) => pocketMoneyMemberKey(m.memberUserId, m.label) === display.memberKey);
+      const member: PocketMoneyRosterMember = rosterMember ?? {
+        id: display.rosterId ?? `legacy-${display.memberKey}`,
+        label: display.memberLabel,
+        memberUserId: display.memberUserId,
+        icon: display.icon,
+        stickerColor: display.stickerColor,
+        iconColor: display.iconColor,
+      };
+
+      requestDelete({
+        title: 'Gyerek törlése',
+        message: `Biztosan törlöd „${display.memberLabel}" gyereket a névsorból? A korábbi tételek megmaradnak.`,
+        confirmText: 'Törlés',
+        onConfirm: async () => {
+          try {
+            await handleDeleteMember(member);
+          } catch {
+            addNotification('A törlés nem sikerült.', 'error');
+          }
+        },
+      });
+    },
+    [addNotification, handleDeleteMember, requestDelete, roster],
   );
 
   const handleSaved = useCallback(
@@ -236,6 +288,7 @@ export function PocketMoneyPage() {
         canEdit={canEdit}
         onAddMember={canEdit ? () => setMemberModal({ mode: 'create' }) : undefined}
         onEditMember={canEdit ? openEditMember : undefined}
+        onDeleteMember={canEdit ? confirmDeleteMember : undefined}
       />
 
       <PocketMoneyInterestPanel

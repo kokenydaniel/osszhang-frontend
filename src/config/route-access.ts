@@ -17,14 +17,14 @@ export const tierGuardedModuleRoutes: TierGuardedModuleRoute[] = [
   { prefix: '/pocket-money', moduleId: 'pocket_money' },
   { prefix: '/insurance', moduleId: 'insurance' },
   { prefix: '/rental', moduleId: 'rental' },
+  { prefix: '/receivables', moduleId: 'receivables' },
   { prefix: '/savings', moduleId: 'savings' },
   { prefix: '/debts', moduleId: 'debts' },
   { prefix: '/utilities', moduleId: 'utilities' },
   { prefix: '/meters', moduleId: 'meters' },
   { prefix: '/business', moduleId: 'business' },
+  { prefix: '/tools/travel', moduleId: 'travel_planner' },
 ];
 
 /** Premium feature routes without a dedicated module id. */
-export const tierGuardedFeatureRoutes: TierGuardedFeatureRoute[] = [
-  { prefix: '/tools/travel', featureId: 'ai', featureLabel: 'Utazás költségtervező' },
-];
+export const tierGuardedFeatureRoutes: TierGuardedFeatureRoute[] = [];

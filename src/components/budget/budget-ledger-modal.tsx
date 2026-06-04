@@ -272,7 +272,22 @@ export function BudgetLedgerModal({
                 </Button>
               </>
             )}
-            rowFooter={(item) => <LedgerEntryAttachments ledgerEntryId={item.id} compact />}
+            rowFooter={(item) => {
+              const txId = target?.txId;
+              const transactionId =
+                typeof txId === 'number' && Number.isFinite(txId)
+                  ? txId
+                  : typeof txId === 'string' && /^\d+$/.test(txId)
+                    ? Number(txId)
+                    : undefined;
+              return (
+                <LedgerEntryAttachments
+                  ledgerEntryId={item.id}
+                  transactionId={transactionId}
+                  compact
+                />
+              );
+            }}
           />
         ) : (
           <LedgerHistoryPanel items={ledgerItems} />

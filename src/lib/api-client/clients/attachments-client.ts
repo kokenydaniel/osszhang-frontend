@@ -8,6 +8,48 @@ import type { SingleEntityResponse } from '../response';
 export class AttachmentsClient {
   constructor(protected apiClient: ApiClient) {}
 
+  async listForBudgetLedgerItem(
+    transactionId: number,
+    itemId: number,
+  ): CollectionResponse<FileAttachment> {
+    try {
+      const [status, response] = await this.apiClient.getJson(
+        `transactions/${transactionId}/budget-items/attachments`,
+        { params: { item_id: itemId } },
+      );
+      const items = unwrapApiCollection<FileAttachment>(response, ['id']);
+      if (status === StatusCodes.Http200 && items) {
+        return this.apiClient.response(status, items);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async uploadToBudgetLedgerItem(
+    transactionId: number,
+    itemId: number,
+    file: File,
+  ): SingleEntityResponse<FileAttachment> {
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('item_id', String(itemId));
+      const [status, response] = await this.apiClient.postFormData(
+        `transactions/${transactionId}/budget-items/attachments`,
+        form,
+      );
+      const entity = unwrapApiEntity<FileAttachment>(response, ['id']);
+      if (status === StatusCodes.Http201 && entity) {
+        return this.apiClient.response(StatusCodes.Http201, entity);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
   async listForLedger(ledgerEntryId: number): CollectionResponse<FileAttachment> {
     try {
       const [status, response] = await this.apiClient.getJson(`ledger-entries/${ledgerEntryId}/attachments`);
