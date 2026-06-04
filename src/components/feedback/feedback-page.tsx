@@ -21,8 +21,12 @@ import {
 } from '@/config/feedback';
 import type { FeedbackReport, FeedbackReportAttachment } from '@/types/feedback';
 
-function userAttachmentPath(_reportId: number, _file: FeedbackReportAttachment): string {
-  return '';
+function userAttachmentPath(_reportId: number, file: FeedbackReportAttachment): string {
+  if (file.legacy || file.id <= 0) {
+    return '';
+  }
+
+  return `feedback-reports/attachments/${file.id}/download`;
 }
 
 export function FeedbackPage() {

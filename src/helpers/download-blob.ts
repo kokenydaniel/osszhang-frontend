@@ -1,4 +1,3 @@
-import { API_URL } from '@/lib/api-client/public-env';
 import { getAuthToken } from '@/helpers/auth-token';
 
 function triggerBrowserDownload(blob: Blob, filename: string): void {
@@ -14,19 +13,56 @@ function triggerBrowserDownload(blob: Blob, filename: string): void {
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
 
-export async function downloadAuthenticatedFile(endpoint: string, filename: string): Promise<boolean> {
-  const normalized = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-  const url = new URL(normalized, `${API_URL.replace(/\/$/, '')}/`);
+function isJsonErrorPayload(contentType: string | null): boolean {
+  if (!contentType) return false;
+  return contentType.includes('application/json') || contentType.includes('text/json');
+}
+
+function buildDownloadUrl(
+  endpoint: string,
+  params?: Record<string, string | number | boolean | undefined | null>,
+): string {
+  const normalized = endpoint.replace(/^\/+/, '');
+  const url = new URL(`/api/files/${normalized}`, window.location.origin);
+
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        url.searchParams.set(key, String(value));
+      }
+    });
+  }
+
+  return url.toString();
+}
+
+export async function downloadAuthenticatedFile(
+  endpoint: string,
+  filename: string,
+  params?: Record<string, string | number | boolean | undefined | null>,
+): Promise<boolean> {
+  if (!endpoint.trim()) {
+    return false;
+  }
+
   const token = getAuthToken();
+  const url = buildDownloadUrl(endpoint, params);
 
   try {
-    const response = await fetch(url.toString(), {
+    const response = await fetch(url, {
       method: 'GET',
-      headers: token ? { Authorization: `Bearer ${token}`, Accept: '*/*' } : { Accept: '*/*' },
+      headers: token
+        ? { Authorization: `Bearer ${token}`, Accept: '*/*' }
+        : { Accept: '*/*' },
       cache: 'no-store',
     });
 
     if (!response.ok) {
+      return false;
+    }
+
+    const contentType = response.headers.get('Content-Type');
+    if (isJsonErrorPayload(contentType)) {
       return false;
     }
 
@@ -35,7 +71,11 @@ export async function downloadAuthenticatedFile(endpoint: string, filename: stri
       return false;
     }
 
-    triggerBrowserDownload(blob, filename);
+    const fromHeader = response.headers.get('Content-Disposition');
+    const headerName = fromHeader?.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i)?.[1];
+    const decodedName = headerName ? decodeURIComponent(headerName) : filename;
+
+    triggerBrowserDownload(blob, decodedName);
     return true;
   } catch {
     return false;

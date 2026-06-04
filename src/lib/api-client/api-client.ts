@@ -1,4 +1,5 @@
 import { getAuthToken } from '@/helpers/auth-token';
+import { buildApiUrl } from './build-api-url';
 import { API_URL } from './public-env';
 import type { ApiClientResponse, SupportedStatusCodes, RequestOptions } from './response';
 
@@ -39,18 +40,7 @@ export class ApiClient {
   }
 
   protected buildUrl(endpoint: string, params?: RequestOptions['params']): string {
-    const normalized = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-    const url = new URL(normalized, `${this.baseUrl.replace(/\/$/, '')}/`);
-
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          url.searchParams.set(key, String(value));
-        }
-      });
-    }
-
-    return url.toString();
+    return buildApiUrl(endpoint, params, this.baseUrl);
   }
 
   protected async fetch(endpoint: string, init?: NextConfigAwareRequestInit, options?: RequestOptions) {
@@ -208,8 +198,16 @@ export class ApiClient {
       if (token) {
         headers.Authorization = `Bearer ${token}`;
       }
-      const response = await this.fetch(endpoint, { method: 'GET', headers }, options);
+      const response = await fetch(this.buildUrl(endpoint, options?.params), {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
       if (!response.ok) {
+        return null;
+      }
+      const contentType = response.headers.get('Content-Type');
+      if (contentType?.includes('application/json')) {
         return null;
       }
       return response;
