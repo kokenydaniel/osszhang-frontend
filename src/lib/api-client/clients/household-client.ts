@@ -1,6 +1,6 @@
 import type { ApiClient } from '../api-client';
 import { StatusCodes, SingleEntityResponse, EmptyResponse, isSingleEntityApiResponse } from '../response';
-import { unwrapApiEntity } from '../type-guards';
+import { isArray, unwrapApiEntity } from '../type-guards';
 import type { UserProfile } from '@/types';
 
 export class HouseholdClient {
@@ -68,8 +68,13 @@ export class HouseholdClient {
   async updateCategories(categories: string[]): SingleEntityResponse<{ categories: string[] }> {
     try {
       const [status, response] = await this.apiClient.putJson(`${this.baseEndpoint}/categories`, { categories });
-      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ categories: string[] }>(response, ['categories'])) {
+      if (status !== StatusCodes.Http200) return null;
+
+      if (isSingleEntityApiResponse<{ categories: string[] }>(response, ['categories'])) {
         return this.apiClient.response(status, response);
+      }
+      if (isArray(response) && response.every((item) => typeof item === 'string')) {
+        return this.apiClient.response(status, { categories: response as string[] });
       }
     } catch (err) {
       console.log('err', err);

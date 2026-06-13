@@ -15,9 +15,9 @@ import { isPlatformAdmin } from '@/config/platform-admin';
 import classNames from 'classnames';
 import {
   LayoutDashboard, Wallet, Home, Settings,
-  TrendingUp, Gauge, PanelLeftClose, PanelLeftOpen, X, Command,
-  PiggyBank, TrendingDown, Users, ToggleLeft, Megaphone, MapPinned,
-  Coins, Shield, Building2, HandCoins, Plug, Bot, ScrollText, Webhook, MessageSquareWarning,
+  TrendingUp, Gauge,   PanelLeftClose, PanelLeftOpen, X, Command,
+  PiggyBank, TrendingDown, Users, Wrench, Megaphone, MapPinned,
+  Coins, Shield, Building2, HandCoins, Plug, Bot, ScrollText, Webhook, MessageSquareWarning, Sparkles, Layers, Package,
 } from 'lucide-react';
 import { TierBadge } from '@/components/subscription/TierBadge';
 import { useAdminFeedbackAttentionCount } from '@/hooks/useAdminFeedbackAttentionCount';
@@ -89,19 +89,37 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           {
             section: 'Platform admin',
             items: [
-              { href: '/admin/users', icon: Users, label: 'Felhasználók', id: 'admin-users' as const },
-              { href: '/admin/features', icon: ToggleLeft, label: 'Rendszer funkciók', id: 'admin-features' as const },
-              { href: '/admin/integrations', icon: Plug, label: 'Integrációk', id: 'admin-integrations' as const },
-              { href: '/admin/ai-features', icon: Bot, label: 'AI kapcsolók', id: 'admin-ai-features' as const },
-              { href: '/admin/webhooks', icon: Webhook, label: 'Webhook-ok', id: 'admin-webhooks' as const },
-              { href: '/admin/audit-logs', icon: ScrollText, label: 'Audit napló', id: 'admin-audit-logs' as const },
-              { href: '/admin/announcements', icon: Megaphone, label: 'Rendszerüzenetek', id: 'admin-announcements' as const },
+              { href: '/admin/households', icon: Home, label: 'Háztartások', id: 'admin-households' as const },
               {
                 href: '/admin/feedback-reports',
                 icon: MessageSquareWarning,
                 label: 'Bejelentések',
                 id: 'admin-feedback-reports' as const,
               },
+            ],
+          },
+          {
+            section: 'Kiadás & funkciók',
+            items: [
+              { href: '/admin/modules', icon: Layers, label: 'Modul kiadás', id: 'admin-modules' as const },
+              {
+                href: '/admin/platform-services',
+                icon: Package,
+                label: 'Platform szolgáltatások',
+                id: 'admin-platform-services' as const,
+              },
+              { href: '/admin/integrations', icon: Plug, label: 'Integrációk', id: 'admin-integrations' as const },
+              { href: '/admin/ai-features', icon: Bot, label: 'AI kapcsolók', id: 'admin-ai-features' as const },
+            ],
+          },
+          {
+            section: 'Üzemeltetés',
+            items: [
+              { href: '/admin/features', icon: Wrench, label: 'Karbantartás & béta', id: 'admin-features' as const },
+              { href: '/admin/announcements', icon: Megaphone, label: 'Rendszerüzenetek', id: 'admin-announcements' as const },
+              { href: '/admin/webhooks', icon: Webhook, label: 'Webhook-ok', id: 'admin-webhooks' as const },
+              { href: '/admin/audit-logs', icon: ScrollText, label: 'Audit napló', id: 'admin-audit-logs' as const },
+              { href: '/admin/product-updates', icon: Sparkles, label: 'Újdonságok', id: 'admin-product-updates' as const },
             ],
           },
         ]
@@ -113,9 +131,12 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
     'settings',
     'feedback',
     ...([
-      'admin-users',
+      'admin-households',
       'admin-features',
+      'admin-modules',
+      'admin-platform-services',
       'admin-announcements',
+      'admin-product-updates',
       'admin-feedback-reports',
       'admin-integrations',
       'admin-ai-features',

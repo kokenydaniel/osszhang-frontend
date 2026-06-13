@@ -14,7 +14,6 @@ interface AdminUserDetailPanelProps {
   onActivate: () => void;
   onDeactivate: () => void;
   onImpersonate: () => void;
-  onEditTierGrant: () => void;
 }
 
 function buildDetailItems(user: AdminUser) {
@@ -70,7 +69,6 @@ export function AdminUserDetailPanel({
   onActivate,
   onDeactivate,
   onImpersonate,
-  onEditTierGrant,
 }: AdminUserDetailPanelProps) {
   const displayName = formatDisplayName(user.first_name, user.last_name) || user.username;
 
@@ -116,9 +114,6 @@ export function AdminUserDetailPanel({
           {user.is_active ? (
             <Button onClick={onImpersonate}>Megszemélyesítés</Button>
           ) : null}
-          <Button variant="outline" onClick={onEditTierGrant}>
-            Hozzáférési grant
-          </Button>
         </div>
       ) : (
         <p className="text-xs text-muted-foreground border-t border-border pt-4">

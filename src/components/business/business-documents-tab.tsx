@@ -11,6 +11,7 @@ import { useBusinessDocuments } from '@/hooks/useBusinessDocuments';
 import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
 import { canUseFeature } from '@/helpers/check-access';
 import { canEditHousehold } from '@/utils/household-role';
+import { formatHUF } from '@/utils';
 import type { BusinessOrder } from '@/types/business';
 import type { BusinessDocumentType } from '@/types/attachments';
 import type { UserProfile } from '@/types';
@@ -148,7 +149,7 @@ export function BusinessDocumentsTab({
                   <option value="">Nincs rendeléshez kötve</option>
                   {filteredOrders.map((o) => (
                     <option key={o.id} value={String(o.id)}>
-                      {o.customerName} — {o.amount.toLocaleString('hu-HU')} Ft
+                      {o.customerName} — {formatHUF(o.amount)}
                     </option>
                   ))}
                 </select>

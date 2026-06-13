@@ -141,13 +141,11 @@ export const debtsCalculations = {
   },
 
   enrichWithPayoff(debts: Debt[]): DebtWithPayoff[] {
-    return debts
-      .map((debt) => {
-        const remaining = debtsCalculations.remaining(debt);
-        const payoff = debtsCalculations.computePayoff(remaining, debt.annualInterestRate, debt.minimumPayment);
-        return { ...debt, remaining, payoff };
-      })
-      .filter((debt) => debt.remaining > 0);
+    return debts.map((debt) => {
+      const remaining = debtsCalculations.remaining(debt);
+      const payoff = debtsCalculations.computePayoff(remaining, debt.annualInterestRate, debt.minimumPayment);
+      return { ...debt, remaining, payoff };
+    });
   },
 
   buildSummaryMetrics(debts: Debt[], debtsWithPayoff: DebtWithPayoff[]): DebtsSummaryMetrics {

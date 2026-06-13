@@ -14,7 +14,7 @@ interface ModalProps {
   children: ReactNode;
   icon?: ReactNode;
   description?: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   contentKey?: string | number;
   animateContent?: boolean;
   dismissible?: boolean;
@@ -61,6 +61,7 @@ export function Modal({
     sm: 'max-w-sm',
     md: 'max-w-lg',
     lg: 'max-w-2xl',
+    xl: 'max-w-3xl',
   }[size];
 
   return createPortal(

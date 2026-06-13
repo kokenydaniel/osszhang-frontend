@@ -46,7 +46,7 @@ export function AuditLogPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         breadcrumbs={[
-          { label: 'Platform admin', href: '/admin/users' },
+          { label: 'Platform admin', href: '/admin/households' },
           { label: 'Audit napló' },
         ]}
         title="Platform admin / Audit napló"

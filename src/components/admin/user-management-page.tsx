@@ -12,8 +12,6 @@ import { AdminUserDetailDrawer } from './admin-user-detail-drawer';
 import { AdminActivateModal } from './admin-activate-modal';
 import { AdminDeactivateModal } from './admin-deactivate-modal';
 import { AdminImpersonateModal } from './admin-impersonate-modal';
-import { AdminTierGrantModal } from './admin-tier-grant-modal';
-import type { AdminTierGrantPayload } from '@/types/admin';
 
 export function UserManagementPage() {
   const [search, setSearch] = useState('');
@@ -25,7 +23,6 @@ export function UserManagementPage() {
   const [activateTarget, setActivateTarget] = useState<AdminUser | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<AdminUser | null>(null);
   const [impersonateTarget, setImpersonateTarget] = useState<AdminUser | null>(null);
-  const [tierGrantTarget, setTierGrantTarget] = useState<AdminUser | null>(null);
 
   const data = useAdminUsersPageData({ search, statusFilter, lifetimeAdminFilter, page });
   const drawerUser = data.resolveUser(selectedUser);
@@ -59,19 +56,6 @@ export function UserManagementPage() {
       setSelectedUser(updated);
     }
   }, [data, deactivateTarget, drawerOpen, selectedUser?.id]);
-
-  const handleTierGrant = useCallback(
-    async (payload: AdminTierGrantPayload) => {
-      if (!tierGrantTarget) return;
-      const updated = await data.updateTierGrant(tierGrantTarget, payload);
-      if (!updated) return;
-      setTierGrantTarget(null);
-      if (drawerOpen && selectedUser?.id === updated.id) {
-        setSelectedUser(updated);
-      }
-    },
-    [data, drawerOpen, selectedUser?.id, tierGrantTarget],
-  );
 
   const handleImpersonate = useCallback(async () => {
     if (!impersonateTarget) return;
@@ -167,7 +151,6 @@ export function UserManagementPage() {
         onActivate={setActivateTarget}
         onDeactivate={setDeactivateTarget}
         onImpersonate={setImpersonateTarget}
-        onEditTierGrant={setTierGrantTarget}
       />
       <AdminActivateModal
         target={activateTarget}
@@ -186,12 +169,6 @@ export function UserManagementPage() {
         onClose={() => setImpersonateTarget(null)}
         onConfirm={() => void handleImpersonate()}
         loading={data.impersonating}
-      />
-      <AdminTierGrantModal
-        target={tierGrantTarget}
-        onClose={() => setTierGrantTarget(null)}
-        onSubmit={handleTierGrant}
-        loading={data.savingTierGrant}
       />
     </div>
   );

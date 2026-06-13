@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { formatHUF } from '@/utils';
+import { formatCompactThousands, formatHUF } from '@/utils';
 import { ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
 import { Section } from '@/components/design';
 import { ChevronRight } from 'lucide-react';
@@ -38,7 +38,7 @@ export function DashboardBusinessChart({ businessEnabled, chartData }: Props) {
             </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="oklch(0.92 0.004 250)" />
             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'oklch(0.50 0.012 260)' }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'oklch(0.50 0.012 260)' }} tickFormatter={(v) => `${v / 1000}k`} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'oklch(0.50 0.012 260)' }} tickFormatter={formatCompactThousands} />
             <Tooltip
               contentStyle={{
                 background: 'oklch(0.995 0.002 250)',

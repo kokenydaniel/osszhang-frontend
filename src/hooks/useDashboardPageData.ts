@@ -46,7 +46,7 @@ import { resolveMetersSettings } from '@/settings/meters';
 import { resolvePocketMoneySettings } from '@/settings/pocket-money';
 import { computeDashboardBusinessTaxAlert } from '@/helpers/dashboard-business-tax-alert';
 import { computeDashboardPocketMoneyInterestAlert } from '@/helpers/dashboard-pocket-money-alert';
-import { aiHelpers } from '@/helpers/ai-helpers';
+import { ensureUtilityAnomaliesLoaded } from '@/helpers/utility-anomalies-loader';
 import { formatMonthYear } from '@/utils';
 import {
   computeDashboardSnapshot,
@@ -132,7 +132,7 @@ export function useDashboardPageData() {
   useEffect(() => {
     if (!canLoadUtilityAnomalies(user)) return;
     let cancelled = false;
-    void aiHelpers.getUtilityAnomalies(selectedYear, selectedMonth).then((data) => {
+    void ensureUtilityAnomaliesLoaded(selectedYear, selectedMonth).then((data) => {
       if (!cancelled) setAiUtilityAnomalies(data);
     });
     return () => {

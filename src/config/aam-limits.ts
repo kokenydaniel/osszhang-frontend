@@ -4,6 +4,8 @@
  * @see https://nav.gov.hu/ado/afa/Emelkedik_az_alanyi_adomentesseg_ertekhatara
  */
 
+import { IMPERSONATION_MONEY_PLACEHOLDER, isImpersonationMoneyMasked } from '@/helpers/impersonation-money';
+
 /** Naptári év → hivatalos felső határ (Ft), AAM választás / megtartás szempontjából. */
 export const AAM_ANNUAL_LIMIT_HUF: Record<number, number> = {
   2024: 12_000_000,
@@ -28,6 +30,7 @@ export function getAamAnnualLimitHuf(calendarYear: number): number {
 }
 
 export function formatAamLimitShort(limit: number): string {
+  if (isImpersonationMoneyMasked()) return IMPERSONATION_MONEY_PLACEHOLDER;
   if (limit >= 1_000_000) {
     const millions = limit / 1_000_000;
     return Number.isInteger(millions) ? `${millions} millió Ft` : `${millions.toFixed(1)} millió Ft`;

@@ -1,3 +1,4 @@
+import { IMPERSONATION_MONEY_PLACEHOLDER, isImpersonationMoneyMasked } from '@/helpers/impersonation-money';
 import { MONTH_NAMES } from '@/types';
 
 export {
@@ -32,6 +33,7 @@ export { activeWalletManualBalance, resolveActiveWallet } from '@/utils/wallet-b
 export { isHouseholdReader, canEditHousehold } from '@/utils/household-role';
 
 export function formatHUF(amount: number, compact = false): string {
+  if (isImpersonationMoneyMasked()) return IMPERSONATION_MONEY_PLACEHOLDER;
   if (compact && Math.abs(amount) >= 1_000_000) {
     return `${(amount / 1_000_000).toFixed(1).replace('.', ',')} M Ft`;
   }
@@ -44,16 +46,22 @@ export function formatHUF(amount: number, compact = false): string {
 }
 
 export function formatCurrency(amount: number, currency: string): string {
+  if (isImpersonationMoneyMasked()) return IMPERSONATION_MONEY_PLACEHOLDER;
   if (currency === 'HUF') return formatHUF(amount);
   if (currency === 'BTC') return `₿ ${amount.toFixed(6)}`;
   if (currency === 'ETH') return `Ξ ${amount.toFixed(4)}`;
-  
   return new Intl.NumberFormat('hu-HU', {
     style: 'currency',
     currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
+}
+
+/** Diagram tengely: ezres skála (pl. „150k”). */
+export function formatCompactThousands(_value: number): string {
+  if (isImpersonationMoneyMasked()) return IMPERSONATION_MONEY_PLACEHOLDER;
+  return `${_value / 1000}k`;
 }
 
 export function formatNumber(n: number): string {

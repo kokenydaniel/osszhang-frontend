@@ -1,6 +1,6 @@
 import type { RawApiHousehold } from './household';
 import type { RawApiWallet, SubscriptionTier } from './wallet';
-import type { SystemAnnouncement } from './admin';
+import type { SystemAnnouncement, ProductUpdate } from './admin';
 
 export type PlatformFeatureFlagKey = string;
 export type PlatformFeatureFlags = Partial<Record<PlatformFeatureFlagKey, boolean>>;
@@ -19,6 +19,7 @@ export interface UserProfile {
   billing_tier?: SubscriptionTier;
   platform_feature_flags?: PlatformFeatureFlags;
   system_announcement?: SystemAnnouncement | null;
+  pending_product_update?: ProductUpdate | null;
   wallets?: RawApiWallet[];
   household?: RawApiHousehold;
 }

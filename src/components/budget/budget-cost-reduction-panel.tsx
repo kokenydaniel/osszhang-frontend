@@ -7,9 +7,8 @@ import { TierGatedAiPanel } from '@/components/subscription/TierGatedAiPanel';
 import { useTierFeature } from '@/components/subscription/TierFeatureGate';
 import { aiFeatureLabel } from '@/config/ai-features';
 import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
-import { aiFinanceClient } from '@/lib/api-client';
+import { ensureCostReductionLoaded } from '@/helpers/budget-ai-loader';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { StatusCodes } from '@/types/api';
 import type { AiCostReduction } from '@/types/ai';
 import { Button } from '@/components/ui/button';
 
@@ -18,36 +17,53 @@ type Props = {
   month: number;
   walletId?: number | null;
   compact?: boolean;
+  enabled?: boolean;
 };
 
-type LoadState = 'loading' | 'ready' | 'empty' | 'error';
+type LoadState = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 
 const PREVIEW_COUNT = 3;
 
-export function BudgetCostReductionPanel({ year, month, walletId, compact = false }: Props) {
+export function BudgetCostReductionPanel({
+  year,
+  month,
+  walletId,
+  compact = false,
+  enabled = true,
+}: Props) {
   const user = useAuthStore((s) => s.user);
   const { allowed: canUseAi } = useTierFeature('ai');
   const platformEnabled = isPlatformFeatureEnabled(user, 'enable_ai_cost_reduction');
   const [data, setData] = useState<AiCostReduction | null>(null);
-  const [state, setState] = useState<LoadState>('loading');
+  const [state, setState] = useState<LoadState>('idle');
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    if (!canUseAi || !platformEnabled) return;
+    if (!enabled || !canUseAi || !platformEnabled || walletId == null) {
+      if (!enabled) setState('idle');
+      return;
+    }
+
+    let cancelled = false;
     setState('loading');
-    void aiFinanceClient
-      .costReductionSuggestions({ year, month, walletId: walletId ?? undefined })
-      .then((res) => {
-        if (!res || res[0] !== StatusCodes.Http200) {
+    void ensureCostReductionLoaded(walletId, year, month)
+      .then((payload) => {
+        if (cancelled) return;
+        if (!payload) {
           setState('error');
           return;
         }
-        const payload = res[1].data;
         setData(payload);
         setState((payload.suggestions?.length ?? 0) > 0 ? 'ready' : 'empty');
       })
-      .catch(() => setState('error'));
-  }, [canUseAi, platformEnabled, year, month, walletId]);
+      .catch(() => {
+        if (!cancelled) setState('error');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canUseAi, enabled, platformEnabled, year, month, walletId]);
 
   if (!platformEnabled) return null;
 
@@ -63,6 +79,12 @@ export function BudgetCostReductionPanel({ year, month, walletId, compact = fals
         {null}
       </TierGatedAiPanel>
     );
+  }
+
+  if (!enabled || state === 'idle') {
+    return compact ? (
+      <p className="text-xs text-muted-foreground py-1">Spórolási javaslatok megnyitáskor töltődnek.</p>
+    ) : null;
   }
 
   if (state === 'loading') {

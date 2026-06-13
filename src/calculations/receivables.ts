@@ -1,11 +1,10 @@
 import type { MetricItem } from '@/components/design';
 import { ArrowDownLeft, ArrowUpRight, HandCoins, Users } from 'lucide-react';
 import type { ReceivableContact, ReceivablesSummary } from '@/types/receivables';
+import { formatCurrency } from '@/utils';
 
 function formatMoney(amount: number, currency: string): string {
-  const rounded = Math.round(amount);
-  const formatted = rounded.toLocaleString('hu-HU');
-  return currency === 'HUF' ? `${formatted} Ft` : `${formatted} ${currency}`;
+  return formatCurrency(Math.round(amount), currency);
 }
 
 export const receivablesCalculations = {

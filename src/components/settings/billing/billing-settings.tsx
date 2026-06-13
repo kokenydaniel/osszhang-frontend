@@ -28,6 +28,7 @@ import { useNotificationStore } from '@/stores/useNotificationStore';
 import type { UserProfile } from '@/types';
 import type { BillingInvoice, BillingSummary } from '@/types/billing';
 import { isMaintenanceModeResponse, redirectToMaintenanceIfNeeded } from '@/lib/api-client/response';
+import { IMPERSONATION_MONEY_PLACEHOLDER, isImpersonationMoneyMasked } from '@/helpers/impersonation-money';
 
 interface BillingSettingsProps {
   user: UserProfile | null;
@@ -67,16 +68,21 @@ function invoiceStatusClass(status: BillingInvoice['status']): string {
   return 'border-border bg-muted/40 text-muted-foreground';
 }
 
+function maskBillingAmount(amount: string): string {
+  if (!isImpersonationMoneyMasked()) return amount;
+  return IMPERSONATION_MONEY_PLACEHOLDER;
+}
+
 function nextChargeLabel(billing: BillingSummary | null): string | null {
   if (billing?.subscription_status === 'canceled' || billing?.cancel_at_period_end) {
     return null;
   }
   const upcoming = billing?.upcoming_invoice;
   if (upcoming?.date && upcoming.amount) {
-    return `Következő levonás: ${formatBillingDate(upcoming.date)} (${upcoming.amount})`;
+    return `Következő levonás: ${formatBillingDate(upcoming.date)} (${maskBillingAmount(upcoming.amount)})`;
   }
   if (billing?.next_billing_date && billing.billing_amount) {
-    return `Következő levonás: ${formatBillingDate(billing.next_billing_date)} (${billing.billing_amount})`;
+    return `Következő levonás: ${formatBillingDate(billing.next_billing_date)} (${maskBillingAmount(billing.billing_amount)})`;
   }
   if (billing?.next_billing_date) {
     return `Következő levonás: ${formatBillingDate(billing.next_billing_date)}`;
@@ -340,7 +346,7 @@ export function BillingSettings({ user }: BillingSettingsProps) {
             </p>
           ) : isCanceled ? (
             <p className="text-sm text-muted-foreground">
-              {billing?.billing_amount}
+              {billing?.billing_amount ? maskBillingAmount(billing.billing_amount) : null}
               {accessEndDate ? ` · Hozzáférés eddig: ${formatBillingDate(accessEndDate)}` : ''}
             </p>
           ) : (
@@ -351,7 +357,7 @@ export function BillingSettings({ user }: BillingSettingsProps) {
                 </p>
               )}
               {!nextCharge && billing?.billing_amount && (
-                <p className="text-sm text-muted-foreground">{billing.billing_amount}</p>
+                <p className="text-sm text-muted-foreground">{maskBillingAmount(billing.billing_amount)}</p>
               )}
             </div>
           )}
@@ -502,7 +508,7 @@ export function BillingSettings({ user }: BillingSettingsProps) {
                         {formatBillingDate(invoice.date)}
                       </td>
                       <td className="py-3 pr-4 text-foreground">{invoice.plan_label}</td>
-                      <td className="py-3 pr-4 text-foreground font-medium tabular-nums">{invoice.amount}</td>
+                      <td className="py-3 pr-4 text-foreground font-medium tabular-nums">{maskBillingAmount(invoice.amount)}</td>
                       <td className="py-3 pr-4">
                         <span
                           className={classNames(

@@ -101,6 +101,21 @@ export function buildDebtRemoveInstallmentPaymentUpdate(
   };
 }
 
+export function findInstallmentPaymentsForPeriod(
+  debt: Debt,
+  year: number,
+  month: number,
+): DebtInstallmentPayment[] {
+  const ym = yearMonthPrefix(year, month);
+  return resolveInstallmentPayments(debt).filter((p) => p.period === ym);
+}
+
+export function resolveLastInstallmentPaidAt(debt: Debt): string | null {
+  const dated = resolveInstallmentPayments(debt).filter((p) => p.paidAt);
+  if (dated.length === 0) return null;
+  return dated.sort((a, b) => (b.paidAt ?? '').localeCompare(a.paidAt ?? ''))[0]?.paidAt ?? null;
+}
+
 export function formatInstallmentPeriodLabel(period: string): string {
   const [year, month] = period.split('-');
   if (!year || !month) return period;

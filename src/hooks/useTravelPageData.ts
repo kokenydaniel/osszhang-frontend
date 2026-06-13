@@ -8,6 +8,7 @@ import type { AiTravelPlan } from '@/types';
 import { StatusCodes } from '@/types/api';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useWalletStore } from '@/stores/useWalletStore';
+import { formatHUF } from '@/utils';
 
 export type TravelFormInput = {
   destination: string;
@@ -94,7 +95,7 @@ export function useTravelPageData() {
         }
 
         addNotification(
-          `„${plan.destination}” utazás mentve megtakarítási célként (${plan.total_estimated_cost.toLocaleString('hu-HU')} Ft).`,
+          `„${plan.destination}” utazás mentve megtakarítási célként (${formatHUF(plan.total_estimated_cost)}).`,
           'success',
         );
         return true;

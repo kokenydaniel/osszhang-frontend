@@ -1,7 +1,7 @@
 'use client';
 
 import classNames from 'classnames';
-import { formatHUF } from '@/utils';
+import { formatHUF, formatDate } from '@/utils';
 import { debtsCalculations } from '@/calculations/debts';
 import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
 import { canUseFeature } from '@/helpers/check-access';
@@ -24,7 +24,7 @@ import {
   AlertTriangle,
   History,
 } from 'lucide-react';
-import { resolveInstallmentPayments } from '@/helpers/debt-installment-payments';
+import { resolveInstallmentPayments, resolveLastInstallmentPaidAt } from '@/helpers/debt-installment-payments';
 import type { DebtWithPayoff } from '@/calculations/debts';
 
 export type DebtsTableProps = {
@@ -32,6 +32,7 @@ export type DebtsTableProps = {
   totalDebt: number;
   monthlyMinimum: number;
   isReader: boolean;
+  variant?: 'active' | 'completed';
   onPay: (debt: DebtWithPayoff) => void;
   onEdit: (debt: DebtWithPayoff) => void;
   onViewDocuments: (debt: DebtWithPayoff) => void;
@@ -45,6 +46,7 @@ export function DebtsTable({
   totalDebt,
   monthlyMinimum,
   isReader,
+  variant = 'active',
   onPay,
   onEdit,
   onViewDocuments,
@@ -56,23 +58,35 @@ export function DebtsTable({
   const attachmentsEnabled =
     isPlatformFeatureEnabled(user, 'enable_attachments') && canUseFeature(user, 'attachments');
 
+  const isCompleted = variant === 'completed';
+
   const columns: DataTableColumn<DebtWithPayoff>[] = [
     {
       key: 'name',
       header: 'Tartozás',
       width: '24%',
-      cell: (d) => (
+      cell: (d) => {
+        const paidOffAt = isCompleted ? resolveLastInstallmentPaidAt(d) : null;
+        return (
         <EntityCell
           icon={CreditCard}
           tone={d.payoff.isUnderwater ? 'danger' : 'primary'}
           title={d.name}
           subtitle={
             <>
-              {d.dueDay ? `Minden hó ${d.dueDay}. · ` : ''}Eredeti: {formatHUF(d.targetAmount)}
+              {paidOffAt ? (
+                <>
+                  Kifizetve: {formatDate(paidOffAt)}
+                  {d.dueDay ? ' · ' : ''}
+                </>
+              ) : null}
+              {d.dueDay ? `Minden hó ${d.dueDay}. · ` : ''}
+              Eredeti: {formatHUF(d.targetAmount)}
             </>
           }
         />
-      ),
+        );
+      },
     },
     {
       key: 'progress',
@@ -210,14 +224,16 @@ export function DebtsTable({
       cell: (d) =>
         !isReader ? (
           <div className="flex items-center justify-end gap-1">
-            <Button
-              variant="outline"
-              size="xs"
-              className="text-emerald-700 border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 hover:border-emerald-300"
-              onClick={() => onPay(d)}
-            >
-              <Banknote size={12} /> Befizetés
-            </Button>
+            {!isCompleted ? (
+              <Button
+                variant="outline"
+                size="xs"
+                className="text-emerald-700 border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 hover:border-emerald-300"
+                onClick={() => onPay(d)}
+              >
+                <Banknote size={12} /> Befizetés
+              </Button>
+            ) : null}
             <RowActions
               onEdit={() => onEdit(d)}
               onDelete={() =>
@@ -235,21 +251,29 @@ export function DebtsTable({
 
   return (
     <Section
-      title={`Aktív tartozások · ${debtsWithPayoff.length}`}
+      title={
+        isCompleted
+          ? `Törlesztett tartozások · ${debtsWithPayoff.length}`
+          : `Aktív tartozások · ${debtsWithPayoff.length}`
+      }
       description={
-        debtsWithPayoff.length > 0
-          ? `Összesen ${formatHUF(totalDebt)} van hátra · havi ${formatHUF(monthlyMinimum)} törlesztés`
-          : 'Még nincs rögzítve tartozás'
+        isCompleted
+          ? 'Teljesen kifizetett hitelek és kölcsönök — előzmények és dokumentumok továbbra is elérhetők.'
+          : debtsWithPayoff.length > 0
+            ? `Összesen ${formatHUF(totalDebt)} van hátra · havi ${formatHUF(monthlyMinimum)} törlesztés`
+            : 'Még nincs rögzítve tartozás'
       }
     >
       {debtsWithPayoff.length === 0 ? (
         <EmptyState
           icon={Sparkles}
-          title="Nincs aktív tartozás"
+          title={isCompleted ? 'Nincs törlesztett tartozás' : 'Nincs aktív tartozás'}
           description={
-            isReader
-              ? 'Még nincs rögzítve tartozás.'
-              : 'Adj hozzá egy hitelt vagy kölcsönt a jobb felső sarokban lévő „Új tartozás” gombbal.'
+            isCompleted
+              ? 'A teljesen kifizetett tartozások itt jelennek meg.'
+              : isReader
+                ? 'Még nincs rögzítve tartozás.'
+                : 'Adj hozzá egy hitelt vagy kölcsönt a jobb felső sarokban lévő „Új tartozás” gombbal.'
           }
         />
       ) : (

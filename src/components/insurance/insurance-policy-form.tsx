@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/FormField';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { MonthPicker } from '@/components/ui/MonthPicker';
-import { today as todayIso } from '@/utils';
+import { formatCurrency, today as todayIso } from '@/utils';
 import { MiniSwitch } from '@/components/design';
 import { paymentFrequencyLabel } from '@/helpers/insurance-budget';
 import { periodsPerYear } from '@/calculations/insurance';
@@ -132,7 +132,7 @@ export function InsurancePolicyForm({ values, currencies, onChange }: InsuranceP
             Becsült éves díj:{' '}
             <strong>
               {estimatedAnnual > 0
-                ? `${estimatedAnnual.toLocaleString('hu-HU')} ${values.currency}`
+                ? formatCurrency(estimatedAnnual, values.currency)
                 : '—'}
             </strong>
           </p>

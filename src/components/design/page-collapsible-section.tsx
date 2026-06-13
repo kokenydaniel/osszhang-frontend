@@ -9,6 +9,8 @@ export function PageCollapsibleSection({
   description,
   badge,
   defaultOpen = false,
+  open: controlledOpen,
+  onOpenChange,
   children,
   className,
 }: {
@@ -16,17 +18,26 @@ export function PageCollapsibleSection({
   description?: string;
   badge?: string;
   defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
   className?: string;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+  const open = controlledOpen ?? uncontrolledOpen;
 
   return (
     <section className={classNames('rounded-xl border border-border bg-card shadow-sm overflow-hidden', className)}>
       <button
         type="button"
         className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/25 transition-colors"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => {
+          if (onOpenChange) {
+            onOpenChange(!open);
+          } else {
+            setUncontrolledOpen((prev) => !prev);
+          }
+        }}
         aria-expanded={open}
       >
         <div className="min-w-0 flex-1">

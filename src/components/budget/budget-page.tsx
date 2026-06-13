@@ -26,6 +26,7 @@ import { useRentalStore } from '@/stores/rentalStore';
 import { budgetStore } from '@/stores/budgetStore';
 import { StatusCodes } from '@/types/api';
 import { canEditHousehold } from '@/utils/household-role';
+import { isImpersonating } from '@/helpers/impersonation-session';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useExchangeRatesStore } from '@/stores/useExchangeRatesStore';
 import { today as todayDate } from '@/utils';
@@ -116,6 +117,7 @@ export function BudgetPage() {
   };
 
   const handleManualBalanceSave = useCallback(async () => {
+    if (isImpersonating()) return;
     if (!canEditHousehold(data.user)) return;
     if (data.activeWalletId === null) return;
 
@@ -376,18 +378,25 @@ export function BudgetPage() {
       {activeView === 'month' ? (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
-            <BudgetBalancePanel
-              manualBalance={manualBalanceInput}
-              onManualBalanceChange={(v) => {
-                setManualBalanceInput(v);
-                setBalanceSaved(false);
-              }}
-              balanceSaving={balanceSaving}
-              balanceSaved={balanceSaved}
-              onSave={() => void handleManualBalanceSave()}
-              isReader={data.isReader}
+            {!isImpersonating() ? (
+              <BudgetBalancePanel
+                manualBalance={manualBalanceInput}
+                onManualBalanceChange={(v) => {
+                  setManualBalanceInput(v);
+                  setBalanceSaved(false);
+                }}
+                balanceSaving={balanceSaving}
+                balanceSaved={balanceSaved}
+                onSave={() => void handleManualBalanceSave()}
+                isReader={data.isReader}
+              />
+            ) : null}
+            <MetricStrip
+              items={data.cashflowMetrics}
+              columns={3}
+              variant="separated"
+              className={isImpersonating() ? 'lg:col-span-2' : undefined}
             />
-            <MetricStrip items={data.cashflowMetrics} columns={3} variant="separated" />
           </div>
 
           <p className="text-xs text-muted-foreground -mt-2">

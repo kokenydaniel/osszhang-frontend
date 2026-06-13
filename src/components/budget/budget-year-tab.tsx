@@ -12,7 +12,7 @@ import {
   Legend,
 } from 'recharts';
 import { BarChart3, Tag, TrendingDown } from 'lucide-react';
-import { formatHUF } from '@/utils';
+import { formatCompactThousands, formatHUF } from '@/utils';
 import { HELP } from '@/config/help';
 import { SectionPanel, ProgressBar, EmptyState } from '@/components/design';
 import {
@@ -88,7 +88,7 @@ export function BudgetYearTab({
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v) => `${v / 1000}k`}
+                    tickFormatter={formatCompactThousands}
                     tick={{ fill: 'oklch(0.50 0.012 260)', fontSize: 11 }}
                   />
                   <Tooltip

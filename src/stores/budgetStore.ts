@@ -3,7 +3,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { budgetClient } from '@/lib/api-client';
-import { aiHelpers } from '@/helpers/ai-helpers';
+import { ensureBudgetAiInsightsLoaded } from '@/helpers/budget-ai-loader';
 import { budgetPeriodKey } from '@/helpers/store-ready';
 import { StatusCodes } from '@/types/api';
 import { LoadableStatus } from '@/utils/loadable-status';
@@ -23,6 +23,7 @@ interface BudgetState {
     year: number,
     month: number,
     canUseAi: boolean,
+    options?: { force?: boolean },
   ) => Promise<void>;
   setTransactions: (transactions: CashTransaction[]) => void;
   setGoalRows: (goalRows: CashTransaction[]) => void;
@@ -67,16 +68,20 @@ export const budgetStore = create<BudgetState>()(
         }
       },
 
-      fetchAiInsights: async (walletId, year, month, canUseAi) => {
+      fetchAiInsights: async (walletId, year, month, canUseAi, options?: { force?: boolean }) => {
         if (!walletId || !canUseAi) {
           set({ aiOverspend: null, aiCashflowForecast: null });
           return;
         }
-        const [overspend, forecast] = await Promise.all([
-          aiHelpers.getOverspendRootCause(year, month, walletId, { silent: true }),
-          aiHelpers.getCashflowForecast(year, month, walletId, { silent: true }),
-        ]);
-        set({ aiOverspend: overspend, aiCashflowForecast: forecast });
+        const result = await ensureBudgetAiInsightsLoaded(walletId, year, month, {
+          silent: true,
+          force: options?.force,
+        });
+        if (!result) {
+          set({ aiOverspend: null, aiCashflowForecast: null });
+          return;
+        }
+        set({ aiOverspend: result.overspend, aiCashflowForecast: result.forecast });
       },
 
       setTransactions: (transactions) => set({ transactions }),

@@ -138,7 +138,7 @@ export function FeedbackReportsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         breadcrumbs={[
-          { label: 'Platform admin', href: '/admin/users' },
+          { label: 'Platform admin', href: '/admin/households' },
           { label: 'Bejelentések' },
         ]}
         title="Felhasználói bejelentések"

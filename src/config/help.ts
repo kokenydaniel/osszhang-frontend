@@ -128,7 +128,7 @@ export const help = {
       'A bank által előírt havi törlesztő/részlet. Ha kisebb, mint a havi kamat, a tartozás nem csökken.',
     dueDay: 'A hónap melyik napján esedékes a törlesztés (1–31). Költségvetés-emlékeztetőhöz.',
     payAmount: 'Most befizetett összeg — növeli az „eddig törlesztve” mezőt.',
-    payDate: 'A befizetés dátuma.',
+    payDate: 'A tényleges befizetés napja — ez jelenik meg az előzményekben és a törlesztett tartozásoknál.',
     payNote: 'Opcionális megjegyzés a törlesztéshez (pl. „Júniusi részlet”).',
     payBudget:
       'Ha be van pipálva, ugyanakkor kiadásként is rögzíti a költségvetésben a kiválasztott kategóriával.',

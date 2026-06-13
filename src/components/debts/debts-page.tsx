@@ -16,6 +16,7 @@ import { StatusCodes } from '@/types/api';
 import { debtsCalculations } from '@/calculations/debts';
 import { resolveDebtsSettings } from '@/settings/debts';
 import { isHouseholdReader, canEditHousehold } from '@/utils/household-role';
+import { formatDate, formatHUF } from '@/utils';
 import { isStoreLoading } from '@/utils/loadable-status';
 import type { Debt } from '@/types';
 import { DebtsTable } from './debts-table';
@@ -54,13 +55,21 @@ export function DebtsPage() {
     : ['Fizetés', 'Élelmiszer', 'Rezsi'];
 
   const debtsWithPayoff = useMemo(() => debtsCalculations.enrichWithPayoff(debts), [debts]);
+  const activeDebtsWithPayoff = useMemo(
+    () => debtsWithPayoff.filter((d) => d.remaining > 0),
+    [debtsWithPayoff],
+  );
+  const completedDebtsWithPayoff = useMemo(
+    () => debtsWithPayoff.filter((d) => d.remaining <= 0),
+    [debtsWithPayoff],
+  );
   const summary = useMemo(
-    () => debtsCalculations.buildSummaryMetrics(debts, debtsWithPayoff),
-    [debts, debtsWithPayoff],
+    () => debtsCalculations.buildSummaryMetrics(debts, activeDebtsWithPayoff),
+    [debts, activeDebtsWithPayoff],
   );
   const metrics = useMemo(
-    () => debtsCalculations.buildMetricStrip(summary, debtsWithPayoff.length),
-    [summary, debtsWithPayoff.length],
+    () => debtsCalculations.buildMetricStrip(summary, activeDebtsWithPayoff.length),
+    [summary, activeDebtsWithPayoff.length],
   );
 
   const handleDebtSaved = useCallback(
@@ -101,14 +110,20 @@ export function DebtsPage() {
   );
 
   const handlePaid = useCallback(
-    (updated: Debt, payAddToBudget: boolean) => {
+    (updated: Debt, payAddToBudget: boolean, meta?: { paidAt: string; periodLabel: string; amount: number }) => {
       if (!activeWalletId) return;
       setDebts(
         debts.map((d) => (d.id === updated.id ? updated : d)),
         activeWalletId,
       );
+      const paidOn = meta?.paidAt ? formatDate(meta.paidAt) : null;
+      const detail = meta
+        ? `${formatHUF(meta.amount)} · ${meta.periodLabel}${paidOn ? ` · befizetve ${paidOn}` : ''}`
+        : '';
       addNotification(
-        `Törlesztés rögzítve${payAddToBudget ? ' (költségvetésben is)' : ''}.`,
+        detail
+          ? `Törlesztés rögzítve: ${detail}${payAddToBudget ? ' (költségvetésben is)' : ''}.`
+          : `Törlesztés rögzítve${payAddToBudget ? ' (költségvetésben is)' : ''}.`,
         'success',
       );
     },
@@ -139,7 +154,7 @@ export function DebtsPage() {
         <>
           <MetricStrip items={metrics} columns={4} variant="separated" />
 
-          {debtsWithPayoff.length > 0 ? (
+          {activeDebtsWithPayoff.length > 0 ? (
             <div className="rounded-lg border border-border bg-gradient-to-br from-primary/[0.04] via-card to-card px-4 py-3 flex items-start gap-3">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
                 <Info size={14} strokeWidth={2.2} />
@@ -154,11 +169,11 @@ export function DebtsPage() {
             </div>
           ) : null}
 
-          {debtsWithPayoff.length > 0 ? (
+          {activeDebtsWithPayoff.length > 0 ? (
             <DebtsStrategySection
               walletId={activeWalletId}
               debtsSettings={debtsSettings}
-              debtsWithPayoff={debtsWithPayoff}
+              debtsWithPayoff={activeDebtsWithPayoff}
               aiDebtPlan={aiDebtPlan}
               onAiPlanChange={setAiDebtPlan}
               farthestPayoff={summary.farthestPayoff}
@@ -167,10 +182,11 @@ export function DebtsPage() {
           ) : null}
 
           <DebtsTable
-            debtsWithPayoff={debtsWithPayoff}
+            debtsWithPayoff={activeDebtsWithPayoff}
             totalDebt={summary.totalDebt}
             monthlyMinimum={summary.monthlyMinimum}
             isReader={isReader}
+            variant="active"
             onPay={(debt) => {
               if (!canEditHousehold(user)) return;
               setPayDebt(debt);
@@ -184,6 +200,25 @@ export function DebtsPage() {
             onDelete={handleDelete}
             requestDelete={requestDelete}
           />
+
+          {completedDebtsWithPayoff.length > 0 ? (
+            <DebtsTable
+              debtsWithPayoff={completedDebtsWithPayoff}
+              totalDebt={0}
+              monthlyMinimum={0}
+              isReader={isReader}
+              variant="completed"
+              onPay={() => {}}
+              onEdit={(debt) => {
+                if (!canEditHousehold(user)) return;
+                setFormDebt(debt);
+              }}
+              onViewDocuments={(debt) => setDocumentsDebt(debt)}
+              onViewPaymentHistory={(debt) => setHistoryDebt(debt)}
+              onDelete={handleDelete}
+              requestDelete={requestDelete}
+            />
+          ) : null}
         </>
       )}
 

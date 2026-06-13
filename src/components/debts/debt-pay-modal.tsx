@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
-import { formatHUF } from '@/utils';
+import { formatDate, formatHUF } from '@/utils';
 import { today } from '@/utils/dates';
 import { Modal } from '@/components/ui/Modal';
 import { budgetClient, debtsClient } from '@/lib/api-client';
 import { StatusCodes } from '@/types/api';
 import { debtsCalculations } from '@/calculations/debts';
-import { buildDebtPayRecordUpdate } from '@/helpers/debt-installment-payments';
+import { buildDebtPayRecordUpdate, formatInstallmentPeriodLabel } from '@/helpers/debt-installment-payments';
+import { yearMonthPrefix } from '@/utils/dates';
 import { matchPaymentCategory, resolveDebtsSettings } from '@/settings/debts';
 import type { Debt, UserProfile } from '@/types';
 import { DebtPayForm, type DebtPayFormValues } from './debt-pay-form';
@@ -22,7 +23,7 @@ type DebtPayModalProps = {
   selectedYear: number;
   selectedMonth: number;
   onClose: () => void;
-  onPaid: (debt: Debt, payAddToBudget: boolean) => void;
+  onPaid: (debt: Debt, payAddToBudget: boolean, meta?: { paidAt: string; periodLabel: string; amount: number }) => void;
 };
 
 export function DebtPayModal({
@@ -107,7 +108,11 @@ export function DebtPayModal({
       }
     }
 
-    onPaid(resUpdate[1], values.payAddToBudget);
+    onPaid(resUpdate[1], values.payAddToBudget, {
+      paidAt: values.payDate,
+      periodLabel: formatInstallmentPeriodLabel(yearMonthPrefix(selectedYear, selectedMonth)),
+      amount: amt,
+    });
     onClose();
   });
 
@@ -120,7 +125,7 @@ export function DebtPayModal({
       isOpen={open}
       onClose={onClose}
       title="Törlesztés rögzítése"
-      description={`${debt.name} · ${formatHUF(remaining)} van hátra`}
+      description={`${debt.name} · ${formatHUF(remaining)} van hátra · ${formatInstallmentPeriodLabel(yearMonthPrefix(selectedYear, selectedMonth))}`}
     >
       <DebtPayForm
         form={form}

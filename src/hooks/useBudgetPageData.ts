@@ -20,7 +20,7 @@ import { canUseModuleWithTier } from '@/helpers/module-access';
 import { formatHUF } from '@/utils';
 import { utilitiesCalculations } from '@/calculations/utilities';
 import { HELP } from '@/config/help';
-import { resolveActiveWallet } from '@/utils/wallet-balance';
+import { activeWalletManualBalance } from '@/utils/wallet-balance';
 import { canUseFeature } from '@/helpers/check-access';
 import { isHouseholdReader } from '@/utils/household-role';
 import { isStoreLoading } from '@/utils/loadable-status';
@@ -40,7 +40,6 @@ export function useBudgetPageData(manualBalance: number) {
   const activeWalletId = useWalletStore((s) => s.activeWalletId);
   const { selectedMonth, selectedYear } = usePeriodStore();
 
-  const canUseAi = canUseFeature(user, 'ai');
   const transactions = useBudgetStore((s) => s.transactions);
   const goalBudgetRows = useBudgetStore((s) => s.goalRows);
   const aiOverspend = useBudgetStore((s) => s.aiOverspend);
@@ -87,12 +86,6 @@ export function useBudgetPageData(manualBalance: number) {
     if (!canUseModuleWithTier(user, 'rental')) return;
     void useRentalStore.getState().fetch(selectedYear, selectedMonth);
   }, [user, selectedYear, selectedMonth]);
-
-  useEffect(() => {
-    void useBudgetStore
-      .getState()
-      .fetchAiInsights(activeWalletId, selectedYear, selectedMonth, canUseAi);
-  }, [activeWalletId, selectedYear, selectedMonth, canUseAi]);
 
   const { summary: missedIncomeSummary, refresh: refreshMissedIncome } = useMissedIncomeSummary({
     walletId: activeWalletId,
@@ -288,10 +281,7 @@ export function useBudgetPageData(manualBalance: number) {
     },
   ];
 
-  const walletManualBalance =
-    activeWalletId !== null
-      ? (resolveActiveWallet(user, activeWalletId)?.manual_balance ?? 0)
-      : 0;
+  const walletManualBalance = activeWalletManualBalance(user);
 
   const getLedgerItems = useCallback(
     (txId: number | string) =>

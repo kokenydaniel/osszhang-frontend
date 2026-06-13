@@ -7,7 +7,7 @@ import type {
   InsurancePolicyFormValues,
   InsuranceUpcomingReminder,
 } from '@/types/insurance';
-import { formatHUF, today as todayIso } from '@/utils';
+import { formatCurrency, today as todayIso } from '@/utils';
 import { DATE_FORMAT, toDayjs } from '@/utils/dates';
 
 function sanitizeOptionalDate(value: string): string | null {
@@ -18,8 +18,7 @@ function sanitizeOptionalDate(value: string): string | null {
 }
 
 function formatPremium(amount: number, currency: string): string {
-  if (currency === 'HUF') return formatHUF(amount);
-  return `${amount.toLocaleString('hu-HU', { maximumFractionDigits: 2 })} ${currency}`;
+  return formatCurrency(amount, currency);
 }
 
 export function periodsPerYear(freq: InsurancePaymentFrequency): number {

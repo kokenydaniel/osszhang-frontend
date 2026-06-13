@@ -1,6 +1,8 @@
 import { resetModuleDataCache } from '@/helpers/module-data-plan';
 import { clearUtilitiesDataLoaderCache } from '@/helpers/utilities-loader';
 import { clearAiCfoLoaderCache } from '@/helpers/ai-cfo-loader';
+import { clearBudgetAiInsightsLoaderCache } from '@/helpers/budget-ai-loader';
+import { clearUtilityAnomaliesLoaderCache } from '@/helpers/utility-anomalies-loader';
 import { useUtilitiesStore } from '@/stores/utilitiesStore';
 import { useMetersStore } from '@/stores/metersStore';
 import { useBusinessStore } from '@/stores/businessStore';
@@ -21,6 +23,8 @@ export function resetSessionData(): void {
   resetModuleDataCache();
   clearUtilitiesDataLoaderCache();
   clearAiCfoLoaderCache();
+  clearBudgetAiInsightsLoaderCache();
+  clearUtilityAnomaliesLoaderCache();
 
   useUtilitiesStore.getState().reset();
   useMetersStore.getState().reset();

@@ -102,8 +102,9 @@ export class AuthClient {
   }): SingleEntityResponse<RawApiUser> {
     try {
       const [status, response] = await this.apiClient.putJson(`${this.baseEndpoint}/me`, data);
-      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<RawApiUser>(response, ['id'])) {
-        return this.apiClient.response(status, response);
+      const entity = unwrapApiEntity<RawApiUser>(response, ['username']);
+      if (status === StatusCodes.Http200 && entity) {
+        return this.apiClient.response(status, entity);
       }
     } catch (err) {
       console.log('err', err);
@@ -119,6 +120,20 @@ export class AuthClient {
       );
       if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ message: string; must_change_password: boolean }>(response, ['message'])) {
         return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async dismissProductUpdate(productUpdateId: number): SingleEntityResponse<{ data: null }> {
+    try {
+      const [status, response] = await this.apiClient.postJson(
+        `${this.baseEndpoint}/me/product-updates/${productUpdateId}/dismiss`,
+      );
+      if (status === StatusCodes.Http200) {
+        return this.apiClient.response(status, response as { data: null });
       }
     } catch (err) {
       console.log('err', err);

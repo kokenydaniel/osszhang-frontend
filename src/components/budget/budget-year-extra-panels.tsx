@@ -16,7 +16,7 @@ import {
   PiggyBank,
   Scale,
 } from 'lucide-react';
-import { formatHUF } from '@/utils';
+import { formatCompactThousands, formatHUF } from '@/utils';
 import { HELP } from '@/config/help';
 import { AccentPanel, ProgressBar, SectionPanel } from '@/components/design';
 import {
@@ -58,7 +58,7 @@ function MiniMonthChart({
           tick={{ fontSize: 10, fill: 'oklch(0.50 0.012 260)' }}
           axisLine={false}
           tickLine={false}
-          tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`}
+          tickFormatter={(v) => formatCompactThousands(Number(v))}
           width={32}
         />
         <Tooltip

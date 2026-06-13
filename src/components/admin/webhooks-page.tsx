@@ -42,7 +42,7 @@ export function WebhooksPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         breadcrumbs={[
-          { label: 'Platform admin', href: '/admin/users' },
+          { label: 'Platform admin', href: '/admin/households' },
           { label: 'Webhook-ok' },
         ]}
         title="Platform admin / Webhook-ok"

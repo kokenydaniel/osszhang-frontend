@@ -139,6 +139,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       const announcementId = user.system_announcement?.id ?? null;
       const prevAnnouncementId = prev?.system_announcement?.id ?? null;
+      const pendingUpdateId = user.pending_product_update?.id ?? null;
+      const prevPendingUpdateId = prev?.pending_product_update?.id ?? null;
       const flagsChanged =
         JSON.stringify(user.platform_feature_flags ?? null) !==
         JSON.stringify(prev?.platform_feature_flags ?? null);
@@ -150,6 +152,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         prev &&
         prev.id === user.id &&
         announcementId === prevAnnouncementId &&
+        pendingUpdateId === prevPendingUpdateId &&
         !flagsChanged &&
         !walletsChanged
       ) {
@@ -267,8 +270,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const currentUser = get().user;
     if (currentUser) {
       const payload: Record<string, string | undefined> = {};
-      if (u.first_name !== undefined) payload.first_name = u.first_name;
-      if (u.last_name !== undefined) payload.last_name = u.last_name;
+      if (u.first_name !== undefined) payload.firstName = u.first_name;
+      if (u.last_name !== undefined) payload.lastName = u.last_name;
       const pw = u as { password?: string; password_confirmation?: string };
       if (pw.password !== undefined) {
         payload.password = pw.password;
@@ -277,12 +280,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       const res = await authClient.updateProfile(payload);
       if (!res || res[0] !== StatusCodes.Http200) throw new Error('API Error');
-      const profile = res[1] as UserProfile;
+      const profile = res[1] as UserProfile & { firstName?: string; lastName?: string };
       set({
         user: {
           ...currentUser,
-          first_name: profile.first_name ?? currentUser.first_name,
-          last_name: profile.last_name ?? currentUser.last_name,
+          first_name: profile.first_name ?? profile.firstName ?? currentUser.first_name,
+          last_name: profile.last_name ?? profile.lastName ?? currentUser.last_name,
           must_change_password:
             profile.must_change_password !== undefined
               ? Boolean(profile.must_change_password)

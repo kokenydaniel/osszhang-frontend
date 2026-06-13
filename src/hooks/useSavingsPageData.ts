@@ -11,7 +11,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useWalletStore } from '@/stores/useWalletStore';
 import { usePeriodStore } from '@/stores/usePeriodStore';
 import { useExchangeRatesStore } from '@/stores/useExchangeRatesStore';
-import { formatHUF } from '@/utils';
+import { formatCurrency, formatHUF } from '@/utils';
 import { isHouseholdReader } from '@/utils/household-role';
 import { PiggyBank, Sparkles, TrendingUp, Wallet } from 'lucide-react';
 import { HELP } from '@/config/help';
@@ -58,9 +58,7 @@ export function useSavingsPageData() {
   );
 
   const formatCurrencyAmount = useCallback((amount: number, currency: string): string => {
-    if (currency === 'HUF') return formatHUF(amount);
-    const maxFractionDigits = currency === 'BTC' || currency === 'ETH' ? 8 : 2;
-    return `${amount.toLocaleString('hu-HU', { maximumFractionDigits: maxFractionDigits })} ${currency}`;
+    return formatCurrency(amount, currency);
   }, []);
 
   const accounts = useMemo(() => savings.filter((s) => s.type === 'account'), [savings]);

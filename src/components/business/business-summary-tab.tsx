@@ -1,7 +1,7 @@
 'use client';
 
 import classNames from 'classnames';
-import { formatHUF } from '@/utils';
+import { formatCompactThousands, formatHUF } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { HELP } from '@/config/help';
 import { AccentPanel, SectionPanel, ProgressBar } from '@/components/design';
@@ -125,7 +125,7 @@ export function BusinessSummaryTab({
                 <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="oklch(0.92 0.004 250)" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'oklch(0.50 0.012 260)', fontSize: 11 }} />
-                  <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000}k`} tick={{ fill: 'oklch(0.50 0.012 260)', fontSize: 11 }} />
+                  <YAxis axisLine={false} tickLine={false} tickFormatter={formatCompactThousands} tick={{ fill: 'oklch(0.50 0.012 260)', fontSize: 11 }} />
                   <Tooltip
                     cursor={{ fill: 'oklch(0.965 0.005 250)' }}
                     content={({ active, payload, label }) => {

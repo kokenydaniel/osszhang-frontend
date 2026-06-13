@@ -4,8 +4,9 @@ export default function Page() {
   return (
     <FeatureFlagsPage
       category="integration"
-      title="Platform admin / Integráció kapcsolók"
-      description="Shopify, WooCommerce és UNAS rendelés import engedélyezése platform szinten."
+      title="Platform admin / Integrációk"
+      description="Webshop rendelés import engedélyezése platform szinten. A bolt adatait háztartásonként a Beállítások → Modulok → Vállalkozás alatt adják meg."
+      currentRoute="/admin/integrations"
     />
   );
 }

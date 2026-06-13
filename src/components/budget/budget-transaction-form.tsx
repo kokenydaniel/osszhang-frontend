@@ -61,6 +61,9 @@ export function BudgetTransactionForm({
   const txIsBudget = watch('txIsBudget');
   const txIsReserve = watch('txIsReserve');
   const txDesc = watch('txDesc');
+  const txCat = watch('txCat');
+  const categoryOptions =
+    txCat && !categories.includes(txCat) ? [...categories, txCat] : categories;
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
@@ -164,8 +167,9 @@ export function BudgetTransactionForm({
           <select
             className="h-9 flex-1 rounded-md border border-border bg-input px-3 text-sm appearance-none focus:border-ring focus:ring-2 focus:ring-ring/30 outline-none"
             {...register('txCat', { required: true })}
+            value={txCat}
           >
-            {categories.map((c) => (
+            {categoryOptions.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>

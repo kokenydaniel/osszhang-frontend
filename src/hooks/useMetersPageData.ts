@@ -12,6 +12,7 @@ import { metersClient } from '@/lib/api-client';
 import { metersCalculations } from '@/calculations/meters';
 import { StatusCodes } from '@/types/api';
 import { aiHelpers } from '@/helpers/ai-helpers';
+import { ensureUtilityAnomaliesLoaded } from '@/helpers/utility-anomalies-loader';
 import { resolveMetersSettings } from '@/settings/meters';
 import { canUseFeature } from '@/helpers/check-access';
 import { isHouseholdReader, canEditHousehold } from '@/utils/household-role';
@@ -46,14 +47,16 @@ export function useMetersPageData() {
   );
 
   const refreshAiAnomalies = useCallback(async () => {
-    const data = await aiHelpers.getUtilityAnomalies(selectedYear, selectedMonth);
+    const data = await ensureUtilityAnomaliesLoaded(selectedYear, selectedMonth, { force: true });
     setAiUtilityAnomalies(data);
   }, [selectedMonth, selectedYear, setAiUtilityAnomalies]);
 
   useEffect(() => {
     if (!canUseAi) return;
-    void refreshAiAnomalies();
-  }, [canUseAi, refreshAiAnomalies]);
+    void ensureUtilityAnomaliesLoaded(selectedYear, selectedMonth).then((data) => {
+      setAiUtilityAnomalies(data);
+    });
+  }, [canUseAi, selectedMonth, selectedYear, setAiUtilityAnomalies]);
 
   const getPreviousYearValue = useCallback(
     (mId: number, month: number, year: number): number | null => {

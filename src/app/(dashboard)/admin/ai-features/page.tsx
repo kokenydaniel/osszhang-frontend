@@ -5,7 +5,8 @@ export default function Page() {
     <FeatureFlagsPage
       category="ai"
       title="Platform admin / AI kapcsolók"
-      description="Okos pénzügyi funkciók be- és kikapcsolása platform szinten."
+      description="Okos pénzügyi eszközök modulokon belül. Az utazástervező AI-hoz külön kapcsold be az Utazástervező modult is a Modul kiadás oldalon."
+      currentRoute="/admin/ai-features"
     />
   );
 }

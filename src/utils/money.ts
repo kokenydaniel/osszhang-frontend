@@ -1,3 +1,4 @@
+import { IMPERSONATION_MONEY_PLACEHOLDER, isImpersonationMoneyMasked } from '@/helpers/impersonation-money';
 import { formatHUF } from '@/utils';
 
 export function normalizeCurrency(currency?: string | null): string {
@@ -36,6 +37,7 @@ export function toDefaultCurrency(
 }
 
 export function formatForeignAmount(amount: number, currency: string): string {
+  if (isImpersonationMoneyMasked()) return IMPERSONATION_MONEY_PLACEHOLDER;
   const code = normalizeCurrency(currency);
   if (code === 'HUF') return formatHUF(amount);
   const formatted = new Intl.NumberFormat('hu-HU', {
@@ -51,6 +53,7 @@ export function formatTransactionAmount(
   currency: string | undefined,
   rates: Record<string, number>,
 ): string {
+  if (isImpersonationMoneyMasked()) return IMPERSONATION_MONEY_PLACEHOLDER;
   const code = normalizeCurrency(currency);
   if (code === 'HUF') return formatHUF(amount);
   const huf = toHuf(amount, code, rates);

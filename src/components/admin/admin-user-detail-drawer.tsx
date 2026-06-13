@@ -18,7 +18,6 @@ type AdminUserDetailDrawerProps = {
   onActivate: (user: AdminUser) => void;
   onDeactivate: (user: AdminUser) => void;
   onImpersonate: (user: AdminUser) => void;
-  onEditTierGrant: (user: AdminUser) => void;
 };
 
 export function AdminUserDetailDrawer({
@@ -29,7 +28,6 @@ export function AdminUserDetailDrawer({
   onActivate,
   onDeactivate,
   onImpersonate,
-  onEditTierGrant,
 }: AdminUserDetailDrawerProps) {
   return (
     <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
@@ -46,7 +44,6 @@ export function AdminUserDetailDrawer({
               onActivate={() => onActivate(user)}
               onDeactivate={() => onDeactivate(user)}
               onImpersonate={() => onImpersonate(user)}
-              onEditTierGrant={() => onEditTierGrant(user)}
             />
           </div>
         ) : null}

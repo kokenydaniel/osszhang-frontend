@@ -3,10 +3,12 @@
 import { Modal } from '@/components/ui/Modal';
 import { ModalFormFooter } from '@/components/design/ModalFormFooter';
 import { formatDisplayName } from '@/utils/person-name';
-import type { AdminUser } from '@/types/admin';
+import type { AdminHouseholdMember } from '@/types/admin';
+
+type AdminMemberActionTarget = Pick<AdminHouseholdMember, 'username' | 'first_name' | 'last_name'>;
 
 type AdminActivateModalProps = {
-  target: AdminUser | null;
+  target: AdminMemberActionTarget | null;
   onClose: () => void;
   onConfirm: () => void;
   loading?: boolean;

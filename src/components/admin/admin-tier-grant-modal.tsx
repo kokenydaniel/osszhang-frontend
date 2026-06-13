@@ -6,11 +6,11 @@ import { ModalFormFooter } from '@/components/design/ModalFormFooter';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { formatDisplayName } from '@/utils/person-name';
 import { toDayjs } from '@/utils/dates';
-import type { AdminTierGrantPayload, AdminUser } from '@/types/admin';
-import type { SubscriptionTier } from '@/types';
+import type { AdminHousehold, AdminTierGrantPayload } from '@/types/admin';
+import { formatTierLabel } from '@/helpers/admin-helpers';
 
 type AdminTierGrantModalProps = {
-  target: AdminUser | null;
+  target: AdminHousehold | null;
   onClose: () => void;
   onSubmit: (payload: AdminTierGrantPayload) => void | Promise<void>;
   loading?: boolean;
@@ -38,8 +38,8 @@ export function AdminTierGrantModal({ target, onClose, onSubmit, loading }: Admi
 
   if (!target) return null;
 
-  const label = formatDisplayName(target.first_name, target.last_name) || target.username;
-  const billingLabel = formatTierLabel(target.billing_tier ?? target.household_subscription_tier);
+  const label = target.business_name?.trim() || target.name;
+  const billingLabel = formatTierLabel(target.billing_tier);
 
   const handleSubmit = () => {
     const payload: AdminTierGrantPayload = {
@@ -56,7 +56,7 @@ export function AdminTierGrantModal({ target, onClose, onSubmit, loading }: Admi
       isOpen
       onClose={onClose}
       title="Admin hozzáférés (grant)"
-      description={`${label} — fizetős előfizetés: ${billingLabel}. A grant nem változtatja a Stripe számlázást; lejárat után a fizetős csomag marad.`}
+      description={`${label} háztartás — fizetős előfizetés: ${billingLabel}. A grant nem változtatja a Stripe számlázást; lejárat után a fizetős csomag marad.`}
       size="sm"
     >
       <div className="flex flex-col gap-4">
@@ -126,15 +126,4 @@ export function AdminTierGrantModal({ target, onClose, onSubmit, loading }: Admi
       />
     </Modal>
   );
-}
-
-function formatTierLabel(tier: SubscriptionTier): string {
-  switch (tier) {
-    case 'premium':
-      return 'Premium';
-    case 'pro':
-      return 'Pro';
-    default:
-      return 'Ingyenes';
-  }
 }

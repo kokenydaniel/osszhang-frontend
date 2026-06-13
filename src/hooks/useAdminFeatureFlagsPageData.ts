@@ -73,6 +73,21 @@ export function useAdminFeatureFlagsPageData() {
             useAuthStore.setState({ user: { ...currentUser, beta_mode: nextValue } });
           }
         }
+
+        if (key.startsWith('enable_module_')) {
+          const currentUser = useAuthStore.getState().user;
+          if (currentUser) {
+            useAuthStore.setState({
+              user: {
+                ...currentUser,
+                platform_feature_flags: {
+                  ...currentUser.platform_feature_flags,
+                  [key]: nextValue,
+                },
+              },
+            });
+          }
+        }
       } catch (error) {
         if (previous !== undefined) {
           patchFeatureFlag(key, previous);

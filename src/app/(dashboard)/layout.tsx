@@ -21,7 +21,9 @@ import { needsHouseholdOnboarding } from '@/helpers/household-onboarding';
 import { loadRouteData } from '@/helpers/route-data';
 import { formatDisplayName } from '@/utils/person-name';
 import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
+import { IMPERSONATION_SESSION_CHANGED } from '@/helpers/impersonation-session';
 import { SystemAnnouncementBanner } from '@/components/layout/SystemAnnouncementBanner';
+import { ProductUpdateModal } from '@/components/layout/ProductUpdateModal';
 import classNames from 'classnames';
 
 function SkeletonCard({ className }: { className?: string }) {
@@ -70,6 +72,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [impersonationEpoch, setImpersonationEpoch] = useState(0);
 
   const { user, status, refreshSessionQuiet } = useAuthStore();
   const { selectedMonth, selectedYear, setSelectedMonth, setSelectedYear } = usePeriodStore();
@@ -111,6 +114,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.replace('/');
     }
   }, [pathname, router, status, user]);
+
+  useEffect(() => {
+    const syncImpersonation = () => setImpersonationEpoch((value) => value + 1);
+    window.addEventListener(IMPERSONATION_SESSION_CHANGED, syncImpersonation);
+    return () => window.removeEventListener(IMPERSONATION_SESSION_CHANGED, syncImpersonation);
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-collapsed');
@@ -210,6 +219,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className={classNames('flex min-h-screen flex-col bg-background', showOnboarding && 'overflow-hidden')}>
       <ChangePasswordModal />
       <UpgradeModal />
+      <ProductUpdateModal />
+      <ImpersonationBanner />
       <SystemAnnouncementBanner />
       <div className={classNames('flex min-h-0 flex-1', showOnboarding && 'pointer-events-none select-none blur-[6px] opacity-60')}>
       <Sidebar
@@ -219,7 +230,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onMobileClose={() => setMobileOpen(false)}
       />
       <div className="flex-1 flex flex-col min-w-0">
-        <ImpersonationBanner />
         <Header
           pathname={pathname}
           month={selectedMonth}
@@ -229,7 +239,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           user={currentUser}
           onMobileMenuToggle={() => setMobileOpen((p) => !p)}
         />
-        <main className="flex-1 p-4 md:p-8 w-full overflow-x-hidden">
+        <main key={impersonationEpoch} className="flex-1 p-4 md:p-8 w-full overflow-x-hidden">
           {!isAllowed ? (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-8 max-w-sm mx-auto mt-12">
               <div className="h-11 w-11 rounded-md bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive mb-5">

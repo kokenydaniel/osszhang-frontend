@@ -37,7 +37,7 @@ export function AnnouncementsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         breadcrumbs={[
-          { label: 'Platform admin', href: '/admin/users' },
+          { label: 'Platform admin', href: '/admin/households' },
           { label: 'Rendszerüzenetek' },
         ]}
         title="Platform admin / Rendszerüzenetek"

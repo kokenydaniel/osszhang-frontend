@@ -9,15 +9,17 @@ import { HELP } from '@/config/help';
 import { DangerZonePanel } from '@/components/settings/blocks/danger-zone-panel';
 import { SettingsBlock } from '@/components/settings/blocks/settings-block';
 import { SettingsSectionHeading } from '@/components/settings/blocks/settings-section-heading';
+import { authClient } from '@/lib/api-client';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
+import { StatusCodes } from '@/types/api';
 
 interface SettingsProfileTabProps {
   openDeleteModal: () => void;
 }
 
 export function SettingsProfileTab({ openDeleteModal }: SettingsProfileTabProps) {
-  const { user, updateUser } = useAuthStore();
+  const { user, updateUser, fetchMe } = useAuthStore();
   const { addNotification } = useNotificationStore();
   const isAdmin = user?.role === 'admin';
 
@@ -61,7 +63,12 @@ export function SettingsProfileTab({ openDeleteModal }: SettingsProfileTabProps)
     }
     setIsPasswordSaving(true);
     try {
-      await updateUser({ password: newPassword, password_confirmation: confirmPassword } as any);
+      const res = await authClient.changePassword({
+        password: newPassword,
+        password_confirmation: confirmPassword,
+      });
+      if (!res || res[0] !== StatusCodes.Http200) throw new Error();
+      await fetchMe({ force: true });
       setNewPassword('');
       setConfirmPassword('');
       addNotification('Jelszó sikeresen megváltoztatva!', 'success');

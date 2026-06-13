@@ -1,6 +1,6 @@
 import type { MetricItem } from '@/components/design';
 import { Building2, CalendarClock, CircleDollarSign, Hammer, Wallet } from 'lucide-react';
-import { formatHUF, formatMonthYear } from '@/utils';
+import { formatCurrency, formatMonthYear } from '@/utils';
 import { formatDate } from '@/utils/dates';
 import { yearMonthPrefix } from '@/utils/dates';
 import { RENTAL_EXPENSE_TYPE_LABELS } from '@/config/rental-expense-types';
@@ -49,8 +49,7 @@ export type RentalExpenseFormValues = {
 };
 
 function formatMoney(amount: number, currency: string): string {
-  if (currency === 'HUF') return formatHUF(amount);
-  return `${amount.toLocaleString('hu-HU', { maximumFractionDigits: 2 })} ${currency}`;
+  return formatCurrency(amount, currency);
 }
 
 export const rentalCalculations = {

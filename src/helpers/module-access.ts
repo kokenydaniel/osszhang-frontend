@@ -1,5 +1,5 @@
 import config, { type ModuleId } from '@/config/config';
-import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
+import { isPlatformModuleReleased } from '@/config/platform-modules';
 import type { UserProfile } from '@/types';
 import { canAccessModuleByTier } from '@/helpers/check-access';
 
@@ -37,7 +37,7 @@ export function canAccessModule(
   moduleId: ModuleId | string,
 ): boolean {
   if (!user || !isHouseholdModuleId(moduleId)) return false;
-  if (moduleId === 'travel_planner' && !isPlatformFeatureEnabled(user, 'enable_ai_travel_planner')) {
+  if (!user.lifetime_admin && !isPlatformModuleReleased(user, moduleId)) {
     return false;
   }
   if (!isModuleEnabled(user.household, moduleId)) return false;

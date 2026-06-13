@@ -9,7 +9,7 @@ import { AccentPanel } from '@/components/design';
 import { Button } from '@/components/ui/button';
 import { TierGatedAiPanel } from '@/components/subscription/TierGatedAiPanel';
 import { TierGatedButton } from '@/components/subscription/TierGatedButton';
-import { aiHelpers } from '@/helpers/ai-helpers';
+import { ensureUtilityAnomaliesLoaded } from '@/helpers/utility-anomalies-loader';
 import { RefreshCw, Sparkles } from 'lucide-react';
 
 interface AiPanelProps {
@@ -31,7 +31,7 @@ export function UtilitiesAiPanel({ selectedMonth, selectedYear }: AiPanelProps) 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await aiHelpers.getUtilityAnomalies(selectedYear, selectedMonth);
+      const data = await ensureUtilityAnomaliesLoaded(selectedYear, selectedMonth, { force: true });
       setAnomalies(data);
     } catch (error) {
       console.error('[UtilitiesAiPanel] refresh failed', error);

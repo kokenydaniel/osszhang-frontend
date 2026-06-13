@@ -7,6 +7,8 @@ import {
   Gauge,
   HandCoins,
   Home,
+  Eye,
+  Lightbulb,
   Lock,
   MapPinned,
   PiggyBank,
@@ -18,7 +20,9 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { BusinessOptionsEditor } from '@/components/settings/modules-tab/editors/BusinessOptionsEditor';
 import { BudgetCategoryColorsEditor } from '@/components/settings/modules-tab/editors/BudgetCategoryColorsEditor';
 import { BudgetSettingsEditor } from '@/components/settings/modules-tab/editors/BudgetSettingsEditor';
@@ -31,6 +35,7 @@ import { UtilitiesSettingsEditor } from '@/components/settings/modules-tab/edito
 import { UtilityTemplatesEditor } from '@/components/settings/modules-tab/editors/UtilityTemplatesEditor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { FormField } from '@/components/ui/FormField';
 import { HELP } from '@/config/help';
 import { formatDisplayName } from '@/utils/person-name';
@@ -70,6 +75,11 @@ import { metersSettingsForApi, resolveMetersSettings } from '@/settings/meters';
 import { resolveUtilitiesSettings } from '@/settings/utilities';
 import { featureEnableAllowed, moduleEnableAllowed } from '@/helpers/module-tier-gate';
 import { canUseFeature } from '@/helpers/check-access';
+import {
+  isModuleComingSoonForDisplay,
+  isPlatformModulePreviewForAdminDisplay,
+} from '@/config/platform-modules';
+import { isPlatformAdmin } from '@/config/platform-admin';
 import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
 import type { ShopifySyncSchedule } from '@/settings/business';
 
@@ -80,6 +90,21 @@ export function SettingsModulesTab() {
   const { addNotification } = useNotificationStore();
   const { requestDelete, ConfirmDeleteModal } = useConfirmDelete();
   const isAdmin = user?.role === 'admin';
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const platformAdmin = isPlatformAdmin(user);
+  const previewAsRegularUser = platformAdmin && searchParams.get('previewModuleRelease') === '1';
+
+  const setPreviewAsRegularUser = (next: boolean) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', 'modules');
+    if (next) {
+      params.set('previewModuleRelease', '1');
+    } else {
+      params.delete('previewModuleRelease');
+    }
+    router.replace(`/settings?${params.toString()}`, { scroll: false });
+  };
   const { allowed: shopifyAllowed } = useTierFeature('shopify_import');
   const { allowed: woocommerceAllowed } = useTierFeature('woocommerce_import');
   const { allowed: unasAllowed } = useTierFeature('unas_import');
@@ -192,17 +217,27 @@ export function SettingsModulesTab() {
       setBudgetSettings(resolveBudgetSettings(h));
       setUtilitiesSettings(resolveUtilitiesSettings(h));
       setDashboardSettings(resolveDashboardSettings(h));
+      setCategories(h.categories ?? []);
     }
   }, [user]);
 
   const addCategory = async (cat: string) => {
-    const updated = [...categories, cat];
+    const trimmed = cat.trim();
+    if (!trimmed) return;
+    if (categories.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      addNotification('Ez a kategória már létezik.', 'error');
+      return;
+    }
+    const updated = [...categories, trimmed];
     try {
       const res = await householdClient.updateCategories(updated);
       if (!res || res[0] !== StatusCodes.Http200) throw new Error();
-      setCategories(updated);
-    } catch (e) {
-      console.error('Failed to add category', e);
+      const saved = res[1].categories ?? updated;
+      setCategories(saved);
+      useAuthStore.getState().patchHousehold({ categories: saved });
+      addNotification(`„${trimmed}” kategória hozzáadva.`, 'success');
+    } catch {
+      addNotification('A kategória hozzáadása nem sikerült.', 'error');
     }
   };
 
@@ -219,9 +254,12 @@ export function SettingsModulesTab() {
     try {
       const res = await householdClient.updateCategories(updated);
       if (!res || res[0] !== StatusCodes.Http200) throw new Error();
-      setCategories(updated);
-    } catch (e) {
-      console.error('Failed to delete category', e);
+      const saved = res[1].categories ?? updated;
+      setCategories(saved);
+      useAuthStore.getState().patchHousehold({ categories: saved });
+      addNotification(`„${cat}” kategória törölve.`, 'success');
+    } catch {
+      addNotification('A kategória törlése nem sikerült.', 'error');
     }
   };
 
@@ -536,14 +574,19 @@ export function SettingsModulesTab() {
   const moduleCardProps = (moduleId: ModuleId, enabled: boolean, setter: (value: boolean) => void) => {
     const allowed = canAccessModuleByTier(user, moduleId);
     const badgeTier = showTierBadgeForModule(user, moduleId);
+    const comingSoon = isModuleComingSoonForDisplay(user, moduleId, previewAsRegularUser);
+    const platformPreview = isPlatformModulePreviewForAdminDisplay(user, moduleId, previewAsRegularUser);
 
     return {
       tierBadge: badgeTier === 'premium' ? ('premium' as const) : badgeTier === 'pro' ? ('pro' as const) : null,
+      comingSoon,
+      platformPreview,
       onToggle: (next: boolean) => {
+        if (comingSoon) return;
         if (blockModuleEnable(user, moduleId, next)) return;
         setter(next);
       },
-      tierLocked: enabled && !allowed,
+      tierLocked: enabled && !allowed && !comingSoon,
     };
   };
 
@@ -557,7 +600,6 @@ export function SettingsModulesTab() {
   const rentalProps = moduleCardProps('rental', rentalEnabled, setRentalEnabled);
   const receivablesProps = moduleCardProps('receivables', receivablesEnabled, setReceivablesEnabled);
   const travelPlannerProps = moduleCardProps('travel_planner', travelPlannerEnabled, setTravelPlannerEnabled);
-  const travelPlannerPlatformEnabled = isPlatformFeatureEnabled(user, 'enable_ai_travel_planner');
 
   return (
     <>
@@ -565,6 +607,48 @@ export function SettingsModulesTab() {
         title="Modulok"
         description="Kapcsold be, amit használsz. Ki kapcsolva a modul rejtve marad a menüben, az oldal nem elérhető, a vezérlőpult sem mutat hozzá kapcsolódó adatot."
       />
+
+      {platformAdmin ? (
+        <InsightBanner tone={previewAsRegularUser ? 'warning' : 'info'} icon={Eye} title="Felhasználói előnézet">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm leading-relaxed">
+              {previewAsRegularUser ? (
+                <>
+                  Így látják a sima felhasználók a még ki nem adott modulokat — „Hamarosan” badge, nincs kapcsoló. A
+                  modulok továbbra is használhatók neked, ha kikapcsolod az előnézetet.
+                </>
+              ) : (
+                <>
+                  Lifetime adminként a ki nem adott moduloknál „Fejlesztés alatt” jelzést látsz. Bekapcsold az
+                  előnézetet, hogy megnézd a felhasználói „Hamarosan” kártyát (előbb kapcsold ki a modult a{' '}
+                  <Link href="/admin/modules" className="font-medium text-primary hover:underline">
+                    Modul kiadás
+                  </Link>{' '}
+                  oldalon).
+                </>
+              )}
+            </p>
+            <label className="inline-flex shrink-0 items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium cursor-pointer">
+              <Switch
+                checked={previewAsRegularUser}
+                onCheckedChange={setPreviewAsRegularUser}
+                aria-label="Felhasználói Hamarosan előnézet"
+              />
+              Hamarosan előnézet
+            </label>
+          </div>
+        </InsightBanner>
+      ) : null}
+
+      {!platformAdmin ? (
+        <InsightBanner tone="info" icon={Lightbulb} title="Hiányzik valami?">
+          Ha olyan funkcióra lenne szükséged, ami megkönnyítené az otthoni költségvetés kezelését,{' '}
+          <Link href="/feedback" className="font-medium text-primary hover:underline">
+            jelezd a visszajelzésben
+          </Link>
+          — szívesen megnézzük, mit érdemes beépíteni.
+        </InsightBanner>
+      ) : null}
 
       {!isAdmin && (
         <InsightBanner tone="info" icon={ShieldAlert} title="Csak megtekintés">
@@ -655,6 +739,8 @@ export function SettingsModulesTab() {
             description="Széf, bankszámlák és befektetések külön modulban."
             enabled={savingsEnabled}
             tierBadge={savingsProps.tierBadge}
+            comingSoon={savingsProps.comingSoon}
+            platformPreview={savingsProps.platformPreview}
             onToggle={savingsProps.onToggle}
             icon={<PiggyBank size={22} strokeWidth={2} />}
             iconClassName="bg-violet-500/12 text-violet-600 border border-violet-500/20"
@@ -680,6 +766,8 @@ export function SettingsModulesTab() {
             description="Hitelek, kölcsönök és visszafizetési tervek."
             enabled={debtsEnabled}
             tierBadge={debtsProps.tierBadge}
+            comingSoon={debtsProps.comingSoon}
+            platformPreview={debtsProps.platformPreview}
             onToggle={debtsProps.onToggle}
             icon={<TrendingDown size={22} strokeWidth={2} />}
             iconClassName="bg-rose-500/12 text-rose-600 border border-rose-500/20"
@@ -705,6 +793,8 @@ export function SettingsModulesTab() {
             description="Közüzemi számlák, megosztás és havi sablon tételek."
             enabled={utilitiesEnabled}
             tierBadge={utilitiesProps.tierBadge}
+            comingSoon={utilitiesProps.comingSoon}
+            platformPreview={utilitiesProps.platformPreview}
             onToggle={utilitiesProps.onToggle}
             icon={<Droplets size={22} strokeWidth={2} />}
             iconClassName="bg-sky-500/12 text-sky-600 border border-sky-500/20"
@@ -782,6 +872,8 @@ export function SettingsModulesTab() {
             description="Villany, gáz, víz fogyasztás és mérőállások."
             enabled={metersEnabled}
             tierBadge={metersProps.tierBadge}
+            comingSoon={metersProps.comingSoon}
+            platformPreview={metersProps.platformPreview}
             onToggle={metersProps.onToggle}
             icon={<Gauge size={22} strokeWidth={2} />}
             iconClassName="bg-amber-500/12 text-amber-600 border border-amber-500/20"
@@ -819,6 +911,8 @@ export function SettingsModulesTab() {
             description="Rendelések nyilvántartása, csatornák és fizetési módok — Shopify import opcionálisan."
             enabled={businessEnabled}
             tierBadge={businessProps.tierBadge}
+            comingSoon={businessProps.comingSoon}
+            platformPreview={businessProps.platformPreview}
             onToggle={businessProps.onToggle}
             icon={<TrendingUp size={22} strokeWidth={2} />}
             iconClassName="bg-emerald-500/12 text-emerald-600 border border-emerald-500/20"
@@ -1082,6 +1176,8 @@ export function SettingsModulesTab() {
             description="Gyerekek zsebpénze és költései — családi modul."
             enabled={pocketMoneyEnabled}
             tierBadge={pocketMoneyProps.tierBadge}
+            comingSoon={pocketMoneyProps.comingSoon}
+            platformPreview={pocketMoneyProps.platformPreview}
             onToggle={pocketMoneyProps.onToggle}
             icon={<Coins size={22} strokeWidth={2} />}
             iconClassName="bg-amber-500/12 text-amber-600 border border-amber-500/20"
@@ -1124,6 +1220,8 @@ export function SettingsModulesTab() {
             description="Szerződések, díjak és megújítási emlékeztetők."
             enabled={insuranceEnabled}
             tierBadge={insuranceProps.tierBadge}
+            comingSoon={insuranceProps.comingSoon}
+            platformPreview={insuranceProps.platformPreview}
             onToggle={insuranceProps.onToggle}
             icon={<Shield size={22} strokeWidth={2} />}
             iconClassName="bg-sky-500/12 text-sky-600 border border-sky-500/20"
@@ -1157,6 +1255,8 @@ export function SettingsModulesTab() {
             description="Bérleti ingatlanok és havi bevételek nyilvántartása."
             enabled={rentalEnabled}
             tierBadge={rentalProps.tierBadge}
+            comingSoon={rentalProps.comingSoon}
+            platformPreview={rentalProps.platformPreview}
             onToggle={rentalProps.onToggle}
             icon={<Home size={22} strokeWidth={2} />}
             iconClassName="bg-violet-500/12 text-violet-600 border border-violet-500/20"
@@ -1188,6 +1288,8 @@ export function SettingsModulesTab() {
             description="Magán kölcsönök és előlegek — kinek adtál, miből, mennyi van még nála."
             enabled={receivablesEnabled}
             tierBadge={receivablesProps.tierBadge}
+            comingSoon={receivablesProps.comingSoon}
+            platformPreview={receivablesProps.platformPreview}
             onToggle={receivablesProps.onToggle}
             icon={<HandCoins size={22} strokeWidth={2} />}
             iconClassName="bg-teal-500/12 text-teal-600 border border-teal-500/20"
@@ -1221,45 +1323,45 @@ export function SettingsModulesTab() {
             )}
           </ModuleFeatureCard>
 
-          {travelPlannerPlatformEnabled ? (
-            <ModuleFeatureCard
-              title="Utazástervező"
-              description="AI utazásköltség-tervező — olvasó is generálhat tervet, megtakarításba mentés szerkesztőnek."
-              enabled={travelPlannerEnabled}
-              tierBadge={travelPlannerProps.tierBadge}
-              onToggle={travelPlannerProps.onToggle}
-              icon={<MapPinned size={22} strokeWidth={2} />}
-              iconClassName="bg-violet-500/12 text-violet-600 border border-violet-500/20"
-              footer={
-                <Button
-                  type="button"
-                  onClick={() =>
-                    void handleModuleSave(
-                      'travel_planner_enabled',
-                      travelPlannerEnabled,
-                      setIsTravelPlannerSaving,
-                      'Utazástervező',
-                    )
-                  }
-                  loading={isTravelPlannerSaving}
-                  disabled={isTravelPlannerSaving}
-                >
-                  <Save size={13} />
-                  {isTravelPlannerSaving ? 'Mentés…' : 'Utazástervező mentése'}
-                </Button>
-              }
-            >
-              {travelPlannerProps.tierLocked ? (
-                <InsightBanner tone="warning" icon={ShieldAlert} title="Nincs a csomagodban">
-                  Ez a modul a Premium csomag része.
-                </InsightBanner>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Az Okos eszközök menüben jelenik meg. A tagoknak külön jogosultságot kell adni a Háztartás fülön.
-                </p>
-              )}
-            </ModuleFeatureCard>
-          ) : null}
+          <ModuleFeatureCard
+            title="Utazástervező"
+            description="AI utazásköltség-tervező — olvasó is generálhat tervet, megtakarításba mentés szerkesztőnek."
+            enabled={travelPlannerEnabled}
+            tierBadge={travelPlannerProps.tierBadge}
+            comingSoon={travelPlannerProps.comingSoon}
+            platformPreview={travelPlannerProps.platformPreview}
+            onToggle={travelPlannerProps.onToggle}
+            icon={<MapPinned size={22} strokeWidth={2} />}
+            iconClassName="bg-violet-500/12 text-violet-600 border border-violet-500/20"
+            footer={
+              <Button
+                type="button"
+                onClick={() =>
+                  void handleModuleSave(
+                    'travel_planner_enabled',
+                    travelPlannerEnabled,
+                    setIsTravelPlannerSaving,
+                    'Utazástervező',
+                  )
+                }
+                loading={isTravelPlannerSaving}
+                disabled={isTravelPlannerSaving}
+              >
+                <Save size={13} />
+                {isTravelPlannerSaving ? 'Mentés…' : 'Utazástervező mentése'}
+              </Button>
+            }
+          >
+            {travelPlannerProps.tierLocked ? (
+              <InsightBanner tone="warning" icon={ShieldAlert} title="Nincs a csomagodban">
+                Ez a modul a Premium csomag része.
+              </InsightBanner>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Az Okos eszközök menüben jelenik meg. A tagoknak külön jogosultságot kell adni a Háztartás fülön.
+              </p>
+            )}
+          </ModuleFeatureCard>
         </div>
       )}
 

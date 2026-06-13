@@ -350,7 +350,10 @@ export function BudgetTransactionFeed({
       cell: (t) =>
         !t.isBill && !t.isSavingsGoal && !isExternallyManagedBudgetRow(t.id) && !isReader ? (
           <RowActions
-            onEdit={() => onEdit(t as unknown as CashTransaction)}
+            onEdit={() => {
+              const original = items.find((item) => item.id === t.id);
+              if (original) onEdit(original);
+            }}
             onDelete={() =>
               requestDelete({
                 title: 'Tétel törlése',

@@ -6,10 +6,17 @@ import type {
   AdminTierGrantPayload,
   AdminUsersQuery,
   AdminUsersApiResponse,
+  AdminHouseholdsQuery,
+  AdminHouseholdsApiResponse,
+  AdminHousehold,
+  AdminHouseholdAiSettingsPayload,
   FeatureFlagsApiResponse,
   FeatureFlag,
   SystemAnnouncementsApiResponse,
   SystemAnnouncement,
+  ProductUpdatesApiResponse,
+  ProductUpdate,
+  ProductUpdatePayload,
 } from '@/types/admin';
 import type { RawApiUser } from '@/types';
 import type { FeedbackCategory, FeedbackStatus } from '@/config/feedback';
@@ -17,6 +24,92 @@ import type { FeedbackReport } from '@/types/feedback';
 
 export class AdminClient {
   constructor(protected apiClient: ApiClient, protected baseEndpoint = 'admin') {}
+
+  async listHouseholds(
+    query?: AdminHouseholdsQuery,
+    options?: RequestOptions,
+  ): SingleEntityResponse<AdminHouseholdsApiResponse> {
+    const params: Record<string, string | number> = {};
+    if (query?.search) params.search = query.search;
+    if (query?.tier && query.tier !== 'all') params.tier = query.tier;
+    if (query?.page) params.page = query.page;
+    if (query?.perPage) params.per_page = query.perPage;
+
+    try {
+      const [status, response] = await this.apiClient.getJson(`${this.baseEndpoint}/households`, {
+        ...options,
+        params,
+      });
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<AdminHouseholdsApiResponse>(response, ['data'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async showHousehold(householdId: number): SingleEntityResponse<{ data: AdminHousehold }> {
+    try {
+      const [status, response] = await this.apiClient.getJson(`${this.baseEndpoint}/households/${householdId}`);
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ data: AdminHousehold }>(response, ['data'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async updateHouseholdTierGrant(
+    householdId: number,
+    payload: AdminTierGrantPayload,
+  ): SingleEntityResponse<{ data: AdminHousehold }> {
+    try {
+      const [status, response] = await this.apiClient.patchJson(
+        `${this.baseEndpoint}/households/${householdId}/tier-grant`,
+        payload,
+      );
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ data: AdminHousehold }>(response, ['data'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async updateHouseholdAiSettings(
+    householdId: number,
+    payload: AdminHouseholdAiSettingsPayload,
+  ): SingleEntityResponse<{ data: AdminHousehold }> {
+    try {
+      const [status, response] = await this.apiClient.patchJson(
+        `${this.baseEndpoint}/households/${householdId}/ai-settings`,
+        payload,
+      );
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ data: AdminHousehold }>(response, ['data'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async deleteHousehold(householdId: number, confirmName: string): EmptyResponse {
+    try {
+      const [status, response] = await this.apiClient.deleteJson(`${this.baseEndpoint}/households/${householdId}`, {
+        confirm_name: confirmName,
+      });
+      if (status === StatusCodes.Http200 || status === StatusCodes.Http204) {
+        return this.apiClient.response(status as StatusCodes.Http200 | StatusCodes.Http204, null);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
 
   async listUsers(query?: AdminUsersQuery, options?: RequestOptions): SingleEntityResponse<AdminUsersApiResponse> {
     const params: Record<string, string | number> = {};
@@ -60,6 +153,28 @@ export class AdminClient {
     try {
       const [status, response] = await this.apiClient.patchJson(
         `${this.baseEndpoint}/users/${userId}/deactivate`,
+      );
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ data: AdminUsersApiResponse['data'][number] }>(response, ['data'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async resetUserPassword(
+    userId: number,
+    password: string,
+    passwordConfirmation: string,
+  ): SingleEntityResponse<{ data: AdminUsersApiResponse['data'][number]; message?: string }> {
+    try {
+      const [status, response] = await this.apiClient.postJson(
+        `${this.baseEndpoint}/users/${userId}/reset-password`,
+        {
+          password,
+          password_confirmation: passwordConfirmation,
+        },
       );
       if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ data: AdminUsersApiResponse['data'][number] }>(response, ['data'])) {
         return this.apiClient.response(status, response);
@@ -208,6 +323,82 @@ export class AdminClient {
         `${this.baseEndpoint}/announcements/${announcementId}/toggle`,
       );
       if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ data: SystemAnnouncement }>(response, ['data'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async listProductUpdates(options?: RequestOptions): SingleEntityResponse<ProductUpdatesApiResponse> {
+    try {
+      const [status, response] = await this.apiClient.getJson(
+        `${this.baseEndpoint}/product-updates`,
+        options,
+      );
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<ProductUpdatesApiResponse>(response, ['data'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async createProductUpdate(payload: ProductUpdatePayload): SingleEntityResponse<{ data: ProductUpdate }> {
+    try {
+      const [status, response] = await this.apiClient.postJson(
+        `${this.baseEndpoint}/product-updates`,
+        payload,
+      );
+      if ((status === StatusCodes.Http200 || status === StatusCodes.Http201) && isSingleEntityApiResponse<{ data: ProductUpdate }>(response, ['data'])) {
+        return this.apiClient.response(status as StatusCodes.Http200 | StatusCodes.Http201, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async updateProductUpdate(
+    id: number,
+    payload: ProductUpdatePayload,
+  ): SingleEntityResponse<{ data: ProductUpdate }> {
+    try {
+      const [status, response] = await this.apiClient.putJson(
+        `${this.baseEndpoint}/product-updates/${id}`,
+        payload,
+      );
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ data: ProductUpdate }>(response, ['data'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async deleteProductUpdate(id: number): SingleEntityResponse<{ data: null }> {
+    try {
+      const [status, response] = await this.apiClient.deleteJson(
+        `${this.baseEndpoint}/product-updates/${id}`,
+      );
+      if (status === StatusCodes.Http200) {
+        return this.apiClient.response(status, response as { data: null });
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
+
+  async toggleProductUpdateActive(id: number): SingleEntityResponse<{ data: ProductUpdate }> {
+    try {
+      const [status, response] = await this.apiClient.patchJson(
+        `${this.baseEndpoint}/product-updates/${id}/toggle`,
+      );
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<{ data: ProductUpdate }>(response, ['data'])) {
         return this.apiClient.response(status, response);
       }
     } catch (err) {

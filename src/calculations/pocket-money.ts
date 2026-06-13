@@ -8,7 +8,7 @@ import type {
   PocketMoneyRosterMember,
 } from '@/types/pocket-money';
 import { DEFAULT_POCKET_MONEY_ICON_ID } from '@/config/pocket-money-icons';
-import { formatHUF } from '@/utils';
+import { formatCurrency } from '@/utils';
 import { toDefaultCurrency } from '@/utils/money';
 
 export const POCKET_MONEY_ENTRY_LABELS: Record<PocketMoneyEntryType, string> = {
@@ -48,8 +48,7 @@ export type PocketMoneyFormValues = {
 };
 
 function formatPocketAmount(amount: number, currency: string): string {
-  if (currency === 'HUF') return formatHUF(amount);
-  return `${amount.toLocaleString('hu-HU', { maximumFractionDigits: 2 })} ${currency}`;
+  return formatCurrency(amount, currency);
 }
 
 export const pocketMoneyCalculations = {
