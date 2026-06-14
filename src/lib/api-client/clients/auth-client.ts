@@ -30,6 +30,7 @@ export class AuthClient {
       }
     } catch (err) {
       console.log('err', err);
+      throw err;
     }
     return null;
   }

@@ -1,4 +1,5 @@
 export * from './api-client';
+export { ApiClientNetworkError } from './api-client';
 export * from './clients';
 export * from './public-env';
 export * from './response';
@@ -6,6 +7,7 @@ export { isValidationErrorApiResponse, isGeneralErrorApiResponse } from './type-
 export * from './type-guards';
 export { apiClient, ApiClientFacade } from './api-client-instance';
 
+import { ApiClientNetworkError } from './api-client';
 import { apiClient } from './api-client-instance';
 
 export class ApiClientError extends Error {
@@ -21,6 +23,9 @@ export function getApiErrorMessage(error: unknown, fallback: string = 'Hiba tör
   if (error instanceof ApiClientError) {
     const data = error.data as { message?: string } | undefined;
     if (data?.message) return data.message;
+    return error.message;
+  }
+  if (error instanceof ApiClientNetworkError) {
     return error.message;
   }
   if (error instanceof Error) return error.message;

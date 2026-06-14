@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { Check, Lock, Pencil, Wallet } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/FieldLabel';
@@ -26,11 +26,12 @@ export function BudgetBalancePanel({
   isReader,
 }: BudgetBalancePanelProps) {
   const readOnly = isReader;
+  const reduceMotion = useReducedMotion();
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={reduceMotion ? false : { y: 4 }}
+      animate={reduceMotion ? undefined : { y: 0 }}
       transition={{ duration: 0.3 }}
       className={classNames(
         'relative overflow-hidden rounded-xl border border-primary/25 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 shadow-glow',

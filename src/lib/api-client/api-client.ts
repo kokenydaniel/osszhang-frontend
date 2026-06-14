@@ -3,6 +3,13 @@ import { buildApiUrl } from './build-api-url';
 import { API_URL } from './public-env';
 import type { ApiClientResponse, SupportedStatusCodes, RequestOptions } from './response';
 
+export class ApiClientNetworkError extends Error {
+  constructor(message = 'A backend szerver nem elérhető. Indítsd el: php artisan serve') {
+    super(message);
+    this.name = 'ApiClientNetworkError';
+  }
+}
+
 export class InvalidConfiguration extends Error {}
 
 interface NextFetchRequestConfig {
@@ -62,7 +69,14 @@ export class ApiClient {
       ...(requestInit.headers || {}),
     };
 
-    return fetch(this.buildUrl(endpoint, options?.params), requestInit);
+    try {
+      return await fetch(this.buildUrl(endpoint, options?.params), requestInit);
+    } catch (err) {
+      if (err instanceof TypeError) {
+        throw new ApiClientNetworkError();
+      }
+      throw err;
+    }
   }
 
   protected async parseBody(response: Response): Promise<object | null> {
@@ -83,6 +97,9 @@ export class ApiClient {
       const data = await this.parseBody(response);
       return [response.status.toString(), data];
     } catch (err) {
+      if (err instanceof ApiClientNetworkError) {
+        throw err;
+      }
       console.log('ApiClient GET Error:', err);
       return ['500', null];
     }
@@ -106,6 +123,9 @@ export class ApiClient {
       const data = await this.parseBody(response);
       return [response.status.toString(), data];
     } catch (err) {
+      if (err instanceof ApiClientNetworkError) {
+        throw err;
+      }
       console.log('ApiClient POST Error:', err);
       return ['500', null];
     }
