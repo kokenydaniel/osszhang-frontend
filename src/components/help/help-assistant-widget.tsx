@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import classNames from 'classnames';
 import { BookOpen, MessageCircleQuestion, Send, X } from 'lucide-react';
@@ -27,6 +28,7 @@ const WELCOME_MESSAGE: HelpAssistantMessage = {
 export function HelpAssistantWidget() {
   const { user } = useAuthStore();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<HelpAssistantMessage[]>([WELCOME_MESSAGE]);
   const [isThinking, setIsThinking] = useState(false);
@@ -34,6 +36,10 @@ export function HelpAssistantWidget() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const hidden = !user || needsHouseholdOnboarding(user);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     const node = scrollRef.current;
@@ -104,10 +110,10 @@ export function HelpAssistantWidget() {
     }
   };
 
-  if (hidden) return null;
+  if (hidden || !mounted) return null;
 
-  return (
-    <div className="absolute bottom-4 right-4 z-50 flex flex-col items-end gap-3 pointer-events-none md:bottom-6 md:right-6">
+  return createPortal(
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3 pointer-events-none md:bottom-6 md:right-6">
       {open && (
         <div
           className={classNames(
@@ -211,6 +217,7 @@ export function HelpAssistantWidget() {
           <MessageCircleQuestion className="h-5 w-5 text-primary" />
         </button>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }

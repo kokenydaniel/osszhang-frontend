@@ -217,20 +217,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className={classNames('flex h-dvh flex-col overflow-hidden bg-background', showOnboarding && 'pointer-events-none')}>
+    <div className={classNames('flex min-h-screen flex-col bg-background', showOnboarding && 'overflow-hidden')}>
       <ChangePasswordModal />
       <UpgradeModal />
       <ProductUpdateModal />
       <ImpersonationBanner />
       <SystemAnnouncementBanner />
-      <div className={classNames('flex min-h-0 flex-1 overflow-hidden', showOnboarding && 'pointer-events-none select-none blur-[6px] opacity-60')}>
+      <div className={classNames('flex min-h-0 flex-1', showOnboarding && 'pointer-events-none select-none blur-[6px] opacity-60')}>
       <Sidebar
         collapsed={collapsed}
         onToggle={handleToggle}
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
       />
-      <div className="relative flex flex-1 flex-col min-h-0 min-w-0 overflow-hidden">
+      <div className="flex flex-1 flex-col min-w-0">
         <Header
           pathname={pathname}
           month={selectedMonth}
@@ -240,7 +240,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           user={currentUser}
           onMobileMenuToggle={() => setMobileOpen((p) => !p)}
         />
-        <main key={impersonationEpoch} className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden p-4 md:p-8">
+        <main key={impersonationEpoch} className="flex-1 p-4 md:p-8 w-full overflow-x-hidden">
           {!isAllowed ? (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-8 max-w-sm mx-auto mt-12">
               <div className="h-11 w-11 rounded-md bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive mb-5">
@@ -266,10 +266,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             children
           )}
         </main>
-        {!showOnboarding && <HelpAssistantWidget />}
       </div>
       </div>
       {showOnboarding && <HouseholdOnboardingWizard />}
+      {!showOnboarding && <HelpAssistantWidget />}
     </div>
   );
 }
