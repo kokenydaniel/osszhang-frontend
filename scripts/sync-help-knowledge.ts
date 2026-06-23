@@ -1,15 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { HELP } from '../src/config/help.ts';
-import { HELP_GUIDE_TOPICS, MODULE_PATHS } from '../src/config/help-guide.ts';
-import config from '../src/config/config.ts';
-
-// Dynamic import path for FAQ builder — keep in sync with help-page-faqs.ts
-async function loadTopicFaqs() {
-  const mod = await import('../src/helpers/help-page-faqs.ts');
-  return mod.getTopicFaqs;
-}
+import { HELP } from '../src/config/help';
+import { HELP_GUIDE_TOPICS, MODULE_PATHS } from '../src/config/help-guide';
+import config from '../src/config/config';
+import { getTopicFaqs } from '../src/helpers/help-page-faqs';
 
 type KnowledgeChunk = {
   id: string;
@@ -84,7 +79,7 @@ function guideChunks(getTopicFaqs: (topic: (typeof HELP_GUIDE_TOPICS)[number]) =
     const routePath = topic.path ?? (moduleId ? MODULE_PATHS[moduleId] : undefined);
     const features = topic.features.map((feature) => `- ${feature.title}: ${feature.description}`).join('\n');
     const steps = topic.howToStart.map((step, index) => `${index + 1}. ${step}`).join('\n');
-    const tips = topic.tips?.length ? `Tippek:\n${topic.tips.map((tip) => `- ${tip}`).join('\n')}` : '';
+    const tips = topic.tips.length ? `Tippek:\n${topic.tips.map((tip) => `- ${tip}`).join('\n')}` : '';
     const faqs = getTopicFaqs(topic)
       .map((faq) => `K: ${faq.question}\nV: ${faq.answer}`)
       .join('\n\n');
@@ -182,9 +177,7 @@ const helpChunks = Object.entries(HELP as Record<string, Record<string, string>>
   flattenHelp(fields, area),
 );
 
-async function main() {
-  const getTopicFaqs = await loadTopicFaqs();
-
+function main() {
   const chunks: KnowledgeChunk[] = [
     coreRulesChunk(),
     navigationChunk(),
@@ -210,7 +203,4 @@ async function main() {
   console.log(`Wrote ${chunks.length} knowledge chunks to ${outPath}`);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+main();
