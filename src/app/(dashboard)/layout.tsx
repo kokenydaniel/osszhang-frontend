@@ -217,20 +217,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className={classNames('flex min-h-screen flex-col bg-background', showOnboarding && 'overflow-hidden')}>
+    <div className={classNames('flex h-dvh flex-col overflow-hidden bg-background', showOnboarding && 'pointer-events-none')}>
       <ChangePasswordModal />
       <UpgradeModal />
       <ProductUpdateModal />
       <ImpersonationBanner />
       <SystemAnnouncementBanner />
-      <div className={classNames('flex min-h-0 flex-1', showOnboarding && 'pointer-events-none select-none blur-[6px] opacity-60')}>
+      <div className={classNames('flex min-h-0 flex-1 overflow-hidden', showOnboarding && 'pointer-events-none select-none blur-[6px] opacity-60')}>
       <Sidebar
         collapsed={collapsed}
         onToggle={handleToggle}
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
       />
-      <div className="relative flex flex-1 flex-col min-h-0 min-w-0">
+      <div className="relative flex flex-1 flex-col min-h-0 min-w-0 overflow-hidden">
         <Header
           pathname={pathname}
           month={selectedMonth}
