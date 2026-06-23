@@ -37,7 +37,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useInitStore } from '@/stores/useInit';
 import { householdClient } from '@/lib/api-client';
 import { useNotificationStore } from '@/stores/useNotificationStore';
-// Removed useBudgetStore
+
 import {
   ONBOARDING_CATEGORY_PRESETS,
   ONBOARDING_MODULE_OPTIONS,
@@ -92,7 +92,6 @@ export function HouseholdOnboardingWizard() {
   const { user } = useAuthStore();
   const { initialize } = useInitStore();
   const { addNotification } = useNotificationStore();
-  // using direct api client data
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);

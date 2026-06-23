@@ -47,8 +47,6 @@ export type EmptyResponse = Promise<
   >
 >;
 
-// ── Error response types ──────────────────────────────────────────────────────
-
 export type ValidateErrorMessages = string[];
 
 export interface ValidationErrorApiResponse {
@@ -60,8 +58,6 @@ export interface ValidationErrorApiResponse {
 export interface GeneralErrorApiResponse {
   message: string;
 }
-
-// ── Request options ───────────────────────────────────────────────────────────
 
 export type RequestOptions = {
   silent?: boolean;

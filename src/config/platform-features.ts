@@ -5,13 +5,12 @@ export type PlatformFeatureCategory = 'system' | 'integration' | 'ai' | 'platfor
 export type PlatformFeatureMeta = {
   label: string;
   description: string;
-  /** Rövid összefoglaló: mit kapcsol be/ki (admin táblázathoz). */
+
   scope: string;
   category: PlatformFeatureCategory;
   aiFeatureId?: AiFeatureId;
 };
 
-/** Globális platform kapcsolók metaadatai (admin + auth payload). */
 export const PLATFORM_FEATURE_META: Record<string, PlatformFeatureMeta> = {
   maintenance_mode: {
     label: 'Karbantartás mód',

@@ -5,7 +5,7 @@ export type BillingFeatureTier = 'free' | 'pro' | 'premium';
 export interface BillingFeatureRow {
   id: string;
   label: string;
-  /** Mit kap a felhasználó, ha feljebb vált (összehasonlítás az ingyenes / alacsonyabb szinthez). */
+
   upgradeHint: string;
   minTier: BillingFeatureTier;
 }

@@ -141,7 +141,7 @@ export function SettingsModulesTab() {
   const [sumupApiKey, setSumupApiKey] = useState('');
   const [utilitySplitEnabled, setUtilitySplitEnabled] = useState(false);
   const [utilitySplitPartnerId, setUtilitySplitPartnerId] = useState<number | null>(null);
-  
+
   const [businessSettings, setBusinessSettings] = useState(() => resolveBusinessSettings(null));
   const [utilityTemplates, setUtilityTemplates] = useState(() => resolveUtilityTemplates(null));
   const [savingsSettings, setSavingsSettings] = useState(() => resolveSavingsSettings(null));
@@ -206,7 +206,7 @@ export function SettingsModulesTab() {
       const rawUtility = h.utility_split_enabled ?? h.utility_split_enabled ?? false;
       setUtilitySplitEnabled(rawUtility && canUseFeature(user, 'utility_split'));
       setUtilitySplitPartnerId(h.utility_split_partner_id ?? h.utility_split_partner_id ?? null);
-      
+
       setBusinessSettings(resolveBusinessSettings(h));
       setUtilityTemplates(resolveUtilityTemplates(h));
       setSavingsSettings(resolveSavingsSettings(h));

@@ -5,10 +5,6 @@ import type { AiCfoBrief, AiCfoContextPayload } from '@/types';
 
 const inflightLoads = new Map<string, Promise<{ brief: AiCfoBrief | null; errorMessage: string | null }>>();
 
-/**
- * Fingerprint of metrics that affect Marad and the AI CFO snapshot.
- * When any of these change (budget edit, payment, new bill, etc.), advice is refreshed.
- */
 export function buildAiCfoDataFingerprint(payload: AiCfoContextPayload): string {
   const categories = payload.top_spending_categories
     .map((c) => `${c.category}:${c.amount}`)
@@ -48,10 +44,6 @@ export function buildAiCfoCacheKeyFromPayload(payload: AiCfoContextPayload): str
   );
 }
 
-/**
- * Fetches AI CFO advice once per wallet/period/data snapshot.
- * Concurrent callers with the same cache key share one in-flight promise.
- */
 export async function ensureAiCfoAdviceLoaded(
   payload: AiCfoContextPayload,
   options?: { force?: boolean; silent?: boolean },

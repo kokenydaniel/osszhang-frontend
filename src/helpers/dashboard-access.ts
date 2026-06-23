@@ -6,7 +6,6 @@ import type { UserProfile } from '@/types';
 
 type CanUseModule = (mod: string) => boolean;
 
-/** Havi pénzügyi tanácsadó: platform + Premium + költségvetés modul. */
 export function canLoadDashboardAiCfo(user: UserProfile | null | undefined): boolean {
   if (!user) return false;
   return (
@@ -16,7 +15,6 @@ export function canLoadDashboardAiCfo(user: UserProfile | null | undefined): boo
   );
 }
 
-/** Közmű AI anomália lekérés. */
 export function canLoadUtilityAnomalies(user: UserProfile | null | undefined): boolean {
   if (!user) return false;
   return (
@@ -26,7 +24,6 @@ export function canLoadUtilityAnomalies(user: UserProfile | null | undefined): b
   );
 }
 
-/** Heti AI összegzés widget. */
 export function canShowDashboardAiBriefing(user: UserProfile | null | undefined): boolean {
   if (!user) return false;
   return (
@@ -53,7 +50,6 @@ export function isDashboardContentReady(params: {
   return true;
 }
 
-/** Widget sorrend: csak a felhasználó számára releváns blokkok. */
 export function filterDashboardWidgetOrder(
   order: DashboardWidgetId[],
   user: UserProfile | null | undefined,
@@ -64,6 +60,8 @@ export function filterDashboardWidgetOrder(
     switch (id) {
       case 'ai_cfo':
         return canLoadDashboardAiCfo(user);
+      case 'travel_plans':
+        return canUseModuleWithTier(user, 'travel_planner');
       case 'ai_briefing':
         return canShowDashboardAiBriefing(user);
       case 'business_chart':
@@ -74,7 +72,6 @@ export function filterDashboardWidgetOrder(
   });
 }
 
-/** @deprecated Use {@link canLoadDashboardAiCfo} */
 export function shouldRenderDashboardAiCfo(user: UserProfile | null | undefined): boolean {
   return canLoadDashboardAiCfo(user);
 }

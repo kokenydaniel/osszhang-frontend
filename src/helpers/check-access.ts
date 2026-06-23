@@ -4,11 +4,10 @@ import type { SubscriptionTier, UserProfile } from '@/types';
 
 const { subscription: sub } = config;
 
-/** @deprecated Use `config.subscription.tiers.free` */
 export const TIER_FREE = sub.tiers.free;
-/** @deprecated Use `config.subscription.tiers.pro` */
+
 export const TIER_PRO = sub.tiers.pro;
-/** @deprecated Use `config.subscription.tiers.premium` */
+
 export const TIER_PREMIUM = sub.tiers.premium;
 
 export const PRO_MODULES: ModuleId[] = [...sub.proModules];

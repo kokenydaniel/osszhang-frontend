@@ -3,6 +3,7 @@
 import classNames from 'classnames';
 import type { LucideIcon } from 'lucide-react';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
+import { metricLabelClassName } from './metric-label';
 
 export interface DetailItem {
   label: React.ReactNode;
@@ -28,12 +29,7 @@ export function ObjectDetails({ groups, className, columns = 1, compact }: Objec
       {groups.map((group, groupIndex) => (
         <div key={groupIndex} className="flex flex-col gap-2">
           {group.title ? (
-            <h4
-              className={classNames(
-                'font-semibold uppercase tracking-wider text-muted-foreground',
-                compact ? 'text-[0.65rem]' : 'text-[0.7rem]',
-              )}
-            >
+            <h4 className={metricLabelClassName('font-semibold')}>
               {group.title}
             </h4>
           ) : null}
@@ -46,9 +42,9 @@ export function ObjectDetails({ groups, className, columns = 1, compact }: Objec
             {group.items.map((item, itemIndex) => (
               <div key={itemIndex} className="min-w-0">
                 <dt
-                  className={classNames(
-                    'font-medium text-muted-foreground inline-flex items-center gap-1',
-                    compact ? 'text-[0.65rem] uppercase tracking-wider' : 'text-[0.7rem]',
+                  className={metricLabelClassName(
+                    'inline-flex items-center gap-1',
+                    !compact && 'text-sm',
                   )}
                 >
                   {item.label}

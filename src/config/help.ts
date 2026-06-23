@@ -50,11 +50,21 @@ export const help = {
     manualBalance:
       'A háztartás jelenlegi pénze (bankszámla + készpénz). A rezsi elszámolás automatikusan módosítja, ha a partner kifizet téged.',
     payable:
-      'Ebben a hónapban esedékes, de még nem kifizetett kiadások és rezsi együtt.',
+      'Ebben a hónapban esedékes, de még nem kifizetett kiadások és rezsi együtt. Rezsinél megosztás esetén a te részed (pl. közös 50%, saját szabály) számít — nem a teljes számla.',
     remaining: 'Becsült szabad keret: jelenlegi egyenleg mínusz a még fizetendő összeg.',
     overdue: 'Lejárt határidőjű, még nyitott tételek — sürgősségi lista.',
     missedIncome:
       'Az év elejétől a kiválasztott hónapig minden lejárt, még nem befolyt bevétel összege. Halmozódik hónapról hónapra — pl. január óta hiányzó fizetés összeadódik. A jelenlegi hónap csak akkor számít, ha annak a bevétele is lejárt.',
+    plannedExpense:
+      'Az adott hónapra rögzített kiadások és rezsi összesen — függetlenül attól, ki van-e már fizetve. Rezsinél megosztás esetén ugyanaz a te részed számít, mint a Fizetendőnél. A hónap elején ez mutatja, mennyi költés vár rád.',
+    plannedIncome:
+      'Az adott hónapra rögzített bevételek összesen — függetlenül attól, megérkezett-e már. A hónap elején ez mutatja a várható bevételt.',
+    paidThisMonth:
+      'Ténylegesen kifizetett kiadások és rezsi ebben a hónapban. Saját keretes tételeknél a ledgerben felhasznált összeg számít.',
+    plannedMonthBalance:
+      'Tervezett bevétel mínusz tervezett kiadás. A hónap elején is látszik, hogy a rögzített tételek alapján kijön-e a hónap, vagy hiány lesz.',
+    incomeReceived:
+      'Már megérkezett bevételek ebben a hónapban — kifizetettnek jelölt tételek összege.',
     aiOverspend:
       'Túlköltés = negatív havi egyenleg (befolyt bevétel − kifizetett kiadások, rezsivel együtt). A chip-ek a legnagyobb kiadási kategóriákat mutatják, nem magát a túlköltés összeget.',
     categorySummary:
@@ -83,7 +93,7 @@ export const help = {
     statusToggle:
       'Kattints a státuszra: függőben ↔ kifizetve váltás egy érintéssel. A kifizetés napja automatikusan a mai dátum lesz.',
     cloneMonth:
-      'Az előző hónap költségvetési tételeit másolja a kiválasztott hónapra (esedékesség napja megmarad). Minden másolat függőben marad.',
+      'Az előző hónap költségvetési tételeit másolja a kiválasztott hónapra (esedékesség napja megmarad). Minden másolat függőben marad; saját keretes tételeknél a ledger üresen indul.',
     ledgerAmount: 'Mennyit használtál fel ebből a keretből / előlegből.',
     ledgerNote: 'Opcionális megjegyzés a ledger bejegyzéshez.',
     txTypeIntro:
@@ -147,7 +157,7 @@ export const help = {
     invName: 'Papír megnevezése (pl. PEMÁP 2028, FixMÁP).',
     invType: 'Állampapír típusa — befolyásolja a kamatszámítást.',
     principal: 'Befektetett tőke összege vásárláskor.',
-    maturityAmount: 'Lejáratkor várható kifizetés, ha ismert.',
+    maturityAmount: 'Lejáratkor kapott névérték (pl. DKJ 360 000 Ft). Független a MÁK aktuális értéktől, ha közben kivettél a papírból.',
     invRate: 'Éves hozam / kamat százalékban — becsléshez és dashboard emlékeztetőhöz.',
     purchaseDate: 'Mikor vásároltad a papírt.',
     maturityDate: 'Lejárat dátuma — opcionális, emlékeztetőhöz.',
@@ -276,6 +286,43 @@ export const help = {
     rentalExpense:
       'Tulajdonosi költség (felújítás, karbantartás, társasházi közös ktg. ha te fizeted) — nem keverendő a bérlőtől számlázott díjjal. Adózásnál külön költségként vezethető.',
     rentalExport: 'Éves CSV export: ingatlanok és havi bevételek (pontosvesszővel elválasztva, Excelhez).',
+  },
+  travel: {
+    destination: 'Úti cél — város vagy régió. Külföldnél a költség becslés forintban, de EUR árfolyam megjegyzéssel.',
+    origin: 'Indulási hely — autó/vonat költséghez. Alapértelmezés: Budapest.',
+    duration: 'Az utazás teljes napjainak száma (max. 90).',
+    budget: 'A teljes utazásra szánt keret forintban. Ha irreálisan alacsony, a terv a reális minimumot mutatja.',
+    targetDate: 'Tervezett indulás — megtakarítási terv és havi félretétel számításához.',
+    travelers: 'Utazók száma — szállás, étkezés és jegyek költségét szorozza.',
+    tripStyle: 'Utazás jellege — befolyásolja a napi program és költség szintet.',
+    accommodation: 'Szállás preferencia — hostel, apartman vagy hotel ársáv.',
+    transportMode:
+      'Közlekedés: autó (üzemanyag + útdíj + parkolás), repülő (realisztikus jegy), vonat/busz, vagy vegyes minimum.',
+    transportBooked:
+      'Ha a repülőjegy / vonatjegy / autó utazás már megvan, a közlekedési költség nem számít újra — csak a helyszíni kiadások.',
+    accommodationBooked:
+      'Ha a szállás már le van foglalva vagy megvan, a szállásköltség nem számít újra — csak étkezés, programok és egyéb kiadások.',
+    carConsumption: 'Autó fogyasztása liter/100 km — pl. 6.5 (kompakt) vagy 9 (SUV). Ez alapján számol az üzemanyagár.',
+    saveGoal: 'Megtakarítási célként menti a becsült összköltséget — megjelenik a Megtakarítások modulban és a költségvetésben.',
+    financialFit:
+      'Összefoglaló: a Marad, a megtakarítás, a rendelkezésre álló összeg és a havi kapacitás alapján dönti el, befér-e az utazás.',
+    financialFitDisposable:
+      'Az aktuális hónap szabad kerete a költségvetésben — ugyanaz, mint a „Marad” kártya. Pillanatkép az adott hónapra, nem havi átlag.',
+    financialFitTravelSavings:
+      '„Számít a felső összesítőbe” tételek forintra váltva (ugyanaz az árfolyam, mint a Megtakarítások oldalon). Kimarad: Államkincstár és a külön csoport (pl. vállalkozás). A lista a beleszámított és kimaradó tételeket mutatja.',
+    financialFitAvailable:
+      'Marad + utazásra számítható megtakarítás. Ez áll rendelkezésre az utazás fedezetére most.',
+    financialFitTripCost:
+      'Az AI által becsült teljes utazási költség. Ha a rendelkezésre álló összeg nem fedezi, a hiányt havi félretétellel lehet pótolni az indulásig.',
+    financialFitMonthlyCapacity:
+      'Az elmúlt 3 hónap átlagos többlete: bevétel − kifizetett kiadás. Megmutatja, mennyit tudsz havonta félretenni — nem ugyanaz, mint a Marad.',
+    financialFitMonthlyRequired:
+      'Ennyi Ft havi megtakarítás kellene a hiány pótlásához a megadott indulásig.',
+    comparison: 'Minimum (padló), megadott keret, aktuális terv és komfort szint összehasonlítása.',
+    costAdjustments:
+      'A tételeket kifizetettnek jelölheted (nem számít a hátralévőbe), kizárhatod (pl. nincs biztosítás), módosíthatod az összeget, vagy adhatsz hozzá újat. A „Befér az utazás?” a hátralévő költség alapján számol újra.',
+    costSplit:
+      'Megosztott tételnél a teljes összeg több fél között oszlik (pl. 2 = két házaspár felezi a szállást). A költségvetésbe és a „Belefér” számításba csak a mi részünk kerül.',
   },
 } as const;
 

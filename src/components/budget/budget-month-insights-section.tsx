@@ -30,7 +30,7 @@ export function BudgetMonthInsightsSection({ year, month, walletId, aiOverspend 
   return (
     <PageCollapsibleSection
       title="Elemzések és javaslatok"
-      description="Fizetési sorrend, túlköltés és spórolás — AI csak megnyitáskor fut (token takarékosság)."
+      description="Fizetési sorrend, túlköltés és spórolás."
       badge="Opcionális"
       defaultOpen={false}
       open={open}

@@ -53,31 +53,35 @@ export const budgetCalculations = {
   calculateTotalActualSpent(
     expenses: CashTransaction[],
     monthlyBills: UtilityBill[],
-    getBillPortion: (b: UtilityBill) => number,
+    getBillPaidPortion: (b: UtilityBill) => number,
     rates: Record<string, number>,
   ): number {
     const expensesSpent = expenses.reduce((s, t) => s + this.actualExpenseSpentAmount(t, rates), 0);
     const billsSpent = monthlyBills
       .filter((b) => hasSettlementDate(b.paidDate))
-      .reduce((s, b) => s + getBillPortion(b), 0);
+      .reduce((s, b) => s + getBillPaidPortion(b), 0);
     return expensesSpent + billsSpent;
   },
 
   calculateTotalProjectedExpense(
     expenses: CashTransaction[],
     monthlyBills: UtilityBill[],
-    getBillPortion: (b: UtilityBill) => number,
+    getBillObligationPortion: (b: UtilityBill) => number,
     rates: Record<string, number>,
   ): number {
     const expTotal = expenses.reduce((s, t) => s + hufAmount(t, rates), 0);
-    const billsTotal = monthlyBills.reduce((s, b) => s + getBillPortion(b), 0);
+    const billsTotal = monthlyBills.reduce((s, b) => s + getBillObligationPortion(b), 0);
     return expTotal + billsTotal;
+  },
+
+  calculateTotalProjectedIncome(incomes: CashTransaction[], rates: Record<string, number>): number {
+    return incomes.reduce((s, t) => s + hufAmount(t, rates), 0);
   },
 
   calculateUnpaidExpenses(
     expenses: CashTransaction[],
     monthlyBills: UtilityBill[],
-    getBillPortion: (b: UtilityBill) => number,
+    getBillObligationPortion: (b: UtilityBill) => number,
     rates: Record<string, number>,
   ): number {
     const unpaidExp = expenses
@@ -92,7 +96,7 @@ export const budgetCalculations = {
 
     const unpaidBills = monthlyBills
       .filter((b) => !hasSettlementDate(b.paidDate))
-      .reduce((s, b) => s + getBillPortion(b), 0);
+      .reduce((s, b) => s + getBillObligationPortion(b), 0);
     return unpaidExp + unpaidBills;
   },
 
@@ -105,7 +109,7 @@ export const budgetCalculations = {
   calculateOverdueExpenses(
     expenses: CashTransaction[],
     monthlyBills: UtilityBill[],
-    getBillPortion: (b: UtilityBill) => number,
+    getBillObligationPortion: (b: UtilityBill) => number,
     rates: Record<string, number>,
   ): number {
     const today = getTodayDate();
@@ -114,7 +118,7 @@ export const budgetCalculations = {
       .reduce((s, t) => s + hufAmount(t, rates), 0);
     const overdueBills = monthlyBills
       .filter((b) => isDueOverdue(b, today))
-      .reduce((s, b) => s + getBillPortion(b), 0);
+      .reduce((s, b) => s + getBillObligationPortion(b), 0);
     return overdueExp + overdueBills;
   },
 
@@ -122,7 +126,7 @@ export const budgetCalculations = {
     categories: string[],
     expenses: CashTransaction[],
     monthlyBills: UtilityBill[],
-    getBillPortion: (b: UtilityBill) => number,
+    getBillObligationPortion: (b: UtilityBill) => number,
     rates: Record<string, number>,
   ) {
     const allExpenseCategories = Array.from(new Set([...categories, ...expenses.map((e) => e.category || 'Egyéb')]));
@@ -131,7 +135,7 @@ export const budgetCalculations = {
         const amt = expenses
           .filter((e) => (e.category || 'Egyéb') === name)
           .reduce((s, e) => s + this.categorySummaryAmount(e, rates), 0);
-        const billAmt = name === 'Rezsi' ? monthlyBills.reduce((s, b) => s + getBillPortion(b), 0) : 0;
+        const billAmt = name === 'Rezsi' ? monthlyBills.reduce((s, b) => s + getBillObligationPortion(b), 0) : 0;
         return { name, value: amt + billAmt };
       })
       .filter((c) => c.value > 0)
@@ -169,18 +173,41 @@ export const budgetCalculations = {
     monthExpenses: CashTransaction[];
     monthReserves: CashTransaction[];
     monthlyBills: UtilityBill[];
-    getBillPortion: (b: UtilityBill) => number;
+    getBillObligationPortion: (b: UtilityBill) => number;
+    getBillPaidPortion: (b: UtilityBill) => number;
     exchangeRates?: Record<string, number>;
   }): BudgetCashflowMetrics {
-    const { manualBalance, monthIncomes, monthExpenses, monthReserves, monthlyBills, getBillPortion } =
-      params;
+    const {
+      manualBalance,
+      monthIncomes,
+      monthExpenses,
+      monthReserves,
+      monthlyBills,
+      getBillObligationPortion,
+      getBillPaidPortion,
+    } = params;
     const rates = params.exchangeRates ?? { HUF: 1 };
 
     const incomeReceived = this.calculateTotalIncomeReceived(monthIncomes, rates);
-    const spentThisMonth = this.calculateTotalActualSpent(monthExpenses, monthlyBills, getBillPortion, rates);
-    const totalPending = this.calculateUnpaidExpenses(monthExpenses, monthlyBills, getBillPortion, rates);
+    const spentThisMonth = this.calculateTotalActualSpent(
+      monthExpenses,
+      monthlyBills,
+      getBillPaidPortion,
+      rates,
+    );
+    const totalPending = this.calculateUnpaidExpenses(
+      monthExpenses,
+      monthlyBills,
+      getBillObligationPortion,
+      rates,
+    );
     const unpaidReserves = this.calculateUnpaidReserves(monthReserves, rates);
-    const overdueTotal = this.calculateOverdueExpenses(monthExpenses, monthlyBills, getBillPortion, rates);
+    const overdueTotal = this.calculateOverdueExpenses(
+      monthExpenses,
+      monthlyBills,
+      getBillObligationPortion,
+      rates,
+    );
     const totalBalance = Number(manualBalance);
     const disposableRemaining = totalBalance - totalPending - unpaidReserves;
 

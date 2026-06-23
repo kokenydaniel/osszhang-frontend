@@ -17,7 +17,6 @@ export function clearUtilityAnomaliesLoaderCache(): void {
   clearUtilityAnomaliesCache();
 }
 
-/** Rezsi anomália — számított backend endpoint, OpenAI nélkül; deduplikálás oldalváltáskor. */
 export async function ensureUtilityAnomaliesLoaded(
   year: number,
   month: number,

@@ -37,7 +37,7 @@ export function BusinessPage() {
     try {
       await data.syncShopify();
     } catch {
-      // notification handled in page data
+
     } finally {
       setIsSyncing(false);
     }

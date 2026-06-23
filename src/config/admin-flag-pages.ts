@@ -1,4 +1,4 @@
-/** Admin oldalak rövid útmutatója — melyik kapcsoló hol van. */
+
 export const ADMIN_FLAG_PAGE_GUIDE = [
   {
     route: '/admin/modules',

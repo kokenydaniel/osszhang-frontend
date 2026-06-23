@@ -6,14 +6,13 @@ import type { PocketMoneyEntry, PocketMoneyRosterMember } from '@/types/pocket-m
 
 export type PocketMoneyInterestBasis = 'no_expense' | 'remaining';
 
-/** Melyik összegre számoljuk a kamat %-ot. */
 export type PocketMoneyInterestOn = 'balance' | 'month_allowance';
 
 export type PocketMoneySettings = {
   currencies: string[];
   default_currency: string;
   members: PocketMoneyRosterMember[];
-  /** memberKey (userId|label) — rejtve marad a névsorban, még ha van régi tétel is */
+
   hidden_member_keys: string[];
   interest_enabled: boolean;
   interest_rate_percent: number;
@@ -158,7 +157,6 @@ export type PocketMoneySettingsApiPayload = {
   hidden_member_keys: string[];
 };
 
-/** API payload (Laravel snake_case a members tömbben). */
 export function pocketMoneySettingsForApi(settings: PocketMoneySettings): PocketMoneySettingsApiPayload {
   return {
     currencies: settings.currencies.map((c) => c.trim().toUpperCase()).filter(Boolean),
@@ -199,7 +197,6 @@ export function findRosterMemberById(
   return roster.find((m) => m.id === id);
 }
 
-/** Add gyerekek a tétellistából, ha még nincsenek a névsorban (ikon nélkül, alap csillag). */
 export function mergeRosterWithEntryMembers(
   roster: PocketMoneyRosterMember[],
   entries: PocketMoneyEntry[],

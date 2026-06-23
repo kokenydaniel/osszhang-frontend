@@ -1,5 +1,4 @@
 import type { UserProfile } from '@/types';
-// Removed useBudgetStore
 
 export function syncBudgetCategories(user: UserProfile | null): void {
   if (!user) return;
@@ -8,5 +7,4 @@ export function syncBudgetCategories(user: UserProfile | null): void {
     ? user.household.categories
     : ['Fizetés', 'Élelmiszer', 'Rezsi'];
 
-  // Categories are no longer synced to a store
 }

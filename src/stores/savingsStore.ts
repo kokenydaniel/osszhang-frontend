@@ -6,6 +6,7 @@ import { investmentsClient, savingsClient } from '@/lib/api-client';
 import { StatusCodes } from '@/types/api';
 import { LoadableStatus } from '@/utils/loadable-status';
 import type { SavingsAccount, Investment } from '@/types';
+import { savingsCalculations } from '@/calculations/savings';
 
 interface SavingsState {
   status: LoadableStatus;
@@ -63,7 +64,7 @@ export const savingsStore = create<SavingsState>()(
 
           const investments =
             investmentsResult.status === 'fulfilled' && investmentsResult.value
-              ? (investmentsResult.value[1] ?? [])
+              ? (investmentsResult.value[1] ?? []).map(savingsCalculations.normalizeInvestment)
               : [];
 
           set({
@@ -80,7 +81,7 @@ export const savingsStore = create<SavingsState>()(
       setSavings: (data, walletId) =>
         set({ savings: data, loadedWalletId: walletId, status: LoadableStatus.Loaded }),
 
-      setInvestments: (data) => set({ investments: data }),
+      setInvestments: (data) => set({ investments: data.map(savingsCalculations.normalizeInvestment) }),
 
       patchSavingsItem: (id, updated) =>
         set((state) => ({
@@ -93,10 +94,13 @@ export const savingsStore = create<SavingsState>()(
 
       patchInvestment: (id, updated) =>
         set((state) => ({
-          investments: state.investments.map((i) => (i.id === id ? updated : i)),
+          investments: state.investments.map((i) =>
+            i.id === id ? savingsCalculations.normalizeInvestment(updated) : i,
+          ),
         })),
 
-      appendInvestment: (item) => set((state) => ({ investments: [...state.investments, item] })),
+      appendInvestment: (item) =>
+        set((state) => ({ investments: [...state.investments, savingsCalculations.normalizeInvestment(item)] })),
 
       removeInvestment: (id) =>
         set((state) => ({ investments: state.investments.filter((i) => i.id !== id) })),

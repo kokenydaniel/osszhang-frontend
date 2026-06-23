@@ -8,7 +8,7 @@ import { aiHelpers } from '@/helpers/ai-helpers';
 import { TierGatedButton } from '@/components/subscription/TierGatedButton';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { HELP } from '@/config/help';
-import { Section, ChoiceCardGroup, type ChoiceCardOption } from '@/components/design';
+import { Section, ChoiceCardGroup, type ChoiceCardOption, metricLabelClassName } from '@/components/design';
 import { motion } from 'motion/react';
 import {
   RefreshCw,
@@ -161,7 +161,7 @@ export function DebtsStrategySection({
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">Stratégia</p>
+                <p className={metricLabelClassName()}>Stratégia</p>
                 <p className="text-sm font-semibold text-foreground">
                   {aiDebtPlan.strategy === 'avalanche' ? 'Avalanche' : 'Snowball'}
                 </p>
@@ -173,7 +173,7 @@ export function DebtsStrategySection({
                   <CalendarDays size={14} strokeWidth={2.2} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
+                  <p className={metricLabelClassName()}>
                     Utolsó hitel lejárta
                   </p>
                   <p className="text-sm font-semibold text-foreground tabular-nums">
@@ -188,7 +188,7 @@ export function DebtsStrategySection({
                   <Coins size={14} strokeWidth={2.2} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
+                  <p className={metricLabelClassName()}>
                     Hátralévő kamat (jelenlegi minimumon)
                   </p>
                   <p className="text-sm font-semibold text-amber-700 tabular-nums">
@@ -201,11 +201,11 @@ export function DebtsStrategySection({
 
           <div className="border-t border-border">
             <div className="grid grid-cols-[40px_1fr_140px] sm:grid-cols-[48px_1fr_140px_180px_180px] gap-3 px-4 py-2.5 bg-muted/30 border-b border-border">
-              <span className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">#</span>
-              <span className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">Tartozás</span>
-              <span className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground text-right">Hátralévő</span>
-              <span className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground text-right hidden sm:block">Havi részlet</span>
-              <span className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground text-right hidden sm:block">Lejár</span>
+              <span className={metricLabelClassName()}>#</span>
+              <span className={metricLabelClassName()}>Tartozás</span>
+              <span className={metricLabelClassName('text-right')}>Hátralévő</span>
+              <span className={metricLabelClassName('text-right', 'hidden', 'sm:block')}>Havi részlet</span>
+              <span className={metricLabelClassName('text-right', 'hidden', 'sm:block')}>Lejár</span>
             </div>
             {orderedDebts.map((d, idx) => (
               <motion.div
@@ -228,7 +228,7 @@ export function DebtsStrategySection({
                 <div className="min-w-0">
                   <div className="text-sm font-medium text-foreground truncate">{d.name}</div>
                   {idx === 0 ? (
-                    <span className="text-[0.65rem] font-medium uppercase tracking-wider text-primary inline-flex items-center gap-1 mt-0.5">
+                    <span className={metricLabelClassName('text-primary', 'inline-flex', 'items-center', 'gap-1', 'mt-0.5')}>
                       <Zap size={9} strokeWidth={2.4} /> ide tedd a plusz pénzt
                     </span>
                   ) : null}
@@ -294,21 +294,21 @@ export function DebtsStrategySection({
               {acceleration ? (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="rounded-md border border-border bg-card px-3 py-3">
-                    <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">Új lejárat</p>
+                    <p className={metricLabelClassName()}>Új lejárat</p>
                     <p className="text-base font-semibold text-foreground tabular-nums mt-0.5">
                       {debtsCalculations.formatPayoffDate(acceleration.newPayoffDate)}
                     </p>
                     <p className="text-[0.7rem] text-muted-foreground">{debtsCalculations.formatTerm(acceleration.newTotalMonths)}</p>
                   </div>
                   <div className="rounded-md border border-emerald-200 bg-emerald-50/50 px-3 py-3">
-                    <p className="text-[0.65rem] font-medium uppercase tracking-wider text-emerald-700">Megspórolt idő</p>
+                    <p className={metricLabelClassName('text-emerald-700')}>Megspórolt idő</p>
                     <p className="text-base font-semibold text-emerald-700 tabular-nums mt-0.5">
                       {debtsCalculations.formatTerm(acceleration.monthsSaved)}
                     </p>
                     <p className="text-[0.7rem] text-emerald-700/80">ennyivel hamarabb fizeted le</p>
                   </div>
                   <div className="rounded-md border border-emerald-200 bg-emerald-50/50 px-3 py-3">
-                    <p className="text-[0.65rem] font-medium uppercase tracking-wider text-emerald-700">Megspórolt kamat</p>
+                    <p className={metricLabelClassName('text-emerald-700')}>Megspórolt kamat</p>
                     <p className="text-base font-semibold text-emerald-700 tabular-nums mt-0.5">
                       {formatHUF(acceleration.interestSaved)}
                     </p>

@@ -4,14 +4,12 @@ import type { SubscriptionTier } from '@/types';
 
 export type PaidTier = 'pro' | 'premium';
 
-/** Ingyenes csomag — összehasonlítási alap. */
 export const FREE_TIER_BULLETS: readonly string[] = [
   '1 közös kassza',
   'Költségvetés és cashflow',
   'Háztartás és tagok kezelése',
 ];
 
-/** Pro: az ingyeneshez képest. */
 export const PRO_TIER_BULLETS: readonly string[] = [
   'Korlátlan privát kassza (az ingyenes 1 közös kasszához képest)',
   'Megtakarítás modul — célok, számlák, állampapírok',
@@ -21,7 +19,6 @@ export const PRO_TIER_BULLETS: readonly string[] = [
   'Zsebpénz, biztosítások és bérbeadás modulok',
 ];
 
-/** Premium: az ingyeneshez képest (teljes lista). */
 export const PREMIUM_TIER_BULLETS: readonly string[] = [
   'Minden Pro funkció (privát kasszák, megtakarítás, tartozás, rezsi, órák, zsebpénz, biztosítás, bérbeadás)',
   'Vállalkozás modul — rendelések és bevételek',
@@ -32,7 +29,6 @@ export const PREMIUM_TIER_BULLETS: readonly string[] = [
   'Számla és nyugta csatolás, havi könyvelési ZIP',
 ];
 
-/** Premium: Pro felhasználónak — csak a ráadás. */
 export const PREMIUM_ONLY_BULLETS: readonly string[] = [
   'Vállalkozás modul — rendelések és bevételek',
   'Shopify, WooCommerce és UNAS webshop import',

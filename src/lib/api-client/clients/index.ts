@@ -17,3 +17,4 @@ export { InsuranceClient } from './insurance-client';
 export { RentalClient } from './rental-client';
 export { FeedbackClient } from './feedback-client';
 export { ReceivablesClient } from './receivables-client';
+export { TravelClient } from './travel-client';

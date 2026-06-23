@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import { LoadableStatus } from '@/utils/loadable-status';
 import { StatusCodes } from '@/types/api';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- intentional: generic bound for arbitrary async functions
 type AsyncFunction = (...params: any[]) => Promise<any>;
 
 interface AsyncState<T> {

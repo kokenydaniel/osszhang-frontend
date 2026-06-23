@@ -18,6 +18,8 @@ export interface SavingsAccount {
   goalAmount: number;
   currentAmount: number;
   targetDate: string | null;
+  travelPlanId?: number | null;
+  travel_plan_id?: number | null;
   wallet?: SavingsWalletRef | null;
   ledger: import('./budget').LedgerEntry[];
 }
@@ -32,6 +34,7 @@ export interface CreateSavingsPayload {
   currentAmount?: number;
   targetDate?: string;
   walletId?: number | null;
+  travelPlanId?: number | null;
 }
 
 export interface Investment {

@@ -11,7 +11,6 @@ type Props = {
   consumptionData: DashboardConsumptionItem[];
   investments: Investment[];
   investmentPayouts: DashboardInvestmentPayout[];
-  totalInvestmentsValue: number;
   showMetersConsumption?: boolean;
 };
 
@@ -20,9 +19,9 @@ export function DashboardSideColumn({
   consumptionData,
   investments,
   investmentPayouts,
-  totalInvestmentsValue,
   showMetersConsumption = true,
 }: Props) {
+  const totalUpcomingPayouts = investmentPayouts.reduce((sum, payout) => sum + payout.amount, 0);
   return (
     <div className={classNames('flex flex-col gap-6', canUse('budget') ? 'lg:col-span-2' : '')}>
       {showMetersConsumption && canUse('meters') && consumptionData.length > 0 && (
@@ -93,7 +92,7 @@ export function DashboardSideColumn({
           description="Soron következő kamatok"
           action={
             <span className="text-xs font-medium text-emerald-600 tabular-nums">
-              ∑ {formatHUF(totalInvestmentsValue)}
+              ∑ {formatHUF(totalUpcomingPayouts)}
             </span>
           }
         >

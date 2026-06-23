@@ -6,8 +6,10 @@ import { motion } from 'motion/react';
 import { Sparkles, Trash2, Pencil, X, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { StatusPill, MiniSwitch, ObjectDetails, type DetailGroup } from '@/components/design';
+import { StatusPill, MiniSwitch, ObjectDetails, type DetailGroup, metricLabelClassName } from '@/components/design';
 import { formatHUF, formatDate } from '@/utils';
+import { savingsCalculations } from '@/calculations/savings';
+import { SAVINGS_INCLUDE_IN_SUMMARY_SWITCH } from './savings-ui';
 import { canEditHousehold } from '@/utils/household-role';
 import { useAuthStore } from '@/stores/useAuthStore';
 import type { Investment } from '@/types';
@@ -19,7 +21,6 @@ type SavingsInvestmentCardProps = {
     accruedInterest: number;
     daysPassed: number;
   };
-  getMaturityAmount: (inv: Investment) => number | null;
   updateInvestment: (id: number, data: Partial<Omit<Investment, 'id'>>) => Promise<void>;
   deleteInvestment: (id: number) => Promise<void>;
   requestDelete: (options: { title: string; message: string; onConfirm: () => void }) => void;
@@ -30,7 +31,6 @@ type SavingsInvestmentCardProps = {
 export function SavingsInvestmentCard({
   inv,
   getInvestmentValue,
-  getMaturityAmount,
   updateInvestment,
   deleteInvestment,
   requestDelete,
@@ -44,8 +44,7 @@ export function SavingsInvestmentCard({
   const [payoutDate, setPayoutDate] = useState('');
 
   const { totalValue, accruedInterest, daysPassed } = getInvestmentValue(inv);
-  const inactive = inv.countInSavings === false;
-  const mAmount = getMaturityAmount(inv);
+  const supplementalRows = savingsCalculations.getInvestmentCardSupplementalRows(inv);
 
   const startEditValue = () => {
     if (!canEditHousehold(useAuthStore.getState().user)) return;
@@ -56,7 +55,10 @@ export function SavingsInvestmentCard({
   };
 
   const saveValue = () => {
-    void updateInvestment(inv.id, { currentValue: Number(valueInput) });
+    const newVal = Number(valueInput);
+    if (!Number.isFinite(newVal) || newVal < 0) return;
+
+    void updateInvestment(inv.id, { currentValue: newVal });
     setEditingValue(false);
   };
 
@@ -73,9 +75,19 @@ export function SavingsInvestmentCard({
       items: [
         { label: 'Tőke', value: formatHUF(inv.principalAmount) },
         { label: 'Éves kamat', value: `${inv.annualInterestRate}%` },
-        ...(mAmount
-          ? [{ label: 'Lejáratkor', value: <span className="text-amber-700">{formatHUF(mAmount)}</span> }]
-          : []),
+        ...supplementalRows.map((row) => ({
+          label: row.date && row.label === 'Következő kamat'
+            ? `${row.label} (${row.date.replace(/-/g, '.')})`
+            : row.label,
+          value: row.amount != null ? (
+            <span className={row.label.includes('Lejárat') ? 'text-amber-700' : 'text-emerald-600'}>
+              {row.label === 'Következő kamat' ? '+' : ''}
+              {formatHUF(row.amount)}
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-xs">{row.hint}</span>
+          ),
+        })),
         {
           label: `Hozam (${daysPassed} nap)`,
           value: (
@@ -95,7 +107,6 @@ export function SavingsInvestmentCard({
       whileHover={{ y: -2 }}
       className={classNames(
         'rounded-lg border border-border bg-card p-5 flex flex-col gap-4 transition-shadow shadow-soft hover:shadow-lift',
-        inactive && 'opacity-60',
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -142,7 +153,7 @@ export function SavingsInvestmentCard({
 
       <div>
         <div className="flex items-center justify-between gap-2 mb-1">
-          <span className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
+          <span className={metricLabelClassName()}>
             {editingValue ? 'Új érték (Ft)' : 'Aktuális érték'}
           </span>
           {!editingValue && !isReader ? (
@@ -224,8 +235,8 @@ export function SavingsInvestmentCard({
         <MiniSwitch
           checked={inv.countInSavings !== false}
           onChange={(checked) => void updateInvestment(inv.id, { countInSavings: checked })}
-          label="Vagyonba"
-          title="Beleszámít a fő vagyon összegébe a Széf nézetben"
+          label={SAVINGS_INCLUDE_IN_SUMMARY_SWITCH.label}
+          title={SAVINGS_INCLUDE_IN_SUMMARY_SWITCH.title}
           tone="success"
           disabled={isReader}
         />

@@ -103,12 +103,9 @@ export class HouseholdClient {
     last_name?: string;
     firstName?: string;
     lastName?: string;
-  }): SingleEntityResponse<UserProfile> {
+  }): Promise<[string, object | null] | null> {
     try {
-      const [status, response] = await this.apiClient.postJson(`${this.baseEndpoint}/members`, data);
-      if ((status === StatusCodes.Http200 || status === StatusCodes.Http201) && isSingleEntityApiResponse<UserProfile>(response, ['id'])) {
-        return this.apiClient.response(status as StatusCodes.Http200 | StatusCodes.Http201, response);
-      }
+      return await this.apiClient.postJson(`${this.baseEndpoint}/members`, data);
     } catch (err) {
       console.log('err', err);
     }

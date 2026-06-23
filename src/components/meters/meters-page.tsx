@@ -56,7 +56,7 @@ export function MetersPage() {
         <ModulePageSkeleton metrics={0} tableRows={4} />
       ) : (
         <>
-          {data.canUseAi && !!data.aiUtilityAnomalies?.anomalies?.length ? (
+          {data.canLoadAnomalies && !!data.aiUtilityAnomalies?.anomalies?.length ? (
             <AccentPanel
               tone="warning"
               icon={Sparkles}
@@ -80,7 +80,7 @@ export function MetersPage() {
                 ))}
               </ul>
             </AccentPanel>
-          ) : !data.canUseAi ? (
+          ) : !data.canLoadAnomalies ? (
             <TierGatedAiPanel
               featureLabel="AI anomáliafigyelés"
               icon={Sparkles}

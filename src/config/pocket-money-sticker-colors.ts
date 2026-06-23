@@ -1,6 +1,5 @@
 import type { CSSProperties } from 'react';
 
-/** Előre definiált matrica háttérszínek (hex). */
 export const POCKET_MONEY_STICKER_BG_PRESETS = [
   { hex: '#FCD34D', label: 'Napsárga' },
   { hex: '#FDBA74', label: 'Barack' },
@@ -14,7 +13,6 @@ export const POCKET_MONEY_STICKER_BG_PRESETS = [
   { hex: '#F5F5F4', label: 'Krém' },
 ] as const;
 
-/** Ikon szín presetek (sötétebb, jól olvasható). */
 export const POCKET_MONEY_ICON_COLOR_PRESETS = [
   { hex: '#78350F', label: 'Barna' },
   { hex: '#9F1239', label: 'Bordó' },
@@ -42,7 +40,6 @@ function clampChannel(n: number): number {
   return Math.min(255, Math.max(0, Math.round(n)));
 }
 
-/** Egyszerű sötétítés gradienshez. */
 export function shadeHex(hex: string, amount: number): string {
   const n = parseInt(hex.slice(1), 16);
   const r = clampChannel(((n >> 16) & 0xff) + amount);

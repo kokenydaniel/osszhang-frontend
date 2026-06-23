@@ -24,7 +24,6 @@ function patchWalletManualBalance(manualBalance: number): void {
   useAuthStore.setState({ user: { ...user, wallets } });
 }
 
-/** Rezsi elszámolás / visszavonás után: store + egyenleg + költségvetés — fetchMe nélkül. */
 export function syncAfterUtilitiesSettlementMutation(
   payload: UtilitiesMutationPayload,
   period: { selectedYear: number; selectedMonth: number },

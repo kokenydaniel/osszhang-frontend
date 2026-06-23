@@ -1,4 +1,4 @@
-/** Felhasználói felületen megjelenő AI funkció-nevek — ne használj belső API kulcsokat a UI-ban. */
+
 
 export type AiFeatureId =
   | 'monthly_advisor'
@@ -44,7 +44,6 @@ export const AI_FEATURE_DESCRIPTIONS: Partial<Record<AiFeatureId, string>> = {
     'A tényleges kategória-összegek alapján javasol spórlási lehetőségeket; nem talál ki számokat.',
 };
 
-/** @deprecated Belső kulcs → felhasználói név (legacy featureLabel prop-okhoz) */
 export const LEGACY_AI_FEATURE_LABELS: Record<string, string> = {
   'AI CFO': AI_FEATURE_LABELS.monthly_advisor,
   'Heti AI tájékoztató': AI_FEATURE_LABELS.weekly_report,

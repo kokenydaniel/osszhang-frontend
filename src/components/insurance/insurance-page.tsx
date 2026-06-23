@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader, MetricStrip, ModulePageSkeleton, SectionPanel } from '@/components/design';
+import { PageCollapsibleSection } from '@/components/design/page-collapsible-section';
 import { useInsuranceStore } from '@/stores/insuranceStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
@@ -164,11 +165,8 @@ export function InsurancePage() {
                 }
               />
             </div>
-            <details className="hidden md:block mt-2">
-              <summary className="text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground">
-                Lista nézet
-              </summary>
-              <div className="mt-3">
+            <div className="hidden md:block mt-2">
+              <PageCollapsibleSection title="Lista nézet">
                 <InsurancePoliciesTable
                   policies={filteredPolicies}
                   isReader={isReader}
@@ -182,8 +180,8 @@ export function InsurancePage() {
                     })
                   }
                 />
-              </div>
-            </details>
+              </PageCollapsibleSection>
+            </div>
           </>
         )}
       </SectionPanel>

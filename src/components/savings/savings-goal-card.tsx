@@ -1,11 +1,13 @@
 'use client';
 
 import classNames from 'classnames';
-import { History, Lock, Users } from 'lucide-react';
+import { History, Lock, MapPinned, Users } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { MiniSwitch } from '@/components/design';
+import { MiniSwitch, metricLabelClassName } from '@/components/design';
 import { formatHUF } from '@/utils';
 import { savingsCalculations } from '@/calculations/savings';
+import { SAVINGS_INCLUDE_IN_SUMMARY_SWITCH } from './savings-ui';
 import type { SavingsAccount } from '@/types';
 
 type SavingsGoalCardProps = {
@@ -57,20 +59,22 @@ export function SavingsGoalCard({
     selectedYear,
     selectedMonth,
   );
-  const inactive = goal.count_in_savings === false;
   const walletIsShared = goal.wallet?.isShared ?? goal.wallet?.is_shared ?? true;
   const walletName = goal.wallet?.name ?? 'Kassza';
 
   return (
-    <article
-      className={classNames(
-        'rounded-2xl border bg-card p-5 shadow-sm flex flex-col gap-4 transition-opacity',
-        inactive && 'opacity-60',
-      )}
-    >
+    <article className="rounded-lg border border-border bg-card p-5 flex flex-col gap-4 shadow-soft">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-2 min-w-0">
           <h3 className="text-base font-semibold text-foreground tracking-tight truncate">{goal.institution}</h3>
+          {(goal.travelPlanId ?? goal.travel_plan_id) ? (
+            <Link
+              href="/tools/travel"
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              <MapPinned size={12} /> Utazási terv
+            </Link>
+          ) : null}
           <WalletBadge isShared={walletIsShared} name={walletName} />
         </div>
         {!isReader && (
@@ -92,14 +96,19 @@ export function SavingsGoalCard({
         )}
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-end justify-between gap-3 text-sm">
-          <p className="font-semibold text-primary tabular-nums">{formatHUF(saved)}</p>
-          <p className="text-muted-foreground tabular-nums">
+      <div>
+        <span className={metricLabelClassName()}>
+          Aktuális összeg
+        </span>
+        <div className="flex items-end justify-between gap-3 mt-1">
+          <p className="text-2xl font-semibold text-primary tabular-nums tracking-tight leading-none">
+            {formatHUF(saved)}
+          </p>
+          <p className="text-xs text-muted-foreground tabular-nums pb-0.5">
             / {formatHUF(goal.goalAmount)} · {Math.round(progress)}%
           </p>
         </div>
-        <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
+        <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted mt-3">
           <div
             className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-primary transition-all duration-500"
             style={{ width: `${progress}%` }}
@@ -121,8 +130,8 @@ export function SavingsGoalCard({
         <MiniSwitch
           checked={goal.count_in_savings !== false}
           onChange={(checked) => void updateSavingsAccount(goal.id, { count_in_savings: checked })}
-          label="Vagyonba"
-          title="Beleszámít a fő vagyon összegébe a Széf nézetben"
+          label={SAVINGS_INCLUDE_IN_SUMMARY_SWITCH.label}
+          title={SAVINGS_INCLUDE_IN_SUMMARY_SWITCH.title}
           disabled={isReader}
         />
         <Button type="button" variant="ghost" size="xs" onClick={() => onOpenLedger(goal.id)}>

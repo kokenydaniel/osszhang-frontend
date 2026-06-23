@@ -3,7 +3,23 @@ import {
   isValidationErrorApiResponse,
 } from '@/lib/api-client/type-guards';
 
-/** Emberi olvasható hiba a Laravel / API válaszból. */
+export function getValidationFieldError(
+  response: object | null,
+  field: string,
+): string | null {
+  if (!response || !isValidationErrorApiResponse(response)) return null;
+  const messages = response.errors[field];
+  const first = messages?.find((message): message is string => typeof message === 'string');
+  return first ?? null;
+}
+
+export function formatUsernameValidationMessage(message: string): string {
+  if (/already been taken/i.test(message)) {
+    return 'Ez a felhasználónév már foglalt.';
+  }
+  return message;
+}
+
 export function getApiErrorMessage(
   status: string | number,
   response: object | null,

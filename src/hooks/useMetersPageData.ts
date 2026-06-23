@@ -14,6 +14,7 @@ import { StatusCodes } from '@/types/api';
 import { aiHelpers } from '@/helpers/ai-helpers';
 import { ensureUtilityAnomaliesLoaded } from '@/helpers/utility-anomalies-loader';
 import { resolveMetersSettings } from '@/settings/meters';
+import { canLoadUtilityAnomalies } from '@/helpers/dashboard-access';
 import { canUseFeature } from '@/helpers/check-access';
 import { isHouseholdReader, canEditHousehold } from '@/utils/household-role';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
@@ -41,22 +42,25 @@ export function useMetersPageData() {
   const metersSettings = useMemo(() => resolveMetersSettings(user?.household), [user?.household]);
   const isReader = isHouseholdReader(user);
   const canUseAi = canUseFeature(user, 'ai');
+  const canLoadAnomalies = canLoadUtilityAnomalies(user);
   const locationGroups = useMemo(
     () => metersCalculations.groupByLocationGroups(meters, metersSettings.location_groups),
     [meters, metersSettings.location_groups],
   );
 
   const refreshAiAnomalies = useCallback(async () => {
+    if (!canLoadAnomalies) return null;
     const data = await ensureUtilityAnomaliesLoaded(selectedYear, selectedMonth, { force: true });
     setAiUtilityAnomalies(data);
-  }, [selectedMonth, selectedYear, setAiUtilityAnomalies]);
+    return data;
+  }, [canLoadAnomalies, selectedMonth, selectedYear, setAiUtilityAnomalies]);
 
   useEffect(() => {
-    if (!canUseAi) return;
+    if (!canLoadAnomalies) return;
     void ensureUtilityAnomaliesLoaded(selectedYear, selectedMonth).then((data) => {
       setAiUtilityAnomalies(data);
     });
-  }, [canUseAi, selectedMonth, selectedYear, setAiUtilityAnomalies]);
+  }, [canLoadAnomalies, selectedMonth, selectedYear, setAiUtilityAnomalies]);
 
   const getPreviousYearValue = useCallback(
     (mId: number, month: number, year: number): number | null => {
@@ -310,6 +314,7 @@ export function useMetersPageData() {
     aiUtilityAnomalies,
     refreshAiAnomalies,
     canUseAi,
+    canLoadAnomalies,
     locationGroups,
     getPreviousYearValue,
     createMeter,

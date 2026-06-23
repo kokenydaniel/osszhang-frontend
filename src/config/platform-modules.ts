@@ -7,7 +7,6 @@ export function platformModuleFlagKey(moduleId: ModuleId): string {
   return `enable_module_${moduleId}`;
 }
 
-/** Nyers flag érték — lifetime adminnál is a tényleges platform állapot. */
 export function isPlatformModuleReleased(user: UserProfile | null | undefined, moduleId: ModuleId): boolean {
   if (moduleId === 'budget') return true;
   if (!user) return false;
@@ -18,13 +17,11 @@ export function isPlatformModuleReleased(user: UserProfile | null | undefined, m
   return Boolean(flag);
 }
 
-/** Sima usernek: modul még nincs kiadva platform szinten. */
 export function isModuleComingSoon(user: UserProfile | null | undefined, moduleId: ModuleId): boolean {
   if (!user || isPlatformAdmin(user) || moduleId === 'budget') return false;
   return !isPlatformModuleReleased(user, moduleId);
 }
 
-/** Megjelenítéshez — lifetime admin „felhasználói előnézet” módban is mutatja a Hamarosan állapotot. */
 export function isModuleComingSoonForDisplay(
   user: UserProfile | null | undefined,
   moduleId: ModuleId,
@@ -37,7 +34,6 @@ export function isModuleComingSoonForDisplay(
   return isModuleComingSoon(user, moduleId);
 }
 
-/** Lifetime admin: modul még nincs kiadva, de ő tesztelheti. */
 export function isPlatformModulePreviewForAdmin(
   user: UserProfile | null | undefined,
   moduleId: ModuleId,
@@ -46,7 +42,6 @@ export function isPlatformModulePreviewForAdmin(
   return !isPlatformModuleReleased(user, moduleId);
 }
 
-/** Megjelenítéshez — felhasználói előnézetben elrejti a Fejlesztés alatt badge-et. */
 export function isPlatformModulePreviewForAdminDisplay(
   user: UserProfile | null | undefined,
   moduleId: ModuleId,

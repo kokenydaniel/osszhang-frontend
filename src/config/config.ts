@@ -61,7 +61,7 @@ const config = {
   },
 
   storage: {
-    /** Legacy zustand persist key — safe to drop after migration */
+
     legacyPreferencesKey: 'osszhang-preferences',
   },
 

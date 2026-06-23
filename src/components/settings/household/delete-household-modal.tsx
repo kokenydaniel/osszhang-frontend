@@ -28,11 +28,11 @@ interface SettingsDeleteHouseholdModalProps {
 export function SettingsDeleteHouseholdModal({ isOpen, onClose }: SettingsDeleteHouseholdModalProps) {
   const { user } = useAuthStore();
   const { addNotification } = useNotificationStore();
-  
+
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [deleteAcknowledged, setDeleteAcknowledged] = useState(false);
   const [isDeletingHousehold, setIsDeletingHousehold] = useState(false);
-  
+
   const householdDisplayName = user?.household?.name || '';
   const canConfirmDelete = deleteConfirmName.trim() === householdDisplayName.trim() && deleteAcknowledged && !isDeletingHousehold;
 

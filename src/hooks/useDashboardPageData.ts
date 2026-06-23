@@ -182,8 +182,6 @@ export function useDashboardPageData() {
     () => formatMonthYear(selectedMonth, selectedYear),
     [selectedMonth, selectedYear],
   );
-  const canUseAi = canUseFeature(user, 'ai');
-
   const pocketMoneyInterestAlert = useMemo(() => {
     if (!canUseModuleWithTier(user, 'pocket_money')) return null;
     return computeDashboardPocketMoneyInterestAlert(
@@ -404,7 +402,7 @@ export function useDashboardPageData() {
     pocketMoneyInterestAlert,
     businessTaxAlert,
     aiUtilityAnomalies,
-    canUseAi,
+    canLoadUtilityAnomalies: canLoadUtilityAnomalies(user),
     periodLabel,
     dashboardWidgetOrder,
     metersShowAnnualOnDashboard: metersSettings.show_annual_summary_on_dashboard,

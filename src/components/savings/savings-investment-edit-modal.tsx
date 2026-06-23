@@ -6,7 +6,7 @@ import { DatePicker } from '@/components/ui/DatePicker';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/FieldLabel';
 import { HELP } from '@/config/help';
-import { toDayjs } from '@/utils/dates';
+import { savingsCalculations } from '@/calculations/savings';
 import { ModalFormFooter } from '@/components/design';
 import type { Investment } from '@/types';
 import type { SavingsSettings } from '@/settings/savings';
@@ -48,7 +48,10 @@ export function SavingsInvestmentEditModal({
     setPurchaseDate(investment.purchaseDate);
     setMaturityDate(investment.maturityDate ?? '');
     setOwner(investment.owner);
-    setMaturityValue(investment.maturityAmount != null ? String(investment.maturityAmount) : '');
+    setMaturityValue(() => {
+      const amount = savingsCalculations.readExplicitMaturityAmount(investment);
+      return amount != null ? String(amount) : '';
+    });
     setCurrentValue(investment.currentValue != null ? String(investment.currentValue) : '');
     setNextPayoutAmount(investment.nextPayoutAmount != null ? String(investment.nextPayoutAmount) : '');
     setNextPayoutDate(investment.nextPayoutDate ?? '');
@@ -58,28 +61,27 @@ export function SavingsInvestmentEditModal({
     e.preventDefault();
     if (!investment) return;
 
-    let finalRate = Number(rate);
-    if (maturityValue && Number(maturityValue) > 0 && maturityDate && purchaseDate) {
-      const pDate = toDayjs(purchaseDate);
-      const mDate = toDayjs(maturityDate);
-      const diffDays = Math.ceil(Math.max(0, mDate.diff(pDate, 'day')));
-      if (diffDays > 0 && Number(principal) > 0) {
-        const totalReturnRatio = (Number(maturityValue) - Number(principal)) / Number(principal);
-        finalRate = Math.round(totalReturnRatio * (365.25 / diffDays) * 100 * 100) / 100;
-      }
-    }
+    const principalNum = Number(principal);
+    const maturityNum = maturityValue.trim() ? Number(maturityValue) : 0;
+    const finalRate = savingsCalculations.deriveAnnualRateFromMaturity(
+      principalNum,
+      maturityNum,
+      purchaseDate,
+      maturityDate,
+      Number(rate) || 0,
+    );
 
     await onSave(investment.id, {
       name: name.trim(),
       type,
-      principalAmount: Number(principal),
-      annualInterestRate: finalRate,
+      principalAmount: principalNum,
+      annualInterestRate: Math.max(0, finalRate),
       purchaseDate,
       maturityDate: maturityDate || null,
       owner,
-      maturityAmount: maturityValue ? Number(maturityValue) : null,
-      currentValue: currentValue ? Number(currentValue) : null,
-      nextPayoutAmount: nextPayoutAmount ? Number(nextPayoutAmount) : null,
+      maturityAmount: maturityNum > 0 ? maturityNum : null,
+      currentValue: currentValue.trim() ? Number(currentValue) : null,
+      nextPayoutAmount: nextPayoutAmount.trim() ? Number(nextPayoutAmount) : null,
       nextPayoutDate: nextPayoutDate || null,
     });
   };
@@ -115,7 +117,7 @@ export function SavingsInvestmentEditModal({
             <Input type="number" value={principal} onChange={(e) => setPrincipal(e.target.value)} required />
           </div>
           <div className="space-y-1.5">
-            <FieldLabel info={HELP.savings.maturityAmount}>Lejárati érték (Ft)</FieldLabel>
+            <FieldLabel info={HELP.savings.maturityAmount}>Lejárati névérték (Ft)</FieldLabel>
             <Input type="number" value={maturityValue} onChange={(e) => setMaturityValue(e.target.value)} />
           </div>
         </div>

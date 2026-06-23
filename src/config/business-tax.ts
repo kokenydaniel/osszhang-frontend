@@ -1,10 +1,9 @@
-/** Magyar adózási régimek — beállítások és kimutatások (nem helyettesíti az adótanácsadót). */
+
 
 export type TaxRegime = 'aam' | 'vat' | 'kata';
 
 export type IncomeTaxMethod = 'cost_ratio' | 'actual' | 'kata_flat';
 
-/** Mely rendelések számítanak bevételnek a kimutatásban. */
 export type RevenueBasis = 'documented_only' | 'all_orders';
 
 export const TAX_REGIME_LABELS: Record<TaxRegime, string> = {

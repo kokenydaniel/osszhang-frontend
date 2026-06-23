@@ -7,7 +7,6 @@ export type BusinessDocumentTypeMeta = {
   optional?: boolean;
 };
 
-/** Havi könyvelési csomag — dokumentum típusok. */
 export const BUSINESS_DOCUMENT_TYPES: BusinessDocumentTypeMeta[] = [
   {
     id: 'bank_statement',

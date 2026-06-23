@@ -37,7 +37,7 @@ type Props = {
   pocketMoneyInterestAlert: DashboardPocketMoneyInterestAlert | null;
   businessTaxAlert: DashboardBusinessTaxAlert | null;
   aiUtilityAnomalies: AiUtilityAnomalies | null;
-  canUseAi: boolean;
+  canLoadUtilityAnomalies: boolean;
   financialDataReady: boolean;
 };
 
@@ -57,7 +57,7 @@ export function DashboardAlertBanners({
   pocketMoneyInterestAlert,
   businessTaxAlert,
   aiUtilityAnomalies,
-  canUseAi,
+  canLoadUtilityAnomalies,
   financialDataReady,
 }: Props) {
   if (!financialDataReady) {
@@ -73,7 +73,7 @@ export function DashboardAlertBanners({
   const showPocketMoney = !!pocketMoneyInterestAlert && canUse('pocket_money');
   const showBusinessTax = !!businessTaxAlert && canUse('business');
   const showMetersAnomalies =
-    canUseAi && canUse('meters') && !!aiUtilityAnomalies?.anomalies?.length;
+    canLoadUtilityAnomalies && !!aiUtilityAnomalies?.anomalies?.length;
 
   const showFinancialRow = showMissedIncome || showUtilitiesRezsiDebt || showReceivables;
 

@@ -289,7 +289,6 @@ Válasz: egyetlen egész szám, semmi más.`;
     );
   },
 
-  /** Helyszín csoportok szerint (Beállítások → Közműórák); ismeretlen helyszín saját csoportként. */
   groupByLocationGroups(
     meters: Meter[],
     groups: Array<{ name: string; locations: string[] }>,

@@ -12,9 +12,6 @@ export type UtilitiesLoadOptions = RequestOptions & {
   force?: boolean;
 };
 
-/**
- * Loads household utilities once. Concurrent callers share one in-flight request.
- */
 export async function ensureUtilitiesLoaded(options: UtilitiesLoadOptions = {}): Promise<void> {
   const store = useUtilitiesStore.getState();
   if (!options.force && store.status === LoadableStatus.Loaded && !inflight) return;

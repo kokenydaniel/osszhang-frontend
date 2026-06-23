@@ -139,10 +139,9 @@ export const aiHelpers = {
   async getUtilityAnomalies(year: number, month: number): Promise<AiUtilityAnomalies | null> {
     try {
       const res = await aiFinanceClient.getUtilitiesAnomalies(year, month);
-      if (!res || res[0] !== StatusCodes.Http200) throw new Error('API Error');
+      if (!res || res[0] !== StatusCodes.Http200) return null;
       return unwrapApiData<AiUtilityAnomalies>(res[1]);
-    } catch (error) {
-      console.error('[aiHelpers] getUtilityAnomalies failed', error);
+    } catch {
       return null;
     }
   },

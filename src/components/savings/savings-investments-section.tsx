@@ -8,14 +8,12 @@ import { SavingsInvestmentCard } from './savings-investment-card';
 
 type SavingsInvestmentsSectionProps = {
   investments: Investment[];
-  sumPersonalInvestments: number;
-  sumWifeInvestments: number;
+  sumDisplayAllInvestments: number;
   getInvestmentValue: (inv: Investment) => {
     totalValue: number;
     accruedInterest: number;
     daysPassed: number;
   };
-  getMaturityAmount: (inv: Investment) => number | null;
   updateInvestment: (id: number, data: Partial<Omit<Investment, 'id'>>) => Promise<void>;
   deleteInvestment: (id: number) => Promise<void>;
   requestDelete: (options: { title: string; message: string; onConfirm: () => void }) => void;
@@ -25,16 +23,13 @@ type SavingsInvestmentsSectionProps = {
 
 export function SavingsInvestmentsSection({
   investments,
-  sumPersonalInvestments,
-  sumWifeInvestments,
+  sumDisplayAllInvestments,
   ...cardProps
 }: SavingsInvestmentsSectionProps) {
   return (
     <Section
       title="Állampapírok és kincstári számlák"
-      description={`${investments.length} aktív befektetés · ${formatHUF(
-        sumPersonalInvestments + sumWifeInvestments,
-      )} össz érték`}
+      description={`${investments.length} aktív befektetés · ${formatHUF(sumDisplayAllInvestments)} össz érték`}
     >
       {investments.length === 0 ? (
         <EmptyState

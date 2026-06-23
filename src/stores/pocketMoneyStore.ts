@@ -78,7 +78,7 @@ export const pocketMoneyStore = create<PocketMoneyState>()(
             status: LoadableStatus.Loaded,
           });
         } catch {
-          /* keep current list on background sync failure */
+
         }
       },
 

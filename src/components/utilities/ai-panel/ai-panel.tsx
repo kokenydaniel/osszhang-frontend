@@ -2,8 +2,8 @@
 
 import React, { useState, useCallback } from 'react';
 
+import { canLoadUtilityAnomalies } from '@/helpers/dashboard-access';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { canUseFeature } from '@/helpers/check-access';
 import { HELP } from '@/config/help';
 import { AccentPanel } from '@/components/design';
 import { Button } from '@/components/ui/button';
@@ -17,13 +17,9 @@ interface AiPanelProps {
   selectedYear: number;
 }
 
-/**
- * Completely self-contained AI anomaly panel.
- * Owns its own fetch + data state. Max 2 useState (data + loading).
- */
 export function UtilitiesAiPanel({ selectedMonth, selectedYear }: AiPanelProps) {
   const { user } = useAuthStore();
-  const canUseAi = canUseFeature(user, 'ai');
+  const canLoadAnomalies = canLoadUtilityAnomalies(user);
 
   const [anomalies, setAnomalies] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -40,7 +36,7 @@ export function UtilitiesAiPanel({ selectedMonth, selectedYear }: AiPanelProps) 
     }
   }, [selectedMonth, selectedYear]);
 
-  if (!canUseAi) {
+  if (!canLoadAnomalies) {
     return (
       <TierGatedAiPanel
         featureLabel="AI anomáliafigyelés"

@@ -11,7 +11,6 @@ import {
 import type { UserProfile } from '@/types';
 import { openUpgradeModal } from '@/stores/useUpgradeModalStore';
 
-/** Returns true if enabling should be blocked (opens upgrade modal). */
 export function blockModuleEnable(
   user: UserProfile | null | undefined,
   moduleId: ModuleId,
@@ -33,7 +32,6 @@ export function blockModuleEnable(
   return true;
 }
 
-/** Returns true if enabling should be blocked (opens upgrade modal). */
 export function blockFeatureEnable(
   user: UserProfile | null | undefined,
   featureId: PremiumFeatureId,

@@ -31,9 +31,9 @@ export interface BillingTierGrant {
 }
 
 export interface BillingSummary {
-  /** Fizetős / Stripe csomag — ezt számlázzuk. */
+
   billing_tier?: SubscriptionTier;
-  /** Aktuális funkció-hozzáférés (grant + fizetős). */
+
   access_tier?: SubscriptionTier;
   effective_tier: SubscriptionTier;
   tier_grant?: BillingTierGrant | null;

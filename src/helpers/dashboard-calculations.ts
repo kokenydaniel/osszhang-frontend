@@ -1,6 +1,6 @@
 import { formatHUF, compareDates, hasSettlementDate, isDueOverdue } from '@/utils';
 import { isUpcomingWithinDays } from '@/helpers/debt-budget';
-import { dayjs, toDayjs, formatTodayLong, toDateString } from '@/utils/dates';
+import { dayjs, formatTodayLong } from '@/utils/dates';
 import { utilitiesCalculations } from '@/calculations/utilities';
 import { savingsCalculations } from '@/calculations/savings';
 import { HELP } from '@/config/help';
@@ -43,89 +43,6 @@ function expenseRemaining(tx: import('@/types').CashTransaction): number {
   if (!tx.isBudget) return tx.amount;
   const spent = tx.subItems?.reduce((acc: number, si: LedgerEntry) => acc + Math.abs(si.amount), 0) ?? 0;
   return Math.max(0, tx.amount - spent);
-}
-
-function estimateInvestmentPayout(inv: Investment): Omit<DashboardInvestmentPayout, 'invName' | 'owner'> | null {
-  if (inv.nextPayoutAmount && inv.nextPayoutDate) {
-    return { amount: inv.nextPayoutAmount, date: inv.nextPayoutDate, isEstimated: false, label: 'Következő kamat' };
-  }
-
-  const nameUpper = inv.name.toUpperCase();
-  const now = dayjs();
-  const maturityAmount = savingsCalculations.computeMaturityAmount(inv);
-
-  if (nameUpper.includes('DKJ')) {
-    const maturityDate = inv.maturityDate ? toDayjs(inv.maturityDate) : null;
-    return {
-      amount: maturityAmount || inv.principalAmount,
-      date: maturityDate ? toDateString(maturityDate) : null,
-      isEstimated: true,
-      label: 'Lejárati kifizetés',
-    };
-  }
-
-  if (nameUpper.includes('FIXMÁP') || nameUpper.includes('FIX MÁP')) {
-    const principal = maturityAmount || inv.principalAmount;
-    const yearlyRate = Number(inv.annualInterestRate) || 7;
-    const currentYear = now.year();
-    const payoutMonths = [0, 3, 6, 9];
-    let nextPayoutDateObj = dayjs().year(currentYear).month(6).date(23);
-    for (const m of payoutMonths) {
-      const candidate = dayjs().year(currentYear).month(m).date(23);
-      if (candidate.isAfter(now, 'day')) {
-        nextPayoutDateObj = candidate;
-        break;
-      }
-    }
-    if (!nextPayoutDateObj.isAfter(now, 'day')) {
-      nextPayoutDateObj = dayjs().year(currentYear + 1).month(0).date(23);
-    }
-    return {
-      amount: Math.round((Number(principal) * (yearlyRate / 100)) / 4),
-      date: toDateString(nextPayoutDateObj),
-      isEstimated: true,
-      label: 'Következő kamat',
-    };
-  }
-
-  if (nameUpper.includes('PMÁP') || nameUpper.includes('PMAP')) {
-    const maturity = inv.maturityDate ? toDayjs(inv.maturityDate) : null;
-    const principal = maturityAmount || inv.principalAmount;
-    const yearlyRate = Number(inv.annualInterestRate) || 0;
-    let nextPayoutDateObj = dayjs();
-    if (maturity) {
-      const payMonth = maturity.month();
-      const payDay = maturity.date();
-      const currentYear = now.year();
-      nextPayoutDateObj = dayjs().year(currentYear).month(payMonth).date(payDay);
-      if (!nextPayoutDateObj.isAfter(now, 'day')) {
-        nextPayoutDateObj = dayjs().year(currentYear + 1).month(payMonth).date(payDay);
-      }
-    } else {
-      const purchase = toDayjs(inv.purchaseDate);
-      nextPayoutDateObj = dayjs().year(now.year()).month(purchase.month()).date(purchase.date());
-      if (!nextPayoutDateObj.isAfter(now, 'day')) {
-        nextPayoutDateObj = dayjs().year(now.year() + 1).month(purchase.month()).date(purchase.date());
-      }
-    }
-    return {
-      amount: Math.round(Number(principal) * (yearlyRate / 100)),
-      date: toDateString(nextPayoutDateObj),
-      isEstimated: true,
-      label: 'Következő kamat',
-    };
-  }
-
-  if (inv.maturityDate) {
-    return {
-      amount: maturityAmount || inv.principalAmount,
-      date: inv.maturityDate,
-      isEstimated: true,
-      label: 'Lejárati kifizetés',
-    };
-  }
-
-  return null;
 }
 
 function buildSparkline(
@@ -366,12 +283,14 @@ export function computeDashboardSnapshot(input: DashboardSnapshotInput) {
 
   const investmentPayouts: DashboardInvestmentPayout[] = input.investments
     .map((inv) => {
-      const payout = estimateInvestmentPayout(inv);
+      const payout = savingsCalculations.estimateNextInvestmentPayout(inv);
       if (!payout) return null;
       return { invName: inv.name, owner: inv.owner, ...payout };
     })
     .filter((p): p is DashboardInvestmentPayout => p !== null)
     .sort((a, b) => (!a.date ? 1 : !b.date ? -1 : compareDates(a.date, b.date)));
+
+  const totalUpcomingPayouts = investmentPayouts.reduce((sum, payout) => sum + payout.amount, 0);
 
   const topSpendingCategories = Object.entries(
     monthExpenses.reduce(
@@ -419,6 +338,7 @@ export function computeDashboardSnapshot(input: DashboardSnapshotInput) {
     monthBills,
     consumptionData,
     investmentPayouts,
+    totalUpcomingPayouts,
     totalInvestmentsValue,
     chartData,
     aiCfoContext: {

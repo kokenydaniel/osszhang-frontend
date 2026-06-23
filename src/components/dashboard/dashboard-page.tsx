@@ -19,6 +19,7 @@ import { DashboardUtilitiesSnapshot } from './dashboard-utilities-snapshot';
 import { DashboardSideColumn } from './dashboard-side-column';
 import { DashboardBusinessChart } from './dashboard-business-chart';
 import { AiCfoWidget } from './ai-cfo-widget';
+import { DashboardTravelWidget } from './dashboard-travel-widget';
 import { WalletSwitcherContainer as WalletSwitcher } from '@/components/layout/wallet-switcher-container';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { aiFeatureLabel } from '@/config/ai-features';
@@ -50,7 +51,7 @@ export function DashboardPage() {
           pocketMoneyInterestAlert={state.pocketMoneyInterestAlert}
           businessTaxAlert={state.businessTaxAlert}
           aiUtilityAnomalies={state.aiUtilityAnomalies}
-          canUseAi={state.canUseAi}
+          canLoadUtilityAnomalies={state.canLoadUtilityAnomalies}
           financialDataReady={state.financialDataReady}
         />
       ),
@@ -61,6 +62,7 @@ export function DashboardPage() {
           financialDataReady={state.financialDataReady}
         />
       ) : null,
+      travel_plans: <DashboardTravelWidget key="travel_plans" />,
       primary_metrics:
         state.primaryMetrics.length > 0 ? (
           <MetricStrip key="primary_metrics" items={state.primaryMetrics} columns={4} variant="separated" />
@@ -104,7 +106,6 @@ export function DashboardPage() {
             consumptionData={state.consumptionData}
             investments={state.investments}
             investmentPayouts={state.investmentPayouts}
-            totalInvestmentsValue={state.totalInvestmentsValue}
             showMetersConsumption={state.metersShowAnnualOnDashboard}
           />
         </div>

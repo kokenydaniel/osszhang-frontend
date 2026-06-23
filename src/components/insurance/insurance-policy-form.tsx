@@ -5,6 +5,7 @@ import { FormField } from '@/components/ui/FormField';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { MonthPicker } from '@/components/ui/MonthPicker';
 import { formatCurrency, today as todayIso } from '@/utils';
+import { clampDueDayForMonth, daysInMonth } from '@/utils/dates';
 import { MiniSwitch } from '@/components/design';
 import { paymentFrequencyLabel } from '@/helpers/insurance-budget';
 import { periodsPerYear } from '@/calculations/insurance';
@@ -29,6 +30,27 @@ export function InsurancePolicyForm({ values, currencies, onChange }: InsuranceP
       ? paymentNum * periodsPerYear(values.paymentFrequency)
       : Math.max(0, Number(values.annualPremium) || 0)
     : 0;
+
+  const startParts = values.budgetStartMonth?.match(/^(\d{4})-(\d{2})$/) ?? null;
+  const startYear = startParts ? Number(startParts[1]) : null;
+  const startMonth = startParts ? Number(startParts[2]) : null;
+  const dueDayMax =
+    startYear && startMonth ? daysInMonth(startYear, startMonth) : 31;
+
+  const handleBudgetStartMonthChange = (budgetStartMonth: string) => {
+    const patch: Partial<InsurancePolicyFormValues> = { budgetStartMonth };
+    const match = budgetStartMonth.match(/^(\d{4})-(\d{2})$/);
+    if (match) {
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const currentDay = Math.max(1, Number(values.budgetDueDay) || 1);
+      const clamped = clampDueDayForMonth(currentDay, year, month);
+      if (clamped !== currentDay) {
+        patch.budgetDueDay = String(clamped);
+      }
+    }
+    onChange(patch);
+  };
 
   return (
     <div className="space-y-4">
@@ -225,22 +247,40 @@ export function InsurancePolicyForm({ values, currencies, onChange }: InsuranceP
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 label="Szinkron indulása (hónap)"
-                hint="Ettől a hónaptól jelennek meg a fizetendő díjak. A nap csak technikai — a hónap számít."
+                hint="Ettől a hónaptól jelennek meg a fizetendő díjak."
               >
                 <MonthPicker
                   value={values.budgetStartMonth}
-                  onChange={(budgetStartMonth) => onChange({ budgetStartMonth })}
+                  onChange={handleBudgetStartMonthChange}
                   placeholder="Válassz hónapot"
                 />
               </FormField>
-              <FormField label="Esedékesség napja (1–28)">
-                <Input
-                  type="number"
-                  min={1}
-                  max={28}
-                  value={values.budgetDueDay}
+              <FormField
+                label={`Esedékesség napja (1–${dueDayMax})`}
+                hint="Csak a kiválasztott induló hónap érvényes napjai közül választhatsz."
+              >
+                <select
+                  className="h-9 w-full rounded-md border border-border bg-input px-3 text-sm"
+                  value={
+                    startYear && startMonth
+                      ? String(
+                          clampDueDayForMonth(
+                            Number(values.budgetDueDay) || 1,
+                            startYear,
+                            startMonth,
+                          ),
+                        )
+                      : values.budgetDueDay || '1'
+                  }
+                  disabled={!startYear || !startMonth}
                   onChange={(e) => onChange({ budgetDueDay: e.target.value })}
-                />
+                >
+                  {Array.from({ length: dueDayMax }, (_, index) => index + 1).map((day) => (
+                    <option key={day} value={day}>
+                      {day}.
+                    </option>
+                  ))}
+                </select>
               </FormField>
             </div>
           ) : null}

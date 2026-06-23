@@ -15,26 +15,25 @@ export type TaxRevenueLine = {
 };
 
 export type AnnualTaxRevenueResult = {
-  /** AAM / adózási bevétel (bizonylatos tételek nettó összege) */
+
   total: number;
   orderCount: number;
   skippedCount: number;
   revenueBasis: RevenueBasis;
   lines: TaxRevenueLine[];
-  /** Összes pozitív rendelés az évben (nettóítva, adózási beállítás szerint) */
+
   totalAllOrdersNet: number;
   allOrdersCount: number;
-  /** Kimaradt: nincs bizonylat — totalAllOrdersNet − total */
+
   totalExcludedNet: number;
-  /** AAM-on belül: „számla készült” jelöléssel */
+
   totalWithInvoiceFlagNet: number;
   withInvoiceFlagCount: number;
-  /** AAM-on belül: csak számlasorszám, jelölés nélkül (része a total-nak, nem plusz) */
+
   invoiceIdOnlyCount: number;
   invoiceIdOnlyTotal: number;
 };
 
-/** Webshop rendelésszám — önmagában nem Számlázz bizonylat. */
 function isLikelyShopOrderReference(invoiceId: string, order: BusinessOrder): boolean {
   const id = invoiceId.trim();
   if (!id) return true;
@@ -44,11 +43,6 @@ function isLikelyShopOrderReference(invoiceId: string, order: BusinessOrder): bo
   return false;
 }
 
-/**
- * Számlázz / AAM szempontból „számlás” tétel:
- * - explicit „számla vagy nyugta készült”, vagy
- * - valódi számlasorszám (nem puszta webshop rendelésszám).
- */
 export function orderQualifiesAsDocumentedRevenue(order: BusinessOrder): boolean {
   if (order.amount <= 0) return false;
   if (order.hasInvoice) return true;
@@ -66,7 +60,6 @@ export function orderCountsAsTaxRevenue(order: BusinessOrder, revenueBasis: Reve
   return orderQualifiesAsDocumentedRevenue(order);
 }
 
-/** AAM-nál nettó = összeg; áfás bruttó bevitelnél nettósítás. */
 export function toNetRevenueAmount(amount: number, settings: Pick<BusinessSettings, 'default_vat_percent' | 'price_input_mode' | 'tax_regime'>): number {
   const vatPercent = settings.tax_regime === 'vat' ? settings.default_vat_percent : 0;
   if (vatPercent <= 0 || settings.price_input_mode === 'net') {

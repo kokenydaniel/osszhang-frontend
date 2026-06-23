@@ -24,7 +24,7 @@ import { activeWalletManualBalance } from '@/utils/wallet-balance';
 import { canUseFeature } from '@/helpers/check-access';
 import { isHouseholdReader } from '@/utils/household-role';
 import { isStoreLoading } from '@/utils/loadable-status';
-import { AlertCircle, ReceiptText, TrendingUp } from 'lucide-react';
+import { AlertCircle, ArrowDownLeft, ArrowUpRight, ReceiptText, Scale, TrendingUp } from 'lucide-react';
 import type { MetricItem } from '@/components/design';
 import { budgetCalculations } from '@/calculations/budget';
 import type { CashTransaction, UtilityBill } from '@/types';
@@ -114,7 +114,13 @@ export function useBudgetPageData(manualBalance: number) {
     user?.household?.utility_split_partner_id ?? user?.household?.utility_split_partner_id;
   const onHouseholdSide = utilitiesCalculations.isHouseholdSide(user?.id, partnerId);
 
-  const getBillPortion = useCallback(
+  const getUtilityObligationPortion = useCallback(
+    (b: UtilityBill) =>
+      utilitiesCalculations.ourUtilityPortion(b, onHouseholdSide, utilitySplitEnabled),
+    [onHouseholdSide, utilitySplitEnabled],
+  );
+
+  const getUtilityPaidPortion = useCallback(
     (b: UtilityBill) =>
       utilitiesCalculations.budgetBillPortion(b, onHouseholdSide, utilitySplitEnabled),
     [onHouseholdSide, utilitySplitEnabled],
@@ -182,6 +188,7 @@ export function useBudgetPageData(manualBalance: number) {
     totalIncomeReceived,
     totalActualSpent,
     totalProjectedExpense,
+    totalProjectedIncome,
     categoryData,
   } = useMemo(() => {
     const monthTransactions = transactions.filter((t: CashTransaction) =>
@@ -212,20 +219,21 @@ export function useBudgetPageData(manualBalance: number) {
       totalActualSpent: budgetCalculations.calculateTotalActualSpent(
         monthExpenses,
         monthBills,
-        getBillPortion,
+        getUtilityPaidPortion,
         exchangeRates,
       ),
       totalProjectedExpense: budgetCalculations.calculateTotalProjectedExpense(
         monthExpenses,
         monthBills,
-        getBillPortion,
+        getUtilityObligationPortion,
         exchangeRates,
       ),
+      totalProjectedIncome: budgetCalculations.calculateTotalProjectedIncome(monthIncomes, exchangeRates),
       categoryData: budgetCalculations.groupTransactionsByCategory(
         categories,
         monthExpenses,
         monthBills,
-        getBillPortion,
+        getUtilityObligationPortion,
         exchangeRates,
       ),
     };
@@ -235,7 +243,8 @@ export function useBudgetPageData(manualBalance: number) {
     syncedInsuranceExpenses,
     rentalBudgetIncomes,
     exchangeRates,
-    getBillPortion,
+    getUtilityObligationPortion,
+    getUtilityPaidPortion,
     goalBudgetRows,
     goalsReady,
     selectedYearMonth,
@@ -270,14 +279,79 @@ export function useBudgetPageData(manualBalance: number) {
     },
   ];
 
+  const plannedMonthBalance = totalProjectedIncome - totalProjectedExpense;
+
+  const progressHint = (done: number, total: number, doneLabel: string, emptyLabel: string) => {
+    if (total <= 0) {
+      return done > 0 ? `${doneLabel}: ${formatHUF(done)}` : emptyLabel;
+    }
+    if (done <= 0) {
+      return emptyLabel;
+    }
+    const pct = Math.min(100, Math.round((done / total) * 100));
+    return `${doneLabel}: ${formatHUF(done)} / ${formatHUF(total)} (${pct}%)`;
+  };
+
   const summaryMetrics: MetricItem[] = [
-    { label: 'Tervezett keret', value: formatHUF(totalProjectedExpense), tone: 'default' },
-    { label: 'Már kifizetve', value: formatHUF(totalActualSpent), tone: 'warning' },
-    { label: 'Befolyt bevétel', value: formatHUF(totalIncomeReceived), tone: 'success' },
     {
-      label: 'Havi egyenleg',
-      value: formatHUF(totalIncomeReceived - totalActualSpent),
-      tone: totalIncomeReceived - totalActualSpent < 0 ? 'danger' : 'primary',
+      label: 'Tervezett kiadás',
+      value: formatHUF(totalProjectedExpense),
+      info: HELP.budget.plannedExpense,
+      hint: progressHint(
+        totalActualSpent,
+        totalProjectedExpense,
+        'Kifizetve',
+        'Még semmi nincs kifizetve',
+      ),
+      icon: ArrowDownLeft,
+      tone: 'warning',
+    },
+    {
+      label: 'Tervezett bevétel',
+      value: formatHUF(totalProjectedIncome),
+      info: HELP.budget.plannedIncome,
+      hint: progressHint(
+        totalIncomeReceived,
+        totalProjectedIncome,
+        'Befolyt',
+        'Még semmi nem érkezett be',
+      ),
+      icon: ArrowUpRight,
+      tone: 'success',
+    },
+    {
+      label: 'Kifizetve',
+      value: formatHUF(totalActualSpent),
+      info: HELP.budget.paidThisMonth,
+      hint:
+        totalProjectedExpense > 0
+          ? `A tervezett kiadás ${Math.min(100, Math.round((totalActualSpent / totalProjectedExpense) * 100))}%-a`
+          : 'Kifizetett kiadások + rezsi ebben a hónapban',
+      icon: ReceiptText,
+      tone: 'default',
+    },
+    {
+      label: 'Befolyt bevétel',
+      value: formatHUF(totalIncomeReceived),
+      info: HELP.budget.incomeReceived,
+      hint:
+        totalProjectedIncome > 0
+          ? `A tervezett bevétel ${Math.min(100, Math.round((totalIncomeReceived / totalProjectedIncome) * 100))}%-a`
+          : 'Megérkezett bevételek ebben a hónapban',
+      icon: TrendingUp,
+      tone: 'success',
+    },
+    {
+      label: 'Tervezett maradék',
+      value: formatHUF(plannedMonthBalance),
+      info: HELP.budget.plannedMonthBalance,
+      hint:
+        plannedMonthBalance >= 0
+          ? 'Tervezett bevétel fedezi a havi kiadást'
+          : 'Tervezett hiány — a bevételek nem fedezik a kiadásokat',
+      icon: Scale,
+      tone: plannedMonthBalance >= 0 ? 'success' : 'danger',
+      emphasis: plannedMonthBalance < 0,
     },
   ];
 
@@ -312,7 +386,7 @@ export function useBudgetPageData(manualBalance: number) {
     expenses,
     reserves,
     monthlyBills,
-    getBillPortion,
+    getBillPortion: getUtilityObligationPortion,
     getLedgerItems,
     walletManualBalance,
     debts,

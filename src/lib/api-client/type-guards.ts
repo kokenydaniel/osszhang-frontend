@@ -27,7 +27,6 @@ export function isSingleEntityApiResponse<T>(
   return isObjectInstanceByProperties<T>(response, requiredKeys);
 }
 
-/** Laravel JsonResource returns `{ data: entity }`; plain controllers return the entity directly. */
 export function unwrapApiEntity<T>(
   response: unknown,
   requiredKeys: (keyof T)[] = [],
@@ -55,7 +54,6 @@ export function isCollectionApiResponse<T>(
   return true;
 }
 
-/** `{ data: T[] }` vagy közvetlen tömb. */
 export function unwrapApiCollection<T>(
   response: unknown,
   requiredItemKeys: (keyof T)[] = [],

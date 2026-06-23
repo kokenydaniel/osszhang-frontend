@@ -59,8 +59,10 @@ export function useBudgetCashflowMetrics(params: {
       ...(includeGoalRows ? goalBudgetRows : []),
       ...extraMonthExpenses,
     ];
-    const getBillPortion = (bill: UtilityBill) =>
+    const getBillObligationPortion = (bill: UtilityBill) =>
       utilitiesCalculations.ourUtilityPortion(bill, onHouseholdSide, utilitySplitEnabled);
+    const getBillPaidPortion = (bill: UtilityBill) =>
+      utilitiesCalculations.budgetBillPortion(bill, onHouseholdSide, utilitySplitEnabled);
 
     return budgetCalculations.computeBudgetCashflowMetrics({
       manualBalance,
@@ -68,7 +70,8 @@ export function useBudgetCashflowMetrics(params: {
       monthExpenses,
       monthReserves,
       monthlyBills,
-      getBillPortion,
+      getBillObligationPortion,
+      getBillPaidPortion,
       exchangeRates,
     });
   }, [

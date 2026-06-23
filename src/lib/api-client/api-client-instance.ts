@@ -19,6 +19,7 @@ import {
   RentalClient,
   FeedbackClient,
   ReceivablesClient,
+  TravelClient,
 } from './clients';
 import { API_URL } from './public-env';
 
@@ -42,6 +43,7 @@ export class ApiClientFacade extends ApiClient {
   readonly rental: RentalClient;
   readonly feedback: FeedbackClient;
   readonly receivables: ReceivablesClient;
+  readonly travel: TravelClient;
 
   constructor(baseUrl: string = API_URL) {
     super(baseUrl);
@@ -64,6 +66,7 @@ export class ApiClientFacade extends ApiClient {
     this.rental = new RentalClient(this);
     this.feedback = new FeedbackClient(this);
     this.receivables = new ReceivablesClient(this);
+    this.travel = new TravelClient(this);
   }
 }
 

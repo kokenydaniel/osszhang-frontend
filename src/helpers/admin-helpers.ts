@@ -21,7 +21,6 @@ export function formatFeatureFlagLabel(key: string): string {
   return platformFeatureLabel(key);
 }
 
-/** @deprecated use formatFeatureFlagLabel */
 export function formatFeatureFlagLabelLegacy(key: string): string {
   switch (key) {
     case 'enable_ai_cfo':
@@ -63,7 +62,6 @@ function normalizeCategories(
   return Array.isArray(categories) ? categories : [categories];
 }
 
-/** API-ból jövő flag-eket kiegészíti a katalógussal, hogy üres szűrő ne legyen migráció előtt sem. */
 export function mergeFeatureFlagsWithCatalog(
   flags: FeatureFlag[],
   categories?: PlatformFeatureCategory | PlatformFeatureCategory[],
@@ -104,7 +102,6 @@ export function formatModuleReleaseFlagLabel(key: string): string {
   return PLATFORM_MODULE_META[moduleId]?.label ?? key.replace(/^enable_module_/, ' ');
 }
 
-/** Modul kiadás flag-ek — katalógussal, migráció előtt is teljes lista. */
 export function mergeModuleReleaseFlagsWithCatalog(flags: FeatureFlag[]): FeatureFlag[] {
   const byKey = featureFlagsToRecord(flags);
 

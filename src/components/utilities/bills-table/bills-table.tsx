@@ -61,10 +61,6 @@ function getRuleBadge(rule: UtilitySplitRule, utilityLabels: UtilitySplitLabels)
   );
 }
 
-/**
- * Presentation-only table: data via props, columns defined here,
- * row actions delegated to BillRowActions.
- */
 export function UtilitiesBillsTable({
   sortedBills,
   filteredBills,
@@ -182,8 +178,6 @@ export function UtilitiesBillsTable({
     </Section>
   );
 }
-
-/* ── Isolated status cell (handles its own inline mutation) ── */
 
 interface BillStatusCellProps {
   bill: UtilityBill;

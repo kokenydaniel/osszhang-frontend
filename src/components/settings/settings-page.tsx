@@ -19,7 +19,7 @@ const VALID_TABS: SettingsTabId[] = ['profile', 'household', 'modules', 'billing
 export default function SettingsPage() {
   const searchParams = useSearchParams();
   const { user } = useAuthStore();
-  
+
   const [activeTab, setActiveTab] = useState<SettingsTabId>('profile');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
@@ -63,9 +63,9 @@ export default function SettingsPage() {
         </motion.div>
       </AnimatePresence>
 
-      <SettingsDeleteHouseholdModal 
-        isOpen={isDeleteModalOpen} 
-        onClose={() => setIsDeleteModalOpen(false)} 
+      <SettingsDeleteHouseholdModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
       />
     </div>
   );

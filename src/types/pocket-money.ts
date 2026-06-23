@@ -5,9 +5,9 @@ export type PocketMoneyRosterMember = {
   label: string;
   memberUserId: number | null;
   icon: string;
-  /** Matrica háttér (#RRGGBB), üres = automatikus szín az ikon alapján. */
+
   stickerColor?: string | null;
-  /** Ikon szín (#RRGGBB), üres = automatikus. */
+
   iconColor?: string | null;
 };
 
@@ -43,16 +43,16 @@ export type PocketMoneyMemberSummary = {
   memberLabel: string;
   memberUserId: number | null;
   currency: string;
-  /** Kumulatív egyenleg a kiválasztott hónap végéig. */
+
   balance: number;
-  /** Hónap eleji egyenleg. */
+
   openingBalance: number;
-  /** Az adott hónapban kiosztva. */
+
   allowanceTotal: number;
-  /** Az adott hónapban elköltve. */
+
   expenseTotal: number;
   adjustmentTotal: number;
-  /** Az adott hónapban rögzített kamat. */
+
   interestTotal: number;
   interest: PocketMoneyInterestMeta | null;
 };

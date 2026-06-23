@@ -7,7 +7,6 @@ export function clearBillingCheckoutReturnFlags(): void {
   sessionStorage.removeItem(STORAGE_KEY);
 }
 
-/** Returns true only the first time a given checkout return type is handled this session. */
 export function consumeBillingCheckoutReturn(type: BillingCheckoutReturnType): boolean {
   if (typeof window === 'undefined') return false;
 

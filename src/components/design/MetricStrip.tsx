@@ -6,6 +6,7 @@ import type { LucideIcon } from 'lucide-react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Sparkline } from './Sparkline';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
+import { metricLabelClassName } from './metric-label';
 
 export interface MetricItem {
   label: string;
@@ -104,18 +105,16 @@ function MetricLabelRow({
   info?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-1.5 min-w-0">
+    <div className="flex items-center gap-1.5 min-w-0">
       {Icon && (
-        <div className={classNames('mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md', iconClass)}>
+        <div className={classNames('flex h-7 w-7 shrink-0 items-center justify-center rounded-md', iconClass)}>
           <Icon size={13} strokeWidth={2.2} />
         </div>
       )}
-      <div className="min-w-0 flex-1 flex items-start gap-1">
-        <span className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground leading-snug whitespace-nowrap truncate">
-          {label}
-        </span>
-        {info && <InfoTooltip content={info} className="mt-px shrink-0" />}
-      </div>
+      <span className={metricLabelClassName('min-w-0', 'flex-1', 'truncate')}>
+        {label}
+      </span>
+      {info ? <InfoTooltip content={info} className="shrink-0" /> : null}
     </div>
   );
 }
@@ -132,18 +131,16 @@ function MetricLabelRowCompact({
   info?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-1.5 min-w-0">
+    <div className="flex items-center gap-1.5 min-w-0">
       {Icon && (
-        <div className={classNames('mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md', iconClass)}>
+        <div className={classNames('flex h-6 w-6 shrink-0 items-center justify-center rounded-md', iconClass)}>
           <Icon size={11} strokeWidth={2.2} />
         </div>
       )}
-      <div className="min-w-0 flex-1 flex items-start gap-1">
-        <span className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground leading-snug whitespace-nowrap truncate">
-          {label}
-        </span>
-        {info && <InfoTooltip content={info} className="mt-px shrink-0" />}
-      </div>
+      <span className={metricLabelClassName('min-w-0', 'flex-1', 'truncate')}>
+        {label}
+      </span>
+      {info ? <InfoTooltip content={info} className="shrink-0" /> : null}
     </div>
   );
 }

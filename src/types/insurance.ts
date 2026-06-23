@@ -24,7 +24,7 @@ export type InsurancePolicy = {
   budgetDueDay: number | null;
   paidBudgetPeriods: string[];
   attachmentCount: number;
-  /** Soft delete: költségvetésben csak a törlés előtti hónapok maradnak láthatók. */
+
   deletedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
@@ -42,7 +42,7 @@ export type InsuranceUpcomingReminder = {
 
 export type InsuranceIndexResponse = {
   policies: InsurancePolicy[];
-  /** Aktív + törölt szerződések — költségvetés szinkronhoz (múltbeli díjak). */
+
   budgetPolicies?: InsurancePolicy[];
   upcoming: InsuranceUpcomingReminder[];
 };

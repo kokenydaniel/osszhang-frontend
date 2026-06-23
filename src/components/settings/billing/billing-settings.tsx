@@ -301,7 +301,7 @@ export function BillingSettings({ user }: BillingSettingsProps) {
         </div>
       )}
 
-      {/* A) Current plan */}
+      {}
       <div
         className={classNames(
           'rounded-2xl border p-6',
@@ -377,7 +377,7 @@ export function BillingSettings({ user }: BillingSettingsProps) {
         </div>
       )}
 
-      {/* B) Feature matrix */}
+      {}
       <SettingsBlock
         title="Mi van a csomagomban?"
         description="A jelenlegi előfizetési szinteddel elérhető funkciók."
@@ -430,7 +430,7 @@ export function BillingSettings({ user }: BillingSettingsProps) {
         </ul>
       </SettingsBlock>
 
-      {/* C) Payment method */}
+      {}
       {isPaid && !betaMode && (
         <SettingsBlock
           title="Fizetési mód"
@@ -475,7 +475,7 @@ export function BillingSettings({ user }: BillingSettingsProps) {
         </SettingsBlock>
       )}
 
-      {/* D) Billing history */}
+      {}
       {isPaid && !betaMode && (
         <SettingsBlock
           title="Számlázási előzmények"

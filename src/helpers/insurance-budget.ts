@@ -1,6 +1,5 @@
-import { yearMonthPrefix } from '@/utils/dates';
+import { yearMonthPrefix, clampDueDayForMonth } from '@/utils/dates';
 
-/** Törölt szerződés: múltbeli hónapokban még látszik a költségvetésben, a törlés hónapjától nem. */
 export function insuranceVisibleInBudgetMonth(
   policy: Pick<InsurancePolicy, 'deletedAt'>,
   year: number,
@@ -84,7 +83,7 @@ export function isInsurancePaymentMonth(
 }
 
 function premiumDueDate(policy: InsurancePolicy, year: number, month: number): string {
-  const day = Math.min(Math.max(policy.budgetDueDay ?? 1, 1), 28);
+  const day = clampDueDayForMonth(policy.budgetDueDay ?? 1, year, month);
   return `${yearMonthPrefix(year, month)}-${String(day).padStart(2, '0')}`;
 }
 

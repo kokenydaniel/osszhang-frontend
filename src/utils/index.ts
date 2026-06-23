@@ -58,7 +58,6 @@ export function formatCurrency(amount: number, currency: string): string {
   }).format(amount);
 }
 
-/** Diagram tengely: ezres skála (pl. „150k”). */
 export function formatCompactThousands(_value: number): string {
   if (isImpersonationMoneyMasked()) return IMPERSONATION_MONEY_PLACEHOLDER;
   return `${_value / 1000}k`;

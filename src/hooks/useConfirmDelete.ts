@@ -33,7 +33,6 @@ export function useConfirmDelete() {
           await Promise.resolve(pending.onConfirm());
           setPending(null);
         } catch {
-          // Modal marad nyitva — a hívó kezeli az értesítést
         } finally {
           setConfirmLoading(false);
         }

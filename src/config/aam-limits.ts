@@ -1,12 +1,7 @@
-/**
- * Magyar AAM (alanyi adómentesség) éves bevételi értékhatárok — belföldi teljesítések göngyölített ellenértéke.
- * Forrás: NAV / Áfa tv., több lépcsős emelés (2025-től).
- * @see https://nav.gov.hu/ado/afa/Emelkedik_az_alanyi_adomentesseg_ertekhatara
- */
+
 
 import { IMPERSONATION_MONEY_PLACEHOLDER, isImpersonationMoneyMasked } from '@/helpers/impersonation-money';
 
-/** Naptári év → hivatalos felső határ (Ft), AAM választás / megtartás szempontjából. */
 export const AAM_ANNUAL_LIMIT_HUF: Record<number, number> = {
   2024: 12_000_000,
   2025: 18_000_000,

@@ -58,7 +58,6 @@ const DATE_INPUT_FORMATS = [
   'DD-MM-YYYY',
 ] as const;
 
-/** Parses free-form date text; returns ISO date, empty string, or null if invalid. */
 export function parseDateInput(raw: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed) return '';
@@ -121,6 +120,49 @@ export function getCurrentYear(): number {
 
 export function yearMonthPrefix(year: number, month: number): string {
   return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+export function daysInMonth(year: number, month: number): number {
+  return dayjs()
+    .year(year)
+    .month(month - 1)
+    .daysInMonth();
+}
+
+export function clampDueDayForMonth(day: number, year: number, month: number): number {
+  const max = daysInMonth(year, month);
+  return Math.min(Math.max(Math.round(day) || 1, 1), max);
+}
+
+const YEAR_MONTH_FORMATS = ['YYYY-MM', 'YYYY.M', 'YYYY.MM', 'YYYY. M', 'YYYY. MM'] as const;
+
+export function parseYearMonthInput(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+
+  if (/^\d{4}-\d{1,2}$/.test(trimmed)) {
+    const [year, month] = trimmed.split('-').map(Number);
+    if (year >= 1900 && month >= 1 && month <= 12) {
+      return yearMonthPrefix(year, month);
+    }
+    return null;
+  }
+
+  for (const fmt of YEAR_MONTH_FORMATS) {
+    const parsed = dayjs(trimmed, fmt, true);
+    if (parsed.isValid()) return parsed.format('YYYY-MM');
+  }
+
+  const hungarian = dayjs(trimmed, 'YYYY. MMMM', 'hu', true);
+  if (hungarian.isValid()) return hungarian.format('YYYY-MM');
+
+  return null;
+}
+
+export function formatYearMonth(yearMonth: string): string {
+  if (!yearMonth || !/^\d{4}-\d{2}$/.test(yearMonth)) return '';
+  const parsed = dayjs(`${yearMonth}-01`);
+  return parsed.isValid() ? parsed.format('YYYY. MMMM') : '';
 }
 
 export function matchesMonthYear(dateStr: string, month: number, year: number): boolean {

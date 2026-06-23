@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/FieldLabel';
+import { FieldHint } from '@/components/ui/FieldHint';
 import { FormField } from '@/components/ui/FormField';
 import { HELP } from '@/config/help';
 import { formatDisplayInitials, formatDisplayName } from '@/utils/person-name';
@@ -19,6 +20,11 @@ import { householdClient } from '@/lib/api-client';
 import { StatusCodes } from '@/types/api';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
+import {
+  formatUsernameValidationMessage,
+  getApiErrorMessage,
+  getValidationFieldError,
+} from '@/helpers/api-error-message';
 import config, { type ModuleId } from '@/config/config';
 import { isModuleEnabled } from '@/helpers/module-access';
 import {
@@ -61,7 +67,7 @@ export function SettingsHouseholdTab() {
 
   const [householdName, setHouseholdName] = useState('');
   const [isNameSaving, setIsNameSaving] = useState(false);
-  
+
   const [newMemberData, setNewMemberData] = useState({
     firstName: '',
     lastName: '',
@@ -71,6 +77,8 @@ export function SettingsHouseholdTab() {
     permissions: ['budget', 'utilities'],
   });
   const [pendingPermissionKeys, setPendingPermissionKeys] = useState<Set<string>>(new Set());
+  const [isMemberCreating, setIsMemberCreating] = useState(false);
+  const [usernameError, setUsernameError] = useState('');
   const permissionUpdateQueuesRef = useRef<Map<number, Promise<void>>>(new Map());
 
   useEffect(() => {
@@ -102,10 +110,12 @@ export function SettingsHouseholdTab() {
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
+    setUsernameError('');
     if (!newMemberData.username || !newMemberData.password || !newMemberData.firstName) {
       addNotification('Kérlek tölts ki minden kötelező mezőt!', 'error');
       return;
     }
+    setIsMemberCreating(true);
     try {
       const res = await householdClient.createMember({
         first_name: newMemberData.firstName,
@@ -115,12 +125,34 @@ export function SettingsHouseholdTab() {
         role: newMemberData.role,
         permissions: newMemberData.permissions,
       });
-      if (!res || (res[0] !== StatusCodes.Http200 && res[0] !== StatusCodes.Http201)) throw new Error();
+      if (!res) {
+        addNotification('Hiba történt a regisztráció során.', 'error');
+        return;
+      }
+
+      const [status, body] = res;
+      if (status === StatusCodes.Http422) {
+        const usernameMessage = getValidationFieldError(body, 'username');
+        if (usernameMessage) {
+          setUsernameError(formatUsernameValidationMessage(usernameMessage));
+          return;
+        }
+        addNotification(getApiErrorMessage(status, body, 'Hiba történt a regisztráció során.'), 'error');
+        return;
+      }
+
+      if (status !== StatusCodes.Http200 && status !== StatusCodes.Http201) {
+        addNotification(getApiErrorMessage(status, body, 'Hiba történt a regisztráció során.'), 'error');
+        return;
+      }
+
       await fetchMe();
       addNotification('Új családtag sikeresen létrehozva!', 'success');
       setNewMemberData({ firstName: '', lastName: '', username: '', password: '', role: 'editor' as 'admin' | 'editor' | 'reader', permissions: ['budget', 'utilities'] });
     } catch {
       addNotification('Hiba történt a regisztráció során.', 'error');
+    } finally {
+      setIsMemberCreating(false);
     }
   };
 
@@ -188,7 +220,7 @@ export function SettingsHouseholdTab() {
       enabled: isModuleEnabled(h, id),
     };
   });
-  
+
   const activeMemberModules = modules.filter((m) => m.enabled);
 
   const activeAssignablePermissions = activeMemberModules;
@@ -355,8 +387,8 @@ export function SettingsHouseholdTab() {
           icon={UserPlus}
           toneClassName="bg-emerald-500/10 text-emerald-600"
           footer={
-            <Button type="submit" form="new-member-form">
-              <UserPlus size={13} /> Fiók létrehozása
+            <Button type="submit" form="new-member-form" loading={isMemberCreating} disabled={isMemberCreating}>
+              <UserPlus size={13} /> {isMemberCreating ? 'Létrehozás…' : 'Fiók létrehozása'}
             </Button>
           }
         >
@@ -383,13 +415,16 @@ export function SettingsHouseholdTab() {
                   type="text"
                   placeholder="ildi"
                   value={newMemberData.username}
-                  onChange={(e) =>
-                    setNewMemberData({ ...newMemberData, username: e.target.value.toLowerCase() })
-                  }
+                  onChange={(e) => {
+                    setUsernameError('');
+                    setNewMemberData({ ...newMemberData, username: e.target.value.toLowerCase() });
+                  }}
                   required
                   pattern="[a-z0-9_]{3,32}"
                   autoComplete="off"
+                  aria-invalid={!!usernameError}
                 />
+                {usernameError ? <FieldHint className="text-destructive">{usernameError}</FieldHint> : null}
               </FormField>
               <FormField label="Ideiglenes jelszó" info={HELP.settings.invitePassword}>
                 <div className="relative">

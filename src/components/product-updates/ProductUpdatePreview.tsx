@@ -64,7 +64,7 @@ type ProductUpdatePreviewProps = {
   update: ProductUpdatePreviewData;
   className?: string;
   compact?: boolean;
-  /** Modalban: nincs külön kártya keret/lekerekítés, a footer egy blokkba olvad */
+
   embedded?: boolean;
 };
 

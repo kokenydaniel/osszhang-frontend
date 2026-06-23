@@ -33,7 +33,6 @@ type Props = {
   selectedYear: number;
 };
 
-/** Összeadható bontás: összes rendelés = AAM bevétel + kimaradt. */
 export function BusinessRevenueReconciliation({ revenue, selectedYear }: Props) {
   const sumCheck = Math.round((revenue.total + revenue.totalExcludedNet) * 100) / 100;
   const sumsMatch = Math.abs(sumCheck - revenue.totalAllOrdersNet) < 1;

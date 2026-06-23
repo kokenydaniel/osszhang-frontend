@@ -81,6 +81,39 @@ export function useSavingsPageData() {
     [investments, separateOwner],
   );
 
+  const sumDisplayPersonalAccounts = useMemo(
+    () =>
+      personalAccounts.reduce(
+        (sum, acc) => sum + convertToHUF(savingsCalculations.computeBalance(acc), acc.currency),
+        0,
+      ),
+    [personalAccounts, convertToHUF],
+  );
+  const sumDisplayWifeAccounts = useMemo(
+    () =>
+      wifeAccounts.reduce(
+        (sum, acc) => sum + convertToHUF(savingsCalculations.computeBalance(acc), acc.currency),
+        0,
+      ),
+    [wifeAccounts, convertToHUF],
+  );
+  const sumDisplayGoals = useMemo(
+    () =>
+      goals.reduce(
+        (sum, goal) => sum + convertToHUF(savingsCalculations.computeBalance(goal), goal.currency),
+        0,
+      ),
+    [goals, convertToHUF],
+  );
+  const sumDisplayAllInvestments = useMemo(
+    () =>
+      investments.reduce(
+        (sum, inv) => sum + savingsCalculations.computeInvestmentValue(inv).totalValue,
+        0,
+      ),
+    [investments],
+  );
+
   const sumPersonalInvestments = useMemo(
     () =>
       personalInvestments
@@ -333,6 +366,10 @@ export function useSavingsPageData() {
     savingsMetrics,
     sumPersonalInvestments,
     sumWifeInvestments,
+    sumDisplayPersonalAccounts,
+    sumDisplayWifeAccounts,
+    sumDisplayGoals,
+    sumDisplayAllInvestments,
     convertToHUF,
     formatCurrencyAmount,
     getInvestmentValue: savingsCalculations.computeInvestmentValue,

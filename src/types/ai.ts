@@ -1,3 +1,5 @@
+import type { TravelCostLineItem } from '@/types/travel';
+
 export interface AiMeta {
   mode: string;
   provider: string;
@@ -116,10 +118,88 @@ export interface AiTravelDayPlan {
 }
 
 export interface AiTravelCostBreakdown {
+  transport: number;
   accommodation: number;
   food: number;
   activities: number;
-  transport: number;
+  insurance?: number;
+  miscellaneous?: number;
+}
+
+export interface AiTravelTransportDetail {
+  mode: 'car' | 'plane' | 'train' | 'bus' | 'mixed' | string;
+  description: string;
+  estimated_cost: number;
+  already_booked?: boolean;
+  notes?: string[];
+  estimated_distance_km?: number;
+  one_way_distance_km?: number;
+  fuel_liters?: number;
+  fuel_price_per_liter_huf?: number;
+  fuel_cost_huf?: number;
+  tolls_and_parking_huf?: number;
+  car_fuel_consumption_l100?: number;
+  per_person_huf?: number;
+}
+
+export interface AiTravelEligibleSavingsItem {
+  id?: string;
+  label: string;
+  amount_huf: number;
+  amount_native?: number;
+  currency?: string;
+  kind: 'account' | 'goal' | 'investment' | string;
+}
+
+export interface AiTravelExcludedSavingsItem extends AiTravelEligibleSavingsItem {
+  reason: 'state_treasury' | 'separate_owner' | string;
+}
+
+export interface AiTravelMonthlySurplusMonth {
+  label: string;
+  income_huf: number;
+  expense_huf: number;
+  surplus_huf: number;
+}
+
+export interface AiTravelFinancialFit {
+  monthly_amount_huf?: number | null;
+  months?: number | null;
+  target_date?: string | null;
+  fits_current_budget: boolean;
+  can_pay_now?: boolean;
+  fits_monthly_savings?: boolean;
+  has_savings_schedule?: boolean;
+  trip_cost_huf?: number;
+  summary: string;
+  disposable_remaining_huf?: number;
+  travel_eligible_savings_huf?: number;
+  travel_eligible_savings_items?: AiTravelEligibleSavingsItem[];
+  count_in_savings_total_huf?: number;
+  travel_excluded_savings_items?: AiTravelExcludedSavingsItem[];
+  travel_excluded_savings_huf?: number;
+  available_for_trip_huf?: number;
+  monthly_savings_capacity_huf?: number;
+  monthly_surplus_breakdown?: AiTravelMonthlySurplusMonth[];
+  required_monthly_savings_huf?: number | null;
+}
+
+export interface AiTravelSavingsPlan {
+  monthly_amount_huf: number;
+  months: number;
+  note: string;
+}
+
+export interface AiTravelComparisonScenario {
+  total_huf: number;
+  summary: string;
+}
+
+export interface AiTravelComparison {
+  minimum: AiTravelComparisonScenario;
+  requested: AiTravelComparisonScenario;
+  comfort: AiTravelComparisonScenario;
+  planned: AiTravelComparisonScenario;
 }
 
 export interface AiTravelPlan {
@@ -131,6 +211,23 @@ export interface AiTravelPlan {
   total_estimated_cost: number;
   summary?: string;
   warning?: string;
+  travelers_count?: number;
+  trip_style?: string;
+  accommodation_preference?: string;
+  transport_mode?: string;
+  transport_already_booked?: boolean;
+  accommodation_already_booked?: boolean;
+  origin_location?: string;
+  transport_detail?: AiTravelTransportDetail;
+  financial_fit?: AiTravelFinancialFit;
+  savings_plan?: AiTravelSavingsPlan;
+  financial_context?: Record<string, unknown>;
+  comparison?: AiTravelComparison;
+  currency_notes?: string;
+  saved_plan_id?: number;
+  cost_line_items?: TravelCostLineItem[];
+  remaining_to_pay_huf?: number;
+  paid_total_huf?: number;
 }
 
 export interface AiPaymentPriorityItem {

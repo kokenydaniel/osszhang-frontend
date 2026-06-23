@@ -17,7 +17,7 @@ export interface WalletSwitcherProps {
   className?: string;
   compact?: boolean;
   fullWidthMobile?: boolean;
-  
+
   wallets: WalletProfile[];
   activeWalletId: number | null;
   canEdit: boolean;
@@ -25,7 +25,7 @@ export interface WalletSwitcherProps {
   userId?: number;
   submitting: boolean;
   deletingWalletId: number | null;
-  
+
   onSelectWallet: (id: number) => void;
   onCreateSubmit: (name: string) => Promise<void>;
   onRenameSubmit: (id: number, name: string) => Promise<void>;

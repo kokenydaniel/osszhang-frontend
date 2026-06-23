@@ -4,6 +4,7 @@ import { aiFeatureLabel } from '@/config/ai-features';
 export const DASHBOARD_WIDGET_IDS = [
   'alerts',
   'ai_cfo',
+  'travel_plans',
   'primary_metrics',
   'secondary_metrics',
   'main_grid',
@@ -24,6 +25,7 @@ export const DEFAULT_DASHBOARD_SETTINGS: DashboardSettings = {
 export const DASHBOARD_WIDGET_LABELS: Record<DashboardWidgetId, string> = {
   alerts: 'Figyelmeztetések (kimaradt bevétel, rezsi)',
   ai_cfo: aiFeatureLabel('monthly_advisor'),
+  travel_plans: 'Közelgő utazások',
   primary_metrics: 'Fő mutatók',
   secondary_metrics: 'Másodlagos mutatók',
   main_grid: 'Fizetendők és oldalsáv',

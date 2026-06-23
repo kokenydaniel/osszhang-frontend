@@ -12,7 +12,6 @@ export type TierGuardedFeatureRoute = {
   featureLabel: string;
 };
 
-/** Dashboard paths that require Pro or Premium (mirrors backend `tier.module` groups). */
 export const tierGuardedModuleRoutes: TierGuardedModuleRoute[] = [
   { prefix: '/pocket-money', moduleId: 'pocket_money' },
   { prefix: '/insurance', moduleId: 'insurance' },
@@ -26,5 +25,4 @@ export const tierGuardedModuleRoutes: TierGuardedModuleRoute[] = [
   { prefix: '/tools/travel', moduleId: 'travel_planner' },
 ];
 
-/** Premium feature routes without a dedicated module id. */
 export const tierGuardedFeatureRoutes: TierGuardedFeatureRoute[] = [];

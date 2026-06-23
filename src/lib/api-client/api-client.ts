@@ -86,7 +86,7 @@ export class ApiClient {
     try {
       return JSON.parse(text);
     } catch {
-      // If it's not JSON, we return an object wrapping the text to maintain the tuple type [string, object | null]
+
       return { text };
     }
   }
@@ -201,7 +201,6 @@ export class ApiClient {
     }
   }
 
-  /** Multipart upload — ne állítson JSON Content-Type-ot. */
   async postFormData(endpoint: string, formData: FormData, options?: RequestOptions): Promise<[string, object | null]> {
     const headers: Record<string, string> = { Accept: 'application/json' };
     const token = getAuthToken();

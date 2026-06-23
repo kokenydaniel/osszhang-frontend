@@ -6,7 +6,6 @@ export function normalizeCurrency(currency?: string | null): string {
   return code || 'HUF';
 }
 
-/** Hány forint 1 egység adott pénznemből (pl. EUR → 395). */
 export function hufPerUnit(currency: string, rates: Record<string, number>): number {
   const code = normalizeCurrency(currency);
   if (code === 'HUF') return 1;
@@ -22,7 +21,6 @@ export function toHuf(amount: number, currency: string | undefined, rates: Recor
   return amount * perUnit;
 }
 
-/** Összeg átváltása a háztartás alapértelmezett pénznemére (pl. HUF) élő árfolyamon. */
 export function toDefaultCurrency(
   amount: number,
   currency: string | undefined,
@@ -47,7 +45,6 @@ export function formatForeignAmount(amount: number, currency: string): string {
   return `${formatted} ${code}`;
 }
 
-/** Lista megjelenítés: eredeti összeg + HUF becslés élő árfolyamon. */
 export function formatTransactionAmount(
   amount: number,
   currency: string | undefined,

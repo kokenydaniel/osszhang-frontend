@@ -20,7 +20,6 @@ export const FEEDBACK_CATEGORY_HINTS: Record<FeedbackCategory, string> = {
   other: 'Ha egyik kategória sem illik.',
 };
 
-/** Régi bejelentések megjelenítéséhez */
 export const FEEDBACK_LEGACY_CATEGORY_LABELS: Record<string, string> = {
   suggestion: 'Javítási ötlet (régi)',
   wish: 'Új funkció (régi)',

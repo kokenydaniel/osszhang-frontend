@@ -3,7 +3,6 @@ import { isDebtInstallmentTransaction } from '@/helpers/debt-budget';
 import { isInsurancePremiumTransaction } from '@/helpers/insurance-budget';
 import { isRentalIncomeTransaction } from '@/helpers/rental-budget';
 
-/** Tartozás / biztosítás / bérbeadás szinkron sor — nem szerkeszthető és nem törölhető a költségvetésből. */
 export function isExternallyManagedBudgetRow(id: string | number): boolean {
   if (typeof id !== 'string') return false;
   return (
@@ -37,7 +36,6 @@ export function mapTransactionsToGroupedFeed(
 ): Record<string, BudgetTableItem[]> {
   const grouped: Record<string, BudgetTableItem[]> = {};
 
-  // First, filter and group normal transactions
   for (const item of items) {
 
     const catName = item.category || 'Egyéb';
@@ -59,7 +57,6 @@ export function mapTransactionsToGroupedFeed(
     });
   }
 
-  // Include utility bills if applicable
   if (includeBills && type === 'expense') {
     for (const bill of monthlyBills) {
       const portion = getBillPortion(bill);

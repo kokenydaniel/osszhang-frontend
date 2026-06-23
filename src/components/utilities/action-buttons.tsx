@@ -20,10 +20,6 @@ interface ActionButtonsProps {
   onRefresh: () => void;
 }
 
-/**
- * Header action buttons — each isolated button owns its own async state.
- * Max 1 useState per button (the loading flag).
- */
 export function UtilitiesActionButtons({
   bills,
   selectedMonth,
@@ -50,8 +46,6 @@ export function UtilitiesActionButtons({
     </>
   );
 }
-
-/* ── Each button: max 1 useState (loading), handles its own API call ── */
 
 function NewBillButton({ onOpenNewBill }: { onOpenNewBill: () => void }) {
   return (

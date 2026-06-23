@@ -1,5 +1,6 @@
 'use client';
 
+import { formatHUF } from '@/utils';
 import { Section, EmptyState } from '@/components/design';
 import { Target } from 'lucide-react';
 import type { SavingsAccount } from '@/types';
@@ -7,6 +8,7 @@ import { SavingsGoalCard } from './savings-goal-card';
 
 type SavingsGoalsSectionProps = {
   goals: SavingsAccount[];
+  sumDisplayGoals: number;
   updateSavingsAccount: (id: number, partial: Partial<Omit<SavingsAccount, 'id' | 'ledger'>>) => Promise<void>;
   deleteSavingsAccount: (id: number) => Promise<void>;
   requestDelete: (options: { title: string; message: string; onConfirm: () => void }) => void;
@@ -16,11 +18,11 @@ type SavingsGoalsSectionProps = {
   selectedYear: number;
 };
 
-export function SavingsGoalsSection({ goals, ...cardProps }: SavingsGoalsSectionProps) {
+export function SavingsGoalsSection({ goals, sumDisplayGoals, ...cardProps }: SavingsGoalsSectionProps) {
   return (
     <Section
       title="Megtakarítási célok"
-      description={`${goals.length} aktív cél a kiválasztott kasszában`}
+      description={`${goals.length} aktív cél · ${formatHUF(sumDisplayGoals)} össz érték`}
     >
       {goals.length === 0 ? (
         <EmptyState

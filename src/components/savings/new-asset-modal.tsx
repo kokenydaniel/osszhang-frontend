@@ -6,7 +6,8 @@ import { DatePicker } from '@/components/ui/DatePicker';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/FieldLabel';
 import { HELP } from '@/config/help';
-import { today, toDayjs } from '@/utils/dates';
+import { savingsCalculations } from '@/calculations/savings';
+import { today, dayjs } from '@/utils/dates';
 import { SegmentedControl, ModalFormFooter } from '@/components/design';
 import { Target, TrendingUp, Wallet } from 'lucide-react';
 import type { Investment } from '@/types';
@@ -15,28 +16,17 @@ import type { SavingsSettings } from '@/settings/savings';
 
 type AssetKind = 'account' | 'goal' | 'investment';
 
-// ─── Props for the Smart Wrapper ──────────────────────────────────────────────
-
 interface NewAssetModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialKind?: AssetKind;
-  /** Called from savings-page after API create */
+
   onAddSavingsAccount: (payload: CreateSavingsPayload) => Promise<void>;
   onAddInvestment: (data: Omit<Investment, 'id'>) => Promise<void>;
   savingsSettings: SavingsSettings;
   saving?: boolean;
 }
 
-// ─── Smart Wrapper ────────────────────────────────────────────────────────────
-
-/**
- * NewAssetModal — Smart Wrapper.
- *
- * Manages tab state and delegates to pure Dumb form components.
- * Reads open/close state and settings from props (injected by savings-page).
- * Does NOT import any store or context — it is fully controlled externally.
- */
 export function NewAssetModal({
   isOpen,
   onClose,
@@ -101,8 +91,6 @@ export function NewAssetModal({
   );
 }
 
-// ─── Dumb Form: New Account ───────────────────────────────────────────────────
-
 interface NewAccountFormProps {
   savingsSettings: SavingsSettings;
   onSubmit: (payload: CreateSavingsPayload) => Promise<void>;
@@ -148,8 +136,6 @@ function NewAccountForm({ savingsSettings, onSubmit, onCancel, saving }: NewAcco
   );
 }
 
-// ─── Dumb Form: New Goal ──────────────────────────────────────────────────────
-
 interface NewGoalFormProps {
   onSubmit: (payload: CreateSavingsPayload) => Promise<void>;
   onCancel: () => void;
@@ -160,7 +146,7 @@ function NewGoalForm({ onSubmit, onCancel, saving }: NewGoalFormProps) {
   const [goalName, setGoalName] = useState('');
   const [goalAmount, setGoalAmount] = useState('');
   const [currentAmount, setCurrentAmount] = useState('0');
-  const [targetDate, setTargetDate] = useState(toDayjs().add(6, 'month').format('YYYY-MM-DD'));
+  const [targetDate, setTargetDate] = useState(dayjs().add(6, 'month').format('YYYY-MM-DD'));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,8 +185,6 @@ function NewGoalForm({ onSubmit, onCancel, saving }: NewGoalFormProps) {
   );
 }
 
-// ─── Dumb Form: New Investment ────────────────────────────────────────────────
-
 interface NewInvestmentFormProps {
   savingsSettings: SavingsSettings;
   onSubmit: (data: Omit<Investment, 'id'>) => Promise<void>;
@@ -222,26 +206,25 @@ function NewInvestmentForm({ savingsSettings, onSubmit, onCancel, saving }: NewI
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    let finalRate = Number(rate);
-    if (maturityValue && Number(maturityValue) > 0 && maturityDate && purchaseDate) {
-      const pDate = toDayjs(purchaseDate);
-      const mDate = toDayjs(maturityDate);
-      const diffDays = Math.ceil(Math.max(0, mDate.diff(pDate, 'day')));
-      if (diffDays > 0) {
-        const totalReturnRatio = (Number(maturityValue) - Number(principal)) / Number(principal);
-        finalRate = Math.round(totalReturnRatio * (365.25 / diffDays) * 100 * 100) / 100;
-      }
-    }
+    const principalNum = Number(principal);
+    const maturityNum = maturityValue.trim() ? Number(maturityValue) : 0;
+    const finalRate = savingsCalculations.deriveAnnualRateFromMaturity(
+      principalNum,
+      maturityNum,
+      purchaseDate,
+      maturityDate,
+      Number(rate) || 0,
+    );
     await onSubmit({
       name,
       type,
-      principalAmount: Number(principal),
-      annualInterestRate: finalRate,
+      principalAmount: principalNum,
+      annualInterestRate: Math.max(0, finalRate),
       purchaseDate,
       maturityDate: maturityDate || null,
       owner,
       countInSavings: savingsSettings.default_count_in_savings,
-      maturityAmount: maturityValue ? Number(maturityValue) : null,
+      maturityAmount: maturityNum > 0 ? maturityNum : null,
       nextPayoutAmount: nextPayoutAmount ? Number(nextPayoutAmount) : null,
       nextPayoutDate: nextPayoutDate || null,
     });
@@ -313,8 +296,6 @@ function NewInvestmentForm({ savingsSettings, onSubmit, onCancel, saving }: NewI
     </form>
   );
 }
-
-// ─── Shared: Owner Selector ────────────────────────────────────────────────────
 
 interface OwnerSelectorProps {
   owners: string[];

@@ -5,6 +5,7 @@ import { Wallet, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AssetCard, MiniSwitch } from '@/components/design';
 import { formatHUF } from '@/utils';
+import { SAVINGS_INCLUDE_IN_SUMMARY_SWITCH } from './savings-ui';
 import type { SavingsAccount } from '@/types';
 
 type SavingsAccountCardProps = {
@@ -31,7 +32,6 @@ export function SavingsAccountCard({
   isReader,
 }: SavingsAccountCardProps) {
   const balance = acc.ledger.reduce((s, l) => s + l.amount, 0);
-  const inactive = acc.count_in_savings === false;
 
   return (
     <AssetCard
@@ -43,7 +43,6 @@ export function SavingsAccountCard({
       }
       title={acc.institution}
       subtitle={`${acc.owner} · ${acc.currency}`}
-      inactive={inactive}
       onDelete={
         isReader
           ? undefined
@@ -77,8 +76,8 @@ export function SavingsAccountCard({
           <MiniSwitch
             checked={acc.count_in_savings !== false}
             onChange={(checked) => void updateSavingsAccount(acc.id, { count_in_savings: checked })}
-            label="Vagyonba"
-            title="Beleszámít a fő vagyon összegébe a Széf nézetben"
+            label={SAVINGS_INCLUDE_IN_SUMMARY_SWITCH.label}
+            title={SAVINGS_INCLUDE_IN_SUMMARY_SWITCH.title}
             disabled={isReader}
           />
           <Button variant="ghost" size="xs" onClick={() => onOpenLedger(acc.id)}>

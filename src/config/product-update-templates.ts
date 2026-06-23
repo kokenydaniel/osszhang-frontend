@@ -283,7 +283,6 @@ export const PRODUCT_UPDATE_CATEGORY_LABELS: Record<ProductUpdateTemplateCategor
   tip: 'Tipp / emlékeztető',
 };
 
-/** Sablon payload + opcionális felülírások → mentéshez */
 export function mergeProductUpdatePayload(
   template: ProductUpdateTemplate,
   overrides?: Partial<ProductUpdatePayload>,

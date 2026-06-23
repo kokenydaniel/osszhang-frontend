@@ -29,10 +29,6 @@ export function clearBudgetAiInsightsLoaderCache(): void {
   clearBudgetAiInsightsCache();
 }
 
-/**
- * Budget AI (túlköltés + forecast) — egyszer tölt wallet/hónap kombinációnként,
- * duplikált mount (pl. React Strict Mode) és párhuzamos hívók ellen.
- */
 export async function ensureBudgetAiInsightsLoaded(
   walletId: number,
   year: number,
@@ -64,7 +60,6 @@ export async function ensureBudgetAiInsightsLoaded(
   return promise;
 }
 
-/** Spórolási javaslat — ugyanaz a cache logika. */
 export async function ensureCostReductionLoaded(
   walletId: number,
   year: number,

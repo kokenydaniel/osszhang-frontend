@@ -1,4 +1,4 @@
-/** Default household module settings (static). Resolution logic stays in `lib/*Settings.ts`. */
+
 
 export const moduleDefaults = {
   business: {
@@ -28,6 +28,7 @@ export const moduleDefaults = {
     widget_order: [
       'alerts',
       'ai_cfo',
+      'travel_plans',
       'primary_metrics',
       'secondary_metrics',
       'main_grid',
@@ -43,7 +44,7 @@ export const moduleDefaults = {
   pocket_money: {
     currencies: ['HUF', 'EUR'] as string[],
     default_currency: 'HUF' as string,
-    /** Kiosztható kamat figyelmeztetés: csak a hónap utolsó N napjában (aktuális hónap). */
+
     interest_reminder_days_at_month_end: 3,
   },
   insurance: {

@@ -8,7 +8,7 @@ import type {
   InsuranceUpcomingReminder,
 } from '@/types/insurance';
 import { formatCurrency, today as todayIso } from '@/utils';
-import { DATE_FORMAT, toDayjs } from '@/utils/dates';
+import { clampDueDayForMonth, DATE_FORMAT, toDayjs } from '@/utils/dates';
 
 function sanitizeOptionalDate(value: string): string | null {
   const trimmed = value.trim();
@@ -109,7 +109,19 @@ export const insuranceCalculations = {
       isActive: policy.isActive,
       budgetSyncEnabled: policy.budgetSyncEnabled,
       budgetStartMonth: start,
-      budgetDueDay: policy.budgetDueDay ? String(policy.budgetDueDay) : '1',
+      budgetDueDay: (() => {
+        if (!policy.budgetDueDay) return '1';
+        if (policy.budgetStartYear && policy.budgetStartMonth) {
+          return String(
+            clampDueDayForMonth(
+              policy.budgetDueDay,
+              policy.budgetStartYear,
+              policy.budgetStartMonth,
+            ),
+          );
+        }
+        return String(policy.budgetDueDay);
+      })(),
     };
   },
 
@@ -156,7 +168,13 @@ export const insuranceCalculations = {
       budgetSyncEnabled: budgetSync,
       budgetStartYear: budgetSync && startYear ? startYear : null,
       budgetStartMonth: budgetSync && startMonth ? startMonth : null,
-      budgetDueDay: budgetSync ? Math.min(28, Math.max(1, Number(values.budgetDueDay) || 1)) : null,
+      budgetDueDay: budgetSync
+        ? clampDueDayForMonth(
+            Number(values.budgetDueDay) || 1,
+            startYear!,
+            startMonth!,
+          )
+        : null,
     };
   },
 

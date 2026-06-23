@@ -25,3 +25,5 @@ export { ObjectDetails, type DetailGroup, type DetailItem } from './ObjectDetail
 export { ChoiceCardGroup, type ChoiceCardOption } from './ChoiceCardGroup';
 export { ModulePageSkeleton } from './module-page-skeleton';
 export { ModulePrepPage } from './ModulePrepPage';
+export { AsyncStepProgress, type AsyncStepProgressStep, type AsyncStepProgressProps } from './async-step-progress';
+export { metricLabelClass, metricLabelClassName } from './metric-label';

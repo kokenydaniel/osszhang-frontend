@@ -3,6 +3,7 @@
 import classNames from 'classnames';
 import type { LucideIcon } from 'lucide-react';
 import { IconPod, type IconPodTone } from './IconPod';
+import { metricLabelClassName } from './metric-label';
 import { motion } from 'motion/react';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 
@@ -49,7 +50,7 @@ export function StatCard({
     >
       <div className="flex items-start justify-between gap-3">
         <IconPod icon={icon} tone={tone} size="sm" />
-        <span className="inline-flex items-center gap-1 text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
+        <span className={metricLabelClassName('inline-flex', 'items-center', 'gap-1')}>
           {label}
           {info && <InfoTooltip content={info} />}
         </span>

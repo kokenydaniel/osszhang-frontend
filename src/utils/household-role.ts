@@ -2,7 +2,6 @@ import type { UserProfile } from '@/types';
 
 export type HouseholdRole = 'admin' | 'editor' | 'reader';
 
-/** Normalizes legacy role values from older clients or seed data. */
 export function normalizeHouseholdRole(role: string | undefined | null): HouseholdRole | string | undefined {
   if (!role) return undefined;
   if (role === 'viewer') return 'reader';

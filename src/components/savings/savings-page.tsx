@@ -70,7 +70,6 @@ export function SavingsPage() {
 
   const investmentCardProps = {
     getInvestmentValue: data.getInvestmentValue,
-    getMaturityAmount: data.getMaturityAmount,
     updateInvestment: data.updateInvestment,
     deleteInvestment: async (id: number) => {
       try {
@@ -110,13 +109,14 @@ export function SavingsPage() {
             personalAccounts={data.personalAccounts}
             wifeAccounts={data.wifeAccounts}
             separateOwner={data.separateOwner}
+            sumDisplayPersonalAccounts={data.sumDisplayPersonalAccounts}
+            sumDisplayWifeAccounts={data.sumDisplayWifeAccounts}
             {...accountCardProps}
           />
-          <SavingsGoalsSection goals={data.goals} {...goalCardProps} />
+          <SavingsGoalsSection goals={data.goals} sumDisplayGoals={data.sumDisplayGoals} {...goalCardProps} />
           <SavingsInvestmentsSection
             investments={data.investments}
-            sumPersonalInvestments={data.sumPersonalInvestments}
-            sumWifeInvestments={data.sumWifeInvestments}
+            sumDisplayAllInvestments={data.sumDisplayAllInvestments}
             {...investmentCardProps}
           />
         </>

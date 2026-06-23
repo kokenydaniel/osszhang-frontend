@@ -10,9 +10,9 @@ export const moduleIds = config.modules.ids;
 export function isHouseholdModuleId(id: string): id is ModuleId {
   return (config.modules.ids as readonly string[]).includes(id);
 }
-/** @deprecated Use `config.modules.ids` */
+
 export const MODULE_IDS = config.modules.ids;
-/** @deprecated Use `config.modules.labels` */
+
 export const MODULE_LABELS = config.modules.labels;
 
 type HouseholdLike = NonNullable<UserProfile['household']>;

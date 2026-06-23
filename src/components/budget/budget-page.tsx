@@ -406,7 +406,7 @@ export function BudgetPage() {
 
           <BudgetMissedIncomeBanner summary={data.missedIncomeSummary} />
 
-          <MetricStrip items={data.summaryMetrics} columns={4} variant="separated" />
+          <MetricStrip items={data.summaryMetrics} columns={5} variant="separated" />
 
           <BudgetMonthInsightsSection
             year={data.selectedYear}

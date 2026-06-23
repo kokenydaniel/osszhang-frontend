@@ -16,9 +16,6 @@ import { rentalStore } from '@/stores/rentalStore';
 import { pocketMoneyStore } from '@/stores/pocketMoneyStore';
 import { receivablesStore } from '@/stores/receivablesStore';
 
-/**
- * Clears all in-memory domain caches when the authenticated user changes.
- */
 export function resetSessionData(): void {
   resetModuleDataCache();
   clearUtilitiesDataLoaderCache();

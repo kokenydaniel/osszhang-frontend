@@ -14,13 +14,11 @@ export function isPlatformFeatureEnabled(
   return Boolean(user.platform_feature_flags?.[key]);
 }
 
-/** True when the app is in maintenance and this user must not use the API. */
 export function isMaintenanceBlockedForUser(user: UserProfile | null | undefined): boolean {
   if (!user || user.lifetime_admin) return false;
   return isPlatformFeatureEnabled(user, 'maintenance_mode');
 }
 
-/** Skip dashboard data loads, session refresh, and toasts for maintenance-only users. */
 export function shouldUseMaintenanceOnlySession(user: UserProfile | null | undefined): boolean {
   return isMaintenanceBlockedForUser(user);
 }

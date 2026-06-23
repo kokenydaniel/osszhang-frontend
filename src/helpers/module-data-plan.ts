@@ -25,7 +25,6 @@ export type ModuleFetchOptions = {
   force?: boolean;
 };
 
-/** Modulok, amelyekhez az irányítópult adatot kérhet. */
 export const DASHBOARD_MODULE_IDS: ModuleId[] = [
   'budget',
   'utilities',
@@ -166,9 +165,6 @@ async function markModulesLoaded(
   });
 }
 
-/**
- * Betölti a felhasználó által elérhető modulok adatait (egy helyen: útvonal + dashboard).
- */
 export async function ensureModulesLoaded(
   user: UserProfile | null | undefined,
   moduleIds: readonly ModuleId[],
@@ -211,7 +207,6 @@ export async function ensureModulesLoaded(
   }
 }
 
-/** @deprecated Use {@link ensureModulesLoaded} */
 export async function preloadModule(
   moduleId: ModuleId,
   options?: ModuleFetchOptions,
