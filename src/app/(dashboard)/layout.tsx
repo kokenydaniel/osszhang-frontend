@@ -24,6 +24,7 @@ import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
 import { IMPERSONATION_SESSION_CHANGED } from '@/helpers/impersonation-session';
 import { SystemAnnouncementBanner } from '@/components/layout/SystemAnnouncementBanner';
 import { ProductUpdateModal } from '@/components/layout/ProductUpdateModal';
+import { HelpAssistantWidget } from '@/components/help/help-assistant-widget';
 import classNames from 'classnames';
 
 function SkeletonCard({ className }: { className?: string }) {
@@ -268,6 +269,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
       </div>
       {showOnboarding && <HouseholdOnboardingWizard />}
+      {!showOnboarding && <HelpAssistantWidget />}
     </div>
   );
 }

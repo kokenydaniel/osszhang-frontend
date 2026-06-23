@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync:help-knowledge": "npx tsx scripts/sync-help-knowledge.ts"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

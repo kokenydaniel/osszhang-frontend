@@ -1,3 +1,4 @@
+export { HelpAssistantClient } from './help-assistant-client';
 export { AuthClient } from './auth-client';
 export { HouseholdClient } from './household-client';
 export { BudgetClient } from './budget-client';

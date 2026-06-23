@@ -5,7 +5,6 @@ import { Settings, LogOut, ChevronDown, Menu, ChevronLeft, ChevronRight } from '
 import { formatMonthYear } from '@/utils';
 import config from '@/config/config';
 import { useLogout } from '@/hooks/useLogout';
-import classNames from 'classnames';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -63,7 +62,7 @@ export function Header({ pathname, month, year, onMonthChange, onYearChange, use
       <Button
         variant="ghost"
         size="icon"
-        className="text-muted-foreground md:hidden"
+        className="text-muted-foreground landscape:lg:hidden"
         onClick={onMobileMenuToggle}
         id="mobile-menu-btn"
       >

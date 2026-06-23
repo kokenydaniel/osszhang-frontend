@@ -52,5 +52,6 @@ export const rentalClient = apiClient.rental;
 export const feedbackClient = apiClient.feedback;
 export const receivablesClient = apiClient.receivables;
 export const travelClient = apiClient.travel;
+export const helpAssistantClient = apiClient.helpAssistant;
 export { getLastInsuranceApiFailure } from './clients/insurance-client';
 export { getLastRentalApiFailure } from './clients/rental-client';

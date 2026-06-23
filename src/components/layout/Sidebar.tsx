@@ -18,6 +18,7 @@ import {
   TrendingUp, Gauge,   PanelLeftClose, PanelLeftOpen, X, Command,
   PiggyBank, TrendingDown, Users, Wrench, Megaphone, MapPinned,
   Coins, Shield, Building2, HandCoins, Plug, Bot, ScrollText, Webhook, MessageSquareWarning, Sparkles, Layers, Package,
+  CircleHelp,
 } from 'lucide-react';
 import { TierBadge } from '@/components/subscription/TierBadge';
 import { useAdminFeedbackAttentionCount } from '@/hooks/useAdminFeedbackAttentionCount';
@@ -82,7 +83,10 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
     },
     {
       section: 'Rendszer',
-      items: [{ href: '/settings', icon: Settings, label: 'Beállítások', id: 'settings' as const }],
+      items: [
+        { href: '/help', icon: CircleHelp, label: 'Súgó', id: 'help' as const },
+        { href: '/settings', icon: Settings, label: 'Beállítások', id: 'settings' as const },
+      ],
     },
     ...(isPlatformAdmin(user)
       ? [
@@ -128,6 +132,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
 
   const globalNavIds = [
     'dashboard',
+    'help',
     'settings',
     'feedback',
     ...([
@@ -198,17 +203,19 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
     <>
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-foreground/20 md:hidden animate-in fade-in duration-150"
+          className="fixed inset-0 z-40 bg-foreground/20 landscape:lg:hidden animate-in fade-in duration-150"
           onClick={onMobileClose}
         />
       )}
 
       <aside
         className={classNames(
-          'fixed md:sticky top-0 left-0 z-50 flex h-screen flex-col',
-          'border-r border-border bg-sidebar transition-[width] duration-200 ease-out',
-          collapsed ? 'md:w-[68px]' : 'md:w-[220px]',
-          mobileOpen ? 'w-[220px] translate-x-0' : 'w-[220px] -translate-x-full md:translate-x-0',
+          'fixed landscape:lg:sticky top-0 left-0 z-50 flex h-screen flex-col',
+          'border-r border-border bg-sidebar transition-[width,transform] duration-200 ease-out',
+          collapsed ? 'landscape:lg:w-[68px]' : 'w-[220px]',
+          mobileOpen
+            ? 'w-[220px] translate-x-0'
+            : 'w-[220px] -translate-x-full landscape:lg:translate-x-0 portrait:max-xl:-translate-x-full',
         )}
       >
         <div
@@ -228,7 +235,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           {mobileOpen && (
             <button
               onClick={onMobileClose}
-              className="ml-auto rounded-md p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground md:hidden"
+              className="ml-auto rounded-md p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground landscape:lg:hidden"
             >
               <X size={16} />
             </button>
@@ -322,7 +329,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           <button
             onClick={onToggle}
             className={classNames(
-              'hidden md:flex w-full items-center justify-center gap-2 rounded-md py-2 px-2',
+              'hidden landscape:lg:flex w-full items-center justify-center gap-2 rounded-md py-2 px-2',
               'text-xs font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground',
             )}
           >

@@ -20,6 +20,7 @@ import {
   FeedbackClient,
   ReceivablesClient,
   TravelClient,
+  HelpAssistantClient,
 } from './clients';
 import { API_URL } from './public-env';
 
@@ -44,6 +45,7 @@ export class ApiClientFacade extends ApiClient {
   readonly feedback: FeedbackClient;
   readonly receivables: ReceivablesClient;
   readonly travel: TravelClient;
+  readonly helpAssistant: HelpAssistantClient;
 
   constructor(baseUrl: string = API_URL) {
     super(baseUrl);
@@ -67,6 +69,7 @@ export class ApiClientFacade extends ApiClient {
     this.feedback = new FeedbackClient(this);
     this.receivables = new ReceivablesClient(this);
     this.travel = new TravelClient(this);
+    this.helpAssistant = new HelpAssistantClient(this);
   }
 }
 
