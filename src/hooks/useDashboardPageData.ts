@@ -20,7 +20,7 @@ import { utilitiesCalculations } from '@/calculations/utilities';
 import { canUseModuleWithTier, type ModuleId } from '@/helpers/module-access';
 import { canUseFeature } from '@/helpers/check-access';
 import { activeWalletManualBalance } from '@/utils/wallet-balance';
-import { today as todayDate } from '@/utils/dates';
+import { today as todayDate, toDayjs } from '@/utils/dates';
 import { useBudgetCashflowMetrics } from '@/hooks/useBudgetCashflowMetrics';
 import { useDebtBudgetInstallments } from '@/hooks/useDebtBudgetInstallments';
 import { useInsuranceBudgetPremiums } from '@/hooks/useInsuranceBudgetPremiums';
@@ -178,6 +178,21 @@ export function useDashboardPageData() {
   );
 
   const metersSettings = useMemo(() => resolveMetersSettings(user?.household), [user?.household]);
+
+  const missingMeters = useMemo(() => {
+    if (!canUseModuleWithTier(user, 'utilities')) return [];
+    const reminderDay = metersSettings.reading_reminder_day || 0;
+    if (reminderDay === 0) return [];
+    
+    const todayObj = toDayjs(todayDate());
+    const currentMonth = todayObj.month() + 1;
+    const currentYear = todayObj.year();
+    const currentDay = todayObj.date();
+    
+    if (currentDay < reminderDay) return [];
+    
+    return meters.filter(m => !m.readings.some(r => r.year === currentYear && r.month === currentMonth));
+  }, [meters, metersSettings.reading_reminder_day, user]);
   const periodLabel = useMemo(
     () => formatMonthYear(selectedMonth, selectedYear),
     [selectedMonth, selectedYear],
@@ -405,6 +420,7 @@ export function useDashboardPageData() {
     canLoadUtilityAnomalies: canLoadUtilityAnomalies(user),
     periodLabel,
     dashboardWidgetOrder,
+    missingMeters,
     metersShowAnnualOnDashboard: metersSettings.show_annual_summary_on_dashboard,
     ...snapshot,
   };

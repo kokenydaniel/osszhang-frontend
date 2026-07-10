@@ -53,6 +53,7 @@ export function DashboardPage() {
           aiUtilityAnomalies={state.aiUtilityAnomalies}
           canLoadUtilityAnomalies={state.canLoadUtilityAnomalies}
           financialDataReady={state.financialDataReady}
+          missingMeters={state.missingMeters}
         />
       ),
       ai_cfo: showAiCfo ? (

@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { AccentPanel } from '@/components/design';
-import { AlertCircle, ChevronRight } from 'lucide-react';
-import type { UtilityBill } from '@/types';
+import { AlertCircle, ChevronRight, Gauge } from 'lucide-react';
+import type { UtilityBill, Meter } from '@/types';
 import type { DashboardModuleAccess } from '@/helpers/dashboard-types';
 import type { MissedIncomeSummary } from '@/calculations/budget-income';
 import { DashboardMissedIncomeBanner } from '@/components/budget/budget-missed-income-banner';
@@ -39,6 +39,7 @@ type Props = {
   aiUtilityAnomalies: AiUtilityAnomalies | null;
   canLoadUtilityAnomalies: boolean;
   financialDataReady: boolean;
+  missingMeters: Meter[];
 };
 
 export function DashboardAlertBanners({
@@ -59,6 +60,7 @@ export function DashboardAlertBanners({
   aiUtilityAnomalies,
   canLoadUtilityAnomalies,
   financialDataReady,
+  missingMeters,
 }: Props) {
   if (!financialDataReady) {
     return null;
@@ -74,6 +76,7 @@ export function DashboardAlertBanners({
   const showBusinessTax = !!businessTaxAlert && canUse('business');
   const showMetersAnomalies =
     canLoadUtilityAnomalies && !!aiUtilityAnomalies?.anomalies?.length;
+  const showMissingMeters = missingMeters.length > 0 && canUse('utilities');
 
   const showFinancialRow = showMissedIncome || showUtilitiesRezsiDebt || showReceivables;
 
@@ -105,7 +108,8 @@ export function DashboardAlertBanners({
     showRentalOverdue ||
     showPocketMoney ||
     showBusinessTax ||
-    showMetersAnomalies;
+    showMetersAnomalies ||
+    showMissingMeters;
 
   if (!showFinancialRow && !hasSecondary) {
     return null;
@@ -136,6 +140,31 @@ export function DashboardAlertBanners({
 
       {hasSecondary ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {showMissingMeters && (
+            <AccentPanel
+              tone="danger"
+              icon={Gauge}
+              title="Aktuális leolvasások esedékesek"
+              description={`A beállításokban megadott leolvasási dátum elmúlt, és még ${missingMeters.length} db órához nem rögzítetted a tárgyhavi állást.`}
+              action={
+                <Link
+                  href="/meters"
+                  className="text-xs font-medium text-primary hover:underline shrink-0 inline-flex items-center gap-0.5"
+                >
+                  Mérőórák <ChevronRight size={11} />
+                </Link>
+              }
+            >
+              <ul className="space-y-1.5 mt-2">
+                {missingMeters.map((m) => (
+                  <li key={m.id} className="text-foreground/80 flex items-start gap-2 text-sm">
+                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
+                    <span><b className="font-medium text-foreground">{m.name}</b> ({m.location || 'Nincs helyszín'})</span>
+                  </li>
+                ))}
+              </ul>
+            </AccentPanel>
+          )}
           {showUtilitiesOverdue && (
             <AccentPanel
               tone="danger"

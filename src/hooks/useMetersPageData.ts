@@ -48,18 +48,18 @@ export function useMetersPageData() {
     [meters, metersSettings.location_groups],
   );
 
-  const missingReadingsCount = useMemo(() => {
+  const missingMeters = useMemo(() => {
     const reminderDay = metersSettings.reading_reminder_day || 0;
-    if (reminderDay === 0) return 0;
+    if (reminderDay === 0) return [];
     
     const todayObj = toDayjs(today());
     const currentMonth = todayObj.month() + 1;
     const currentYear = todayObj.year();
     const currentDay = todayObj.date();
     
-    if (currentDay < reminderDay) return 0;
+    if (currentDay < reminderDay) return [];
     
-    return meters.filter(m => !m.readings.some(r => r.year === currentYear && r.month === currentMonth)).length;
+    return meters.filter(m => !m.readings.some(r => r.year === currentYear && r.month === currentMonth));
   }, [meters, metersSettings.reading_reminder_day]);
 
   const refreshAiAnomalies = useCallback(async () => {
@@ -345,7 +345,7 @@ export function useMetersPageData() {
     isReader,
     pageLoading: loading && meters.length === 0,
     metersSettings,
-    missingReadingsCount,
+    missingMeters,
     meters,
     selectedYear,
     selectedMonth,

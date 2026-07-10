@@ -56,14 +56,21 @@ export function MetersPage() {
         <ModulePageSkeleton metrics={0} tableRows={4} />
       ) : (
         <>
-          {data.missingReadingsCount > 0 && (
+          {data.missingMeters.length > 0 && (
             <AccentPanel
               tone="danger"
               icon={Gauge}
               title="Aktuális leolvasások esedékesek"
-              description={`A beállításokban megadott leolvasási dátum elmúlt, és még ${data.missingReadingsCount} db órához nem rögzítetted a tárgyhavi állást.`}
+              description={`A beállításokban megadott leolvasási dátum elmúlt, és még ${data.missingMeters.length} db órához nem rögzítetted a tárgyhavi állást.`}
             >
-              {null}
+              <ul className="space-y-1.5 mt-2">
+                {data.missingMeters.map((m) => (
+                  <li key={m.id} className="text-foreground/80 flex items-start gap-2 text-sm">
+                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
+                    <span><b className="font-medium text-foreground">{m.name}</b> ({m.location || 'Nincs helyszín'})</span>
+                  </li>
+                ))}
+              </ul>
             </AccentPanel>
           )}
 
