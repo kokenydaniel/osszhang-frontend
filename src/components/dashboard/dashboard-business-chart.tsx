@@ -49,7 +49,7 @@ export function DashboardBusinessChart({ businessEnabled, chartData }: Props) {
               }}
               formatter={(val) => formatHUF(Number(val ?? 0))}
             />
-            <Area type="monotone" dataKey="amount" stroke="oklch(0.55 0.22 275)" strokeWidth={2} fillOpacity={1} fill="url(#aG)" activeDot={{ r: 4, fill: 'oklch(0.55 0.22 275)' }} />
+            <Area type="monotone" dataKey="amount" name="Bevétel" stroke="oklch(0.55 0.22 275)" strokeWidth={2} fillOpacity={1} fill="url(#aG)" activeDot={{ r: 4, fill: 'oklch(0.55 0.22 275)' }} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
