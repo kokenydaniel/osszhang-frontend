@@ -345,6 +345,7 @@ export function useMetersPageData() {
     isReader,
     pageLoading: loading && meters.length === 0,
     metersSettings,
+    missingReadingsCount,
     meters,
     selectedYear,
     selectedMonth,
