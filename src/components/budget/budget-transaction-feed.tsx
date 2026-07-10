@@ -122,8 +122,7 @@ export function BudgetTransactionFeed({
     {
       key: 'description',
       header: 'Megnevezés',
-      width: '260px',
-      className: 'w-[260px] max-w-[260px] min-w-[220px]',
+      width: '30%',
       cell: (t) => {
         const settled = hasSettlementDate(t.paidDate);
         const isOverdue = isDueOverdue(t, today);
@@ -406,7 +405,7 @@ export function BudgetTransactionFeed({
             </div>
           );
         }}
-        minWidth="780px"
+        minWidth="650px"
       />
 
       <Modal
