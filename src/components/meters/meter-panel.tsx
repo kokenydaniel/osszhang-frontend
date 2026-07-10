@@ -102,10 +102,18 @@ export function MeterPanel({
   const currentVal = parseFloat(calcValue);
   const diff = latestReading && !isNaN(currentVal) ? metersCalculations.computeQuickReadingDiff(latestReading.value, currentVal) : 0;
 
-  const handleSaveCalc = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSaveCalc = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!calcValue || isNaN(currentVal) || diff < 0) return;
-    onQuickReadingSubmit(meter.id, calcValue);
+    if (!calcValue || isNaN(currentVal) || diff < 0 || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await onQuickReadingSubmit(meter.id, calcValue);
+      setCalcValue('');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const readingColumns: DataTableColumn<MeterReading>[] = [
@@ -363,7 +371,7 @@ export function MeterPanel({
                     </span>
                   )}
                 </div>
-                <Button type="submit" size="sm" disabled={!calcValue || isNaN(currentVal) || diff < 0}>
+                <Button type="submit" size="sm" disabled={!calcValue || isNaN(currentVal) || diff < 0} loading={isSubmitting}>
                   Rögzítés
                 </Button>
               </div>

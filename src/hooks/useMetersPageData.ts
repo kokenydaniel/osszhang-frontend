@@ -128,8 +128,9 @@ export function useMetersPageData() {
         patchMeter(meterId, res[1] as Meter);
         addNotification('Leolvasás rögzítve.', 'success');
       }
+      void refreshAiAnomalies();
     },
-    [addNotification, patchMeter, user],
+    [addNotification, patchMeter, user, refreshAiAnomalies],
   );
 
   const recordQuickReading = useCallback(
@@ -157,12 +158,14 @@ export function useMetersPageData() {
       });
       const res = await metersClient.addReading(meterId, payload);
       if (!res || (res[0] !== StatusCodes.Http200 && res[0] !== StatusCodes.Http201)) {
+        addNotification('A leolvasás mentése nem sikerült.', 'error');
         throw new Error('API Error');
       }
       patchMeter(meterId, res[1] as Meter);
-      addNotification('Óraállás rögzítve.', 'success');
+      addNotification('Gyors állás rögzítve.', 'success');
+      void refreshAiAnomalies();
     },
-    [addNotification, meters, patchMeter, user],
+    [addNotification, meters, patchMeter, user, refreshAiAnomalies],
   );
 
   const deleteMeter = useCallback(
@@ -181,8 +184,9 @@ export function useMetersPageData() {
       if (!res || res[0] !== StatusCodes.Http200) throw new Error('API Error');
       patchMeter(meterId, res[1] as Meter);
       addNotification('Leolvasás törölve.', 'success');
+      void refreshAiAnomalies();
     },
-    [addNotification, patchMeter],
+    [addNotification, patchMeter, refreshAiAnomalies],
   );
 
   const requestDeleteMeter = useCallback(
@@ -215,8 +219,9 @@ export function useMetersPageData() {
       if (!res || res[0] !== StatusCodes.Http200) throw new Error('API Error');
       patchMeter(meterId, res[1] as Meter);
       addNotification(`${readingIds.length} leolvasás törölve.`, 'success');
+      void refreshAiAnomalies();
     },
-    [addNotification, patchMeter],
+    [addNotification, patchMeter, refreshAiAnomalies],
   );
 
   const requestDeleteReadingsBulk = useCallback(
@@ -289,9 +294,10 @@ export function useMetersPageData() {
         throw new Error('API Error');
       }
       patchMeter(meter.id, res[1] as Meter);
+      void refreshAiAnomalies();
       return true;
     },
-    [addNotification, patchMeter],
+    [addNotification, patchMeter, refreshAiAnomalies],
   );
 
   const estimateAiMonth = useCallback(
@@ -336,8 +342,9 @@ export function useMetersPageData() {
         patchMeter(meter.id, res[1] as Meter);
       }
       addNotification(`${gaps.length} hiányzó hónap kitöltve.`, 'success');
+      void refreshAiAnomalies();
     },
-    [addNotification, meters, patchMeter],
+    [addNotification, meters, patchMeter, refreshAiAnomalies],
   );
 
   return {
