@@ -125,6 +125,7 @@ export function computeDashboardSnapshot(input: DashboardSnapshotInput) {
           type: 'expense' as const,
           description: t.description,
           amount: expenseRemaining(t),
+          currency: t.currency,
           dueDate: t.dueDate,
           category: t.category,
         }))
@@ -137,6 +138,7 @@ export function computeDashboardSnapshot(input: DashboardSnapshotInput) {
             type: 'expense' as const,
             description: t.description,
             amount: t.amount,
+            currency: t.currency,
             dueDate: t.dueDate,
             category: t.category,
           }))
@@ -335,6 +337,7 @@ export function computeDashboardSnapshot(input: DashboardSnapshotInput) {
     primaryMetrics,
     secondaryMetrics,
     unpaidItemsList,
+    exchangeRates: input.exchangeRates,
     monthBills,
     consumptionData,
     investmentPayouts,

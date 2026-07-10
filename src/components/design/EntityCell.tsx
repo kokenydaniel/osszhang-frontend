@@ -13,6 +13,7 @@ interface EntityCellProps {
   size?: 'sm' | 'md';
   solidIcon?: boolean;
   className?: string;
+  wrap?: boolean;
 }
 
 export function EntityCell({
@@ -24,16 +25,17 @@ export function EntityCell({
   size = 'sm',
   solidIcon = false,
   className,
+  wrap = false,
 }: EntityCellProps) {
   return (
     <div className={classNames('flex items-center gap-3 min-w-0', className)}>
       <IconPod icon={icon} tone={tone} size={size === 'sm' ? 'sm' : 'md'} solid={solidIcon} />
-      <div className="min-w-0">
-        <div className="font-medium text-sm text-foreground truncate flex items-center gap-2">
-          <span className="truncate">{title}</span>
+      <div className="min-w-0 flex-1">
+        <div className={classNames('font-medium text-sm text-foreground flex items-center gap-2', wrap ? 'flex-wrap' : 'truncate')}>
+          <span className={classNames(wrap ? 'whitespace-normal break-words leading-snug' : 'truncate')}>{title}</span>
           {badge}
         </div>
-        {subtitle ? <div className="text-[0.7rem] text-muted-foreground mt-0.5 truncate">{subtitle}</div> : null}
+        {subtitle ? <div className={classNames('text-[0.7rem] text-muted-foreground mt-0.5', wrap ? 'whitespace-normal break-words line-clamp-2' : 'truncate')}>{subtitle}</div> : null}
       </div>
     </div>
   );

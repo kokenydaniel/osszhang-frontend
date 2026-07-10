@@ -29,6 +29,8 @@ import {
   Calendar,
   Gauge,
   Building2,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import { CustomTooltip } from './meter-chart-tooltip';
 import { metersCalculations } from '@/calculations/meters';
@@ -44,6 +46,7 @@ export function MeterPanel({
   onAddReading,
   onDeleteMeter,
   onDeleteReading,
+  onDeleteReadingsBulk,
 }: {
   meter: Meter;
   selectedYear: number;
@@ -55,10 +58,29 @@ export function MeterPanel({
   onAddReading: (m: Meter) => void;
   onDeleteMeter: (id: number) => void;
   onDeleteReading: (mId: number, rId: number) => void;
+  onDeleteReadingsBulk: (mId: number, rIds: number[]) => void;
 }) {
   const [showHistory, setShowHistory] = useState(false);
   const [showFullHistory, setShowFullHistory] = useState(false);
   const [calcValue, setCalcValue] = useState('');
+  const [selectedReadingIds, setSelectedReadingIds] = useState<Set<number>>(new Set());
+
+  const toggleReadingSelection = (id: number) => {
+    setSelectedReadingIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = (readings: MeterReading[]) => {
+    if (selectedReadingIds.size === readings.length) {
+      setSelectedReadingIds(new Set());
+    } else {
+      setSelectedReadingIds(new Set(readings.map((r) => r.id)));
+    }
+  };
 
   const chartData = metersCalculations.buildChartData(meter, selectedYear, getPreviousYearValue);
   const meta = metersCalculations.getMeterMeta(meter.name);
@@ -66,6 +88,8 @@ export function MeterPanel({
   const { yearTotal, prevYearTotal, trend } = metersCalculations.buildYearTotals(meter, selectedYear);
   const { latestReading, latestOfficialReading, consumptionSinceOfficial } =
     metersCalculations.buildConsumptionSinceOfficial(meter);
+  const officialComparison = metersCalculations.buildOfficialPeriodsComparison(meter);
+  const prediction = metersCalculations.buildNextOfficialPrediction(meter);
 
   const yearReadings = meter.readings
     .filter((r: MeterReading) => r.year === selectedYear)
@@ -86,9 +110,29 @@ export function MeterPanel({
 
   const readingColumns: DataTableColumn<MeterReading>[] = [
     {
+      key: 'select',
+      header: '',
+      width: '5%',
+      cell: (r) =>
+        !isReader ? (
+          <button
+            type="button"
+            onClick={() => toggleReadingSelection(r.id)}
+            className="text-muted-foreground hover:text-primary transition-colors"
+            title={selectedReadingIds.has(r.id) ? 'Kijelölés törlése' : 'Kijelölés'}
+          >
+            {selectedReadingIds.has(r.id) ? (
+              <CheckSquare size={15} strokeWidth={2} className="text-primary" />
+            ) : (
+              <Square size={15} strokeWidth={2} />
+            )}
+          </button>
+        ) : null,
+    },
+    {
       key: 'value',
       header: 'Állás',
-      width: '24%',
+      width: '22%',
       cell: (r) => (
         <div className="flex items-center gap-3 min-w-0">
           <div className={classNames('flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white shadow-sm', iconBg)}>
@@ -218,7 +262,7 @@ export function MeterPanel({
           )}
         </header>
 
-        <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
+        <div className={classNames('grid divide-x divide-border border-b border-border', officialComparison ? 'grid-cols-4' : 'grid-cols-3')}>
           <div className="px-5 py-3">
             <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">Idei összes</p>
             <p className="text-lg font-semibold tabular-nums text-foreground mt-1">
@@ -240,8 +284,31 @@ export function MeterPanel({
             </p>
             <p className="text-[0.65rem] mt-0.5 text-muted-foreground/70">{selectedYear - 1} teljes év</p>
           </div>
+          {officialComparison && (
+            <div className="px-5 py-3 bg-primary/5">
+              <p className="text-[0.65rem] font-medium uppercase tracking-wider text-primary">
+                {new Date(officialComparison.currentPeriod.end.date).getFullYear()}. évi elszámolás
+              </p>
+              <p className="text-lg font-semibold tabular-nums text-foreground mt-1">
+                {formatNumber(officialComparison.currentPeriod.consumption)}
+                <span className="text-xs text-muted-foreground font-normal ml-1">{meter.unit}</span>
+              </p>
+              {officialComparison.previousPeriod ? (
+                <p className="text-[0.65rem] mt-0.5 text-muted-foreground/80 tabular-nums">
+                  {new Date(officialComparison.previousPeriod.end.date).getFullYear()}. évi: {formatNumber(officialComparison.previousPeriod.consumption)} {meter.unit}
+                  {officialComparison.trend !== null && (
+                    <span className={classNames('ml-1 font-medium', officialComparison.trend < 0 ? 'text-emerald-600' : officialComparison.trend > 0 ? 'text-rose-600' : '')}>
+                      ({officialComparison.trend > 0 ? '+' : ''}{officialComparison.trend.toFixed(1)}%)
+                    </span>
+                  )}
+                </p>
+              ) : (
+                <p className="text-[0.65rem] mt-0.5 text-muted-foreground/70">Nincs korábbi elszámolás</p>
+              )}
+            </div>
+          )}
           <div className="px-5 py-3">
-            <p className="text-[0.65rem] font-medium uppercase tracking-wider text-primary">Szolgáltatói leolvasás óta</p>
+            <p className="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">Leolvasás óta</p>
             {consumptionSinceOfficial !== null && latestOfficialReading ? (
               <>
                 <p className="text-lg font-semibold tabular-nums text-foreground mt-1">
@@ -249,9 +316,21 @@ export function MeterPanel({
                   <span className="text-xs text-muted-foreground font-normal ml-1">{meter.unit}</span>
                 </p>
                 <p className="text-[0.65rem] mt-0.5 text-muted-foreground/70">{formatDate(latestOfficialReading.date)} óta</p>
+                
+                {prediction && (
+                  <p className={classNames('text-[0.65rem] mt-1.5 font-medium tabular-nums', 
+                    prediction.trend !== null 
+                      ? (prediction.trend <= 0 ? 'text-emerald-600' : 'text-rose-600') 
+                      : 'text-muted-foreground')}>
+                    Várható: ~{formatNumber(prediction.predictedConsumption)} {meter.unit}
+                    {prediction.trend !== null && (
+                      <span> ({prediction.trend <= 0 ? 'kevesebb' : 'több'})</span>
+                    )}
+                  </p>
+                )}
               </>
             ) : (
-              <p className="text-sm text-muted-foreground mt-2">Még nem volt szolgáltatói helyszíni leolvasás</p>
+              <p className="text-sm text-muted-foreground mt-2">Nincs még hivatalos</p>
             )}
           </div>
         </div>
@@ -353,6 +432,38 @@ export function MeterPanel({
                 <EmptyState icon={Gauge} title="Nincs leolvasás" description="Még nincs rögzített állás ebben az időszakban." className="m-4" />
               ) : (
                 <>
+                  {!isReader && (
+                    <div className="flex items-center justify-between px-4 pt-3 pb-1 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleSelectAll(displayReadings)}
+                        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {selectedReadingIds.size === displayReadings.length && displayReadings.length > 0 ? (
+                          <CheckSquare size={13} className="text-primary" />
+                        ) : (
+                          <Square size={13} />
+                        )}
+                        {selectedReadingIds.size === displayReadings.length && displayReadings.length > 0
+                          ? 'Kijelölés megszüntetése'
+                          : 'Összes kijelölése'}
+                      </button>
+                      {selectedReadingIds.size > 0 && (
+                        <Button
+                          size="xs"
+                          variant="destructive"
+                          onClick={() => {
+                            onDeleteReadingsBulk(meter.id, Array.from(selectedReadingIds));
+                            setSelectedReadingIds(new Set());
+                          }}
+                          className="gap-1.5"
+                        >
+                          <Trash2 size={11} />
+                          {selectedReadingIds.size} törlése
+                        </Button>
+                      )}
+                    </div>
+                  )}
                   <div className="p-4">
                     <DataTable
                       columns={readingColumns}

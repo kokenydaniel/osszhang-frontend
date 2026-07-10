@@ -194,6 +194,29 @@ export function useMetersPageData() {
     [deleteReading, requestDelete],
   );
 
+  const deleteReadingsBulk = useCallback(
+    async (meterId: number, readingIds: number[]) => {
+      if (readingIds.length === 0) return;
+      const res = await metersClient.deleteReadingsBulk(meterId, readingIds);
+      if (!res || res[0] !== StatusCodes.Http200) throw new Error('API Error');
+      patchMeter(meterId, res[1] as Meter);
+      addNotification(`${readingIds.length} leolvasás törölve.`, 'success');
+    },
+    [addNotification, patchMeter],
+  );
+
+  const requestDeleteReadingsBulk = useCallback(
+    (meterId: number, readingIds: number[]) => {
+      if (readingIds.length === 0) return;
+      requestDelete({
+        title: `${readingIds.length} leolvasás törlése`,
+        message: `Biztosan törlöd a kijelölt ${readingIds.length} óraállást? A fogyasztási adatok újraszámolásra kerülnek.`,
+        onConfirm: () => deleteReadingsBulk(meterId, readingIds),
+      });
+    },
+    [deleteReadingsBulk, requestDelete],
+  );
+
   const estimateOneMonth = useCallback(
     async (meter: Meter, year: number, month: number): Promise<boolean> => {
       const targetDateStr = metersCalculations.targetDateForMonth(year, month);
@@ -324,6 +347,7 @@ export function useMetersPageData() {
     fillAllGaps,
     requestDeleteMeter,
     requestDeleteReading,
+    requestDeleteReadingsBulk,
     ConfirmDeleteModal,
   };
 }

@@ -78,4 +78,19 @@ export class MetersClient {
     }
     return null;
   }
+
+  async deleteReadingsBulk(meterId: number, readingIds: number[]): SingleEntityResponse<Meter> {
+    try {
+      const [status, response] = await this.apiClient.deleteJson(
+        `${this.baseEndpoint}/${meterId}/readings`,
+        { reading_ids: readingIds },
+      );
+      if (status === StatusCodes.Http200 && isSingleEntityApiResponse<Meter>(response, ['id'])) {
+        return this.apiClient.response(status, response);
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+    return null;
+  }
 }

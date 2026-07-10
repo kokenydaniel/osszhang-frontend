@@ -5,6 +5,7 @@ export interface DebtInstallmentPayment {
   paidAt: string | null;
   amount: number;
   source: DebtInstallmentPaymentSource;
+  note?: string;
 }
 
 export interface Debt {

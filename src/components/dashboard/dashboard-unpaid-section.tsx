@@ -1,7 +1,8 @@
 'use client';
 
 import classNames from 'classnames';
-import { formatHUF, isDueOverdue } from '@/utils';
+import { formatTransactionAmount } from '@/utils/money';
+import { isDueOverdue } from '@/utils';
 import { Button } from '@/components/ui/button';
 import {
   DataTable,
@@ -16,11 +17,12 @@ import type { DashboardUnpaidItem } from '@/helpers/dashboard-types';
 type Props = {
   unpaidItemsList: DashboardUnpaidItem[];
   todayStr: string;
+  exchangeRates: Record<string, number>;
   handlePayItem: (item: DashboardUnpaidItem) => void | Promise<void>;
   isReader: boolean;
 };
 
-export function DashboardUnpaidSection({ unpaidItemsList, todayStr, handlePayItem, isReader }: Props) {
+export function DashboardUnpaidSection({ unpaidItemsList, todayStr, exchangeRates, handlePayItem, isReader }: Props) {
   return (
     <div className="lg:col-span-3">
       <Section
@@ -90,7 +92,9 @@ export function DashboardUnpaidSection({ unpaidItemsList, todayStr, handlePayIte
                 align: 'right',
                 width: '24%',
                 cell: (item) => (
-                  <span className="text-sm font-semibold text-foreground tabular-nums">{formatHUF(item.amount)}</span>
+                  <span className="text-sm font-semibold text-foreground tabular-nums">
+                    {formatTransactionAmount(item.amount, item.currency, exchangeRates)}
+                  </span>
                 ),
               },
               {

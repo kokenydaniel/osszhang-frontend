@@ -63,11 +63,6 @@ export function MetersPage() {
               title="AI anomáliák ezen a hónapon"
               titleInfo={HELP.meters.aiAnomaly}
               description="A modell az alábbi szokatlan értékeket észlelte"
-              action={
-                <Button variant="ghost" size="xs" onClick={() => void data.refreshAiAnomalies()}>
-                  <RefreshCw size={11} /> Frissítés
-                </Button>
-              }
             >
               <ul className="space-y-1.5">
                 {data.aiUtilityAnomalies.anomalies.map((a) => (
@@ -138,6 +133,7 @@ export function MetersPage() {
                       onAddReading={(m: Meter) => setReadingModal({ mode: 'create', meter: m })}
                       onDeleteMeter={data.requestDeleteMeter}
                       onDeleteReading={data.requestDeleteReading}
+                      onDeleteReadingsBulk={data.requestDeleteReadingsBulk}
                     />
                   ))}
                 </div>

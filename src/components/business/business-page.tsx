@@ -11,6 +11,11 @@ import { BusinessSummaryTab } from './business-summary-tab';
 import { BusinessDocumentsTab } from './business-documents-tab';
 import { BusinessVatEstimatePanel } from './business-vat-estimate-panel';
 import { BusinessOrderModal } from './business-order-modal';
+import { isPlatformFeatureEnabled } from '@/config/platform-feature-flags';
+import { canUseFeature } from '@/helpers/check-access';
+import { usePeriodStore } from '@/stores/usePeriodStore';
+import { useBusinessDocumentCoverage } from '@/hooks/useBusinessDocumentCoverage';
+import { BusinessDocumentCoverageAlert } from './business-document-coverage-alert';
 
 type OrderModalState = BusinessOrder | 'create' | null;
 
@@ -23,6 +28,20 @@ export function BusinessPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [realAiAdvice, setRealAiAdvice] = useState<string | null>(null);
+
+  const attachmentsEnabled =
+    isPlatformFeatureEnabled(data.user, 'enable_attachments') && canUseFeature(data.user, 'attachments');
+  const { missingMonths, updateMonthCoverage } = useBusinessDocumentCoverage(attachmentsEnabled);
+  const { setSelectedYear, setSelectedMonth } = usePeriodStore();
+
+  const handleJumpToMonth = useCallback(
+    (year: number, month: number) => {
+      setSelectedYear(year);
+      setSelectedMonth(month);
+      setActiveTab('documents');
+    },
+    [setSelectedMonth, setSelectedYear],
+  );
 
   const openForm = useCallback(
     (order?: BusinessOrder) => {
@@ -77,6 +96,11 @@ export function BusinessPage() {
         <ModulePageSkeleton />
       ) : (
         <>
+          <BusinessDocumentCoverageAlert
+            missingMonths={missingMonths}
+            onJumpToMonth={handleJumpToMonth}
+          />
+
           {activeTab !== 'documents' ? (
             <MetricStrip
               items={activeTab === 'monthly' ? data.monthlyMetrics : data.summaryMetrics}
@@ -117,6 +141,7 @@ export function BusinessPage() {
               filteredOrders={data.filteredOrders}
               user={data.user}
               requestDelete={data.requestDelete}
+              onDocumentCoverageChange={updateMonthCoverage}
             />
           )}
           {activeTab === 'summary' && (

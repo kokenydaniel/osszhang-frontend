@@ -18,7 +18,18 @@ import {
   resolveInstallmentPayments,
 } from '@/helpers/debt-installment-payments';
 import type { Debt, DebtInstallmentPayment } from '@/types/debts';
-import { History, Trash2 } from 'lucide-react';
+import { AlertCircle, History, Trash2 } from 'lucide-react';
+
+function formatShortPeriodLabel(period: string): string {
+  const [year, month] = period.split('-');
+  if (!year || !month) return period;
+  const labels = [
+    'jan.', 'feb.', 'márc.', 'ápr.', 'máj.', 'jún.',
+    'júl.', 'aug.', 'szept.', 'okt.', 'nov.', 'dec.',
+  ];
+  const idx = Number(month) - 1;
+  return `${year}. ${labels[idx] ?? month}`;
+}
 
 type DebtPaymentHistoryModalProps = {
   open: boolean;
@@ -93,17 +104,20 @@ export function DebtPaymentHistoryModal({
         onClose={onClose}
         title="Befizetési előzmények"
         description={debt.name}
-        size="md"
+        size="lg"
         animateContent={false}
       >
         {missed.length > 0 ? (
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 mb-4">
-            <p className="text-xs font-medium text-amber-900 dark:text-amber-100">
-              Kihagyott hónapok (szinkron indulás óta)
-            </p>
-            <p className="text-xs text-amber-800/90 dark:text-amber-200/90 mt-1 leading-relaxed">
-              {missed.map(formatInstallmentPeriodLabel).join(' · ')}
-            </p>
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 dark:bg-amber-500/15 p-3.5 mb-4 text-foreground flex items-start gap-2.5">
+            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-foreground">
+                Kihagyott hónapok (szinkron indulás óta)
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed font-medium">
+                {missed.map(formatInstallmentPeriodLabel).join(' · ')}
+              </p>
+            </div>
           </div>
         ) : null}
 
@@ -115,13 +129,14 @@ export function DebtPaymentHistoryModal({
           />
         ) : (
           <div className="overflow-x-auto -mx-1">
-            <table className="w-full text-sm border-collapse min-w-[520px]">
+            <table className="w-full text-sm border-collapse min-w-[580px]">
               <thead>
                 <tr className="text-left text-[0.65rem] uppercase tracking-wide text-muted-foreground border-b border-border">
-                  <th className="py-2 px-2 font-medium">Törlesztési hónap</th>
-                  <th className="py-2 px-2 font-medium">Befizetve</th>
-                  <th className="py-2 px-2 font-medium text-right">Összeg</th>
-                  <th className="py-2 px-2 font-medium">Forrás</th>
+                  <th className="py-2 px-2 font-medium w-24">Hónap</th>
+                  <th className="py-2 px-2 font-medium w-24">Dátum</th>
+                  <th className="py-2 px-2 font-medium text-right w-24">Összeg</th>
+                  <th className="py-2 px-2 font-medium w-24">Forrás</th>
+                  <th className="py-2 px-2 font-medium">Megjegyzés</th>
                   {canEdit ? <th className="py-2 px-2 font-medium w-10" /> : null}
                 </tr>
               </thead>
@@ -130,17 +145,20 @@ export function DebtPaymentHistoryModal({
                   const key = paymentKey(row, index);
                   return (
                     <tr key={key} className="border-b border-border/60">
-                      <td className="py-2.5 px-2 font-medium">
-                        {formatInstallmentPeriodLabel(row.period)}
+                      <td className="py-2.5 px-2 font-medium whitespace-nowrap">
+                        {formatShortPeriodLabel(row.period)}
                       </td>
-                      <td className="py-2.5 px-2 text-muted-foreground tabular-nums">
+                      <td className="py-2.5 px-2 text-muted-foreground tabular-nums whitespace-nowrap">
                         {row.paidAt ? formatDate(row.paidAt) : '—'}
                       </td>
-                      <td className="py-2.5 px-2 text-right tabular-nums font-medium">
+                      <td className="py-2.5 px-2 text-right tabular-nums font-medium whitespace-nowrap">
                         {formatHUF(row.amount)}
                       </td>
-                      <td className="py-2.5 px-2 text-muted-foreground text-xs">
+                      <td className="py-2.5 px-2 text-muted-foreground text-xs whitespace-nowrap">
                         {installmentPaymentSourceLabel(row.source)}
+                      </td>
+                      <td className="py-2.5 px-2 text-foreground text-xs break-words min-w-[120px]">
+                        {row.note || '—'}
                       </td>
                       {canEdit ? (
                         <td className="py-2.5 px-2 text-right">

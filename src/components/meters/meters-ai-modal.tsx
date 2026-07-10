@@ -78,8 +78,7 @@ export function MetersAiModal({
         ) : null}
 
         <InsightBanner tone="ai">
-          Két saját rögzítés között az óraállás időarányosan kerül kitöltésre (nem ismétlődik ugyanaz az érték).
-          A legutolsó ismert pont után az AI becsli a havi fogyasztást.
+          Két saját rögzítés között az óraállás időarányosan kerül kitöltésre. A legutolsó ismert pont után az AI becsli a havi fogyasztást.
         </InsightBanner>
 
         <div className="grid grid-cols-2 gap-3">

@@ -7,6 +7,7 @@ export type DebtInstallmentPaymentInput = {
   paidAt: string;
   amount: number;
   source: DebtInstallmentPayment['source'];
+  note?: string;
 };
 
 function legacyPayments(debt: Debt): DebtInstallmentPayment[] {
@@ -46,6 +47,7 @@ export function appendInstallmentPayment(
     paidAt: entry.paidAt || null,
     amount: entry.amount,
     source: entry.source,
+    note: entry.note || undefined,
   });
   return next.sort((a, b) => b.period.localeCompare(a.period));
 }
@@ -211,11 +213,12 @@ export function buildDebtPayRecordUpdate(
   amount: number,
   paidAt: string,
   syncBudgetMonth: boolean,
+  note?: string,
 ): UpdateDebtPayload {
   const ym = yearMonthPrefix(year, month);
   const payments = appendInstallmentPayment(
     debt,
-    { period: ym, paidAt, amount, source: 'debt_pay' },
+    { period: ym, paidAt, amount, source: 'debt_pay', note },
     { replacePeriod: false },
   );
 

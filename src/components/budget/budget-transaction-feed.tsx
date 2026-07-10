@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import classNames from 'classnames';
 import { formatHUF, formatDate, isDueOverdue, hasSettlementDate, today as todayDate } from '@/utils';
 import { formatTransactionAmount, toHuf } from '@/utils/money';
@@ -9,6 +10,9 @@ import { savingsCalculations } from '@/calculations/savings';
 const { goalActual: savingsGoalActual, goalIsFullyPaid: savingsGoalIsFullyPaid, goalBudgetStatus: savingsGoalBudgetStatus } = savingsCalculations;
 import { Button } from '@/components/ui/button';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
+import { Modal } from '@/components/ui/Modal';
+import { FieldLabel } from '@/components/ui/FieldLabel';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { HELP } from '@/config/help';
 import {
   DataTable,
@@ -83,6 +87,15 @@ export function BudgetTransactionFeed({
   isReader,
   exchangeRates = { HUF: 1 },
 }: BudgetTransactionFeedProps) {
+  const [dateModalTx, setDateModalTx] = useState<CashTransaction | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(todayDate());
+
+  const openDateModal = (tx: CashTransaction) => {
+    setDateModalTx(tx);
+    const initialDate = tx.paidDate ? tx.paidDate.slice(0, 10) : todayDate();
+    setSelectedDate(initialDate);
+  };
+
   const grouped = mapTransactionsToGroupedFeed(items, type, includeBills, categories, monthlyBills, getBillPortion);
   const totalCount = Object.values(grouped).reduce((s, arr) => s + arr.length, 0);
 
@@ -109,7 +122,8 @@ export function BudgetTransactionFeed({
     {
       key: 'description',
       header: 'Megnevezés',
-      width: '30%',
+      width: '260px',
+      className: 'w-[260px] max-w-[260px] min-w-[220px]',
       cell: (t) => {
         const settled = hasSettlementDate(t.paidDate);
         const isOverdue = isDueOverdue(t, today);
@@ -128,6 +142,7 @@ export function BudgetTransactionFeed({
             icon={Icon}
             tone={tone}
             title={t.description}
+            wrap
             badge={
               t.isBill ? (
                 <StatusPill status="info" size="xs">
@@ -221,7 +236,7 @@ export function BudgetTransactionFeed({
                 type === 'income' ? 'text-emerald-600' : 'text-foreground',
               )}
             >
-              {type === 'income' ? '+' : '−'} {display}
+              {display}
             </span>
             {t.isBudget && (
               <span
@@ -320,9 +335,7 @@ export function BudgetTransactionFeed({
             disabled={isReader}
             onClick={() => {
               if (isReader) return;
-              void onUpdateTransaction(t.id, {
-                paidDate: settled ? null : todayDate(),
-              });
+              openDateModal(t as unknown as CashTransaction);
             }}
           >
             {settled ? (
@@ -395,6 +408,89 @@ export function BudgetTransactionFeed({
         }}
         minWidth="780px"
       />
+
+      <Modal
+        isOpen={dateModalTx !== null}
+        onClose={() => setDateModalTx(null)}
+        title={type === 'income' ? 'Beérkezés dátuma' : 'Kifizetés dátuma'}
+        description={dateModalTx ? `„${dateModalTx.description}" tétel igazolása` : undefined}
+        size="sm"
+      >
+        {dateModalTx && (
+          <div className="space-y-4 pt-1">
+            <div className="space-y-1.5">
+              <FieldLabel>
+                {type === 'income' ? 'Mikor érkezett be az összeg?' : 'Mikor történt a kifizetés?'}
+              </FieldLabel>
+              <DatePicker
+                value={selectedDate}
+                onChange={(val) => setSelectedDate(val)}
+                placeholder="Válassz dátumot"
+              />
+              <div className="flex items-center gap-2 pt-1">
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="secondary"
+                  onClick={() => setSelectedDate(todayDate())}
+                  className="text-[0.7rem] h-6 font-normal"
+                >
+                  Ma ({formatDate(todayDate())})
+                </Button>
+                {dateModalTx.dueDate && (
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="secondary"
+                    onClick={() => setSelectedDate(dateModalTx.dueDate.slice(0, 10))}
+                    className="text-[0.7rem] h-6 font-normal"
+                  >
+                    Határidő ({formatDate(dateModalTx.dueDate)})
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-border w-full">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDateModalTx(null)}
+                >
+                  Mégse
+                </Button>
+                {hasSettlementDate(dateModalTx.paidDate) && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => {
+                      void onUpdateTransaction(dateModalTx.id, { paidDate: null });
+                      setDateModalTx(null);
+                    }}
+                  >
+                    Visszaállítás
+                  </Button>
+                )}
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  void onUpdateTransaction(dateModalTx.id, { paidDate: selectedDate });
+                  setDateModalTx(null);
+                }}
+              >
+                <CheckCircle size={14} className="mr-1.5 shrink-0" />
+                Mentés
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </Section>
   );
 }

@@ -88,6 +88,7 @@ export function DashboardPage() {
             <DashboardUnpaidSection
               unpaidItemsList={state.unpaidItemsList}
               todayStr={state.todayStr}
+              exchangeRates={state.exchangeRates}
               handlePayItem={state.handlePayItem}
               isReader={state.isReader}
             />

@@ -5,6 +5,7 @@ export type DashboardUnpaidItem = {
   type: 'expense' | 'bill';
   description: string;
   amount: number;
+  currency?: string;
   dueDate: string;
   category: string;
 };

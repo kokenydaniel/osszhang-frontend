@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, Pencil, Shield } from 'lucide-react';
+import { Calendar, Pencil, Shield, Clock, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusPill } from '@/components/design';
 import { insuranceCalculations, isPolicyEffectivelyActive } from '@/calculations/insurance';
@@ -24,6 +24,15 @@ function formatDate(value: string | null): string {
   return value.replace(/-/g, '.');
 }
 
+function formatYearMonth(ym: string): string {
+  const [y, m] = ym.split('-');
+  return `${y}.${m}`;
+}
+
+function recentPaidPeriods(paidBudgetPeriods: string[], limit = 6): string[] {
+  return [...paidBudgetPeriods].sort().reverse().slice(0, limit);
+}
+
 export function InsurancePolicyCard({
   policy,
   canEdit,
@@ -38,13 +47,21 @@ export function InsurancePolicyCard({
     isPlatformFeatureEnabled(user, 'enable_attachments') && canUseFeature(user, 'attachments');
   const [docsOpen, setDocsOpen] = useState(false);
 
+  const hasPaidHistory = p.budgetSyncEnabled && !p.premiumFree && p.paidBudgetPeriods?.length > 0;
+  const recentPaid = hasPaidHistory ? recentPaidPeriods(p.paidBudgetPeriods) : [];
+  const hasMorePaid = hasPaidHistory && p.paidBudgetPeriods.length > 6;
+
+  const contractStartLabel =
+    p.budgetStartYear && p.budgetStartMonth
+      ? `${p.budgetStartYear}.${String(p.budgetStartMonth).padStart(2, '0')}`
+      : null;
+
   return (
     <article
-      className={`relative flex flex-col rounded-2xl border-2 p-5 transition-shadow hover:shadow-md ${
-        active
+      className={`relative flex flex-col rounded-2xl border-2 p-5 transition-shadow hover:shadow-md ${active
           ? 'border-sky-500/25 bg-gradient-to-br from-sky-500/[0.04] to-card'
           : 'border-border/70 bg-muted/20 opacity-90'
-      }`}
+        }`}
     >
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2 min-w-0">
@@ -104,19 +121,68 @@ export function InsurancePolicyCard({
         ) : (
           <div className="col-span-2 text-xs text-muted-foreground">Nincs fizetendő díj</div>
         )}
-        <div className="col-span-2 flex items-center gap-1.5 text-muted-foreground">
-          <Calendar size={13} className="shrink-0" />
-          <span>
-            Megújítás: <strong className="text-foreground">{formatDate(p.renewalDate)}</strong>
-            {' · '}
-            Fedezet: <strong className="text-foreground">{formatDate(p.coveredUntil)}</strong>
-          </span>
-        </div>
       </dl>
 
-      {p.budgetSyncEnabled && !p.premiumFree ? (
+      <div className="border-t border-border/50 pt-2.5 mb-2.5 space-y-1.5">
+        <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+          Szerződés érvényessége
+        </p>
+        <div className="flex flex-col gap-1 text-xs">
+          {contractStartLabel ? (
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <Calendar size={11} className="shrink-0 text-sky-500" />
+              <span>
+                Kezdete: <strong className="text-foreground">{contractStartLabel}</strong>
+              </span>
+            </div>
+          ) : null}
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Clock size={11} className="shrink-0 text-amber-500" />
+            <span>
+              Fedezet vége:{' '}
+              <strong className={p.coveredUntil && p.coveredUntil < new Date().toISOString().slice(0, 10) ? 'text-rose-600' : 'text-foreground'}>
+                {formatDate(p.coveredUntil)}
+              </strong>
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Calendar size={11} className="shrink-0 text-emerald-500" />
+            <span>
+              Következő megújítás: <strong className="text-foreground">{formatDate(p.renewalDate)}</strong>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {hasPaidHistory ? (
+        <div className="border-t border-border/50 pt-2.5 mb-2.5">
+          <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+            Befizetések ({p.paidBudgetPeriods.length} db)
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {recentPaid.map((ym) => (
+              <span
+                key={ym}
+                className="inline-flex items-center gap-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 text-[0.65rem] font-medium tabular-nums"
+                title={`${formatYearMonth(ym)} — ${insuranceCalculations.formatPremium(p.paymentAmount, p.currency)}`}
+              >
+                <CheckCircle2 size={9} />
+                {formatYearMonth(ym)}
+              </span>
+            ))}
+            {hasMorePaid && (
+              <span className="text-[0.65rem] text-muted-foreground/70 self-center ml-0.5">
+                +{p.paidBudgetPeriods.length - 6} további
+              </span>
+            )}
+          </div>
+          <p className="text-[0.65rem] text-muted-foreground/70 mt-1">
+            {paymentFrequencyLabel(p.paymentFrequency)} · {insuranceCalculations.formatPremium(p.paymentAmount, p.currency)} / alkalom
+          </p>
+        </div>
+      ) : p.budgetSyncEnabled && !p.premiumFree ? (
         <p className="text-[0.65rem] text-sky-600 dark:text-sky-400 mb-2">
-          Költségvetésben szinkron ({paymentFrequencyLabel(p.paymentFrequency)})
+          Költségvetésben szinkron ({paymentFrequencyLabel(p.paymentFrequency)}) — még nincs rögzített befizetés
         </p>
       ) : null}
 

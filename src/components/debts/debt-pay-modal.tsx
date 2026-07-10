@@ -83,6 +83,7 @@ export function DebtPayModal({
         amt,
         values.payDate,
         values.payAddToBudget || !!debt.budgetSyncEnabled,
+        values.payNote.trim() || undefined,
       ),
     );
     if (!resUpdate || resUpdate[0] !== StatusCodes.Http200) {

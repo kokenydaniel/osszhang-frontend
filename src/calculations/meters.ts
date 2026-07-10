@@ -264,7 +264,7 @@ Válasz: egyetlen egész szám, semmi más.`;
     const sortedAllReadings = [...meter.readings].sort((a, b) => compareDates(b.date, a.date));
     const latestReading = sortedAllReadings[0];
     const sortedOfficialReadings = [...meter.readings]
-      .filter((r) => r.is_official || r.is_official)
+      .filter((r) => r.is_official)
       .sort((a, b) => compareDates(b.date, a.date));
     const latestOfficialReading = sortedOfficialReadings[0];
     const consumptionSinceOfficial =
@@ -274,8 +274,119 @@ Válasz: egyetlen egész szám, semmi más.`;
     return { latestReading, latestOfficialReading, consumptionSinceOfficial };
   },
 
+  buildNextOfficialPrediction(meter: Meter) {
+    const sortedAllReadings = [...meter.readings].sort((a, b) => compareDates(b.date, a.date));
+    const latestReading = sortedAllReadings[0];
+    const officialReadings = sortedAllReadings.filter((r) => r.is_official);
+    
+    if (officialReadings.length < 1 || !latestReading) return null;
+    
+    const latestOfficial = officialReadings[0];
+    if (latestReading.id === latestOfficial.id) return null;
+    
+    const elapsedDays = toDayjs(latestReading.date).diff(toDayjs(latestOfficial.date), 'day');
+    if (elapsedDays <= 0) return null;
+    
+    const currentConsumption = latestReading.value - latestOfficial.value;
+    let predictedConsumption: number | null = null;
+    
+    if (officialReadings.length >= 2) {
+      const prevOfficial = officialReadings[1];
+      const prevTotalConsumption = latestOfficial.value - prevOfficial.value;
+      
+      if (prevTotalConsumption > 0) {
+        const targetPrevDate = toDayjs(prevOfficial.date).add(elapsedDays, 'day').format('YYYY-MM-DD');
+        
+        const readingsInPrevPeriod = sortedAllReadings.filter(r => 
+          toDayjs(r.date).isAfter(toDayjs(prevOfficial.date).subtract(1, 'day')) && 
+          toDayjs(r.date).isBefore(toDayjs(latestOfficial.date).add(1, 'day'))
+        ).sort((a, b) => compareDates(a.date, b.date));
+        
+        let prevPoint = readingsInPrevPeriod[0];
+        let nextPoint = readingsInPrevPeriod[readingsInPrevPeriod.length - 1];
+        
+        for (let i = 0; i < readingsInPrevPeriod.length - 1; i++) {
+          if (compareDates(readingsInPrevPeriod[i].date, targetPrevDate) <= 0 && 
+              compareDates(readingsInPrevPeriod[i+1].date, targetPrevDate) >= 0) {
+            prevPoint = readingsInPrevPeriod[i];
+            nextPoint = readingsInPrevPeriod[i+1];
+            break;
+          }
+        }
+        
+        if (prevPoint && nextPoint && prevPoint.id !== nextPoint.id) {
+          const interpolatedValue = metersCalculations.interpolateMeterValue(
+            { date: prevPoint.date, value: prevPoint.value },
+            { date: nextPoint.date, value: nextPoint.value },
+            targetPrevDate
+          );
+          
+          const consumptionAtThatTime = interpolatedValue - prevOfficial.value;
+          const percentage = consumptionAtThatTime / prevTotalConsumption;
+          
+          if (percentage > 0.05 && percentage <= 1) { // Require at least 5% progression to avoid crazy multipliers
+            predictedConsumption = currentConsumption / percentage;
+          }
+        }
+      }
+    }
+    
+    if (predictedConsumption === null) {
+      predictedConsumption = (currentConsumption / Math.max(1, elapsedDays)) * 365;
+    }
+    
+    let trend: number | null = null;
+    if (officialReadings.length >= 2) {
+      const prevPeriodConsumption = latestOfficial.value - officialReadings[1].value;
+      if (prevPeriodConsumption > 0) {
+        trend = ((predictedConsumption - prevPeriodConsumption) / prevPeriodConsumption) * 100;
+      }
+    }
+    
+    return {
+      predictedConsumption: Math.round(predictedConsumption),
+      trend,
+    };
+  },
+
   computeQuickReadingDiff(latestValue: number, inputValue: number): number {
     return inputValue - latestValue;
+  },
+
+  buildOfficialPeriodsComparison(meter: Meter) {
+    const officialReadings = [...meter.readings]
+      .filter((r) => r.is_official)
+      .sort((a, b) => compareDates(b.date, a.date));
+      
+    if (officialReadings.length < 2) return null;
+    
+    const r0 = officialReadings[0];
+    const r1 = officialReadings[1];
+    const currentPeriod = {
+      end: r0,
+      start: r1,
+      consumption: r0.value - r1.value,
+      days: toDayjs(r0.date).diff(toDayjs(r1.date), 'day')
+    };
+    
+    let previousPeriod = null;
+    let trend = null;
+    
+    if (officialReadings.length >= 3) {
+      const r2 = officialReadings[2];
+      previousPeriod = {
+        end: r1,
+        start: r2,
+        consumption: r1.value - r2.value,
+        days: toDayjs(r1.date).diff(toDayjs(r2.date), 'day')
+      };
+      
+      if (previousPeriod.consumption > 0) {
+        trend = ((currentPeriod.consumption - previousPeriod.consumption) / previousPeriod.consumption) * 100;
+      }
+    }
+    
+    return { currentPeriod, previousPeriod, trend };
   },
 
   groupByLocation(meters: Meter[]): Record<string, Meter[]> {
