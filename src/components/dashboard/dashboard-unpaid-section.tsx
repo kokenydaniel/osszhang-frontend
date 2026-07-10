@@ -27,7 +27,7 @@ export function DashboardUnpaidSection({ unpaidItemsList, todayStr, exchangeRate
     <div className="lg:col-span-3">
       <Section
         title="Közelgő kifizetések"
-        description={`${unpaidItemsList.length} tétel a következő 3 napban`}
+        description={`${unpaidItemsList.length} tétel lejárt vagy esedékes a következő 3 napban`}
         action={
           unpaidItemsList.length > 0 ? (
             <StatusPill status="primary" dot>
@@ -40,7 +40,7 @@ export function DashboardUnpaidSection({ unpaidItemsList, todayStr, exchangeRate
           <EmptyState
             icon={Check}
             title="Minden rendezve"
-            description="Ebben a hónapban nincs több fizetendő tétel."
+            description="A következő napokban és múltban sincs rendezetlen fizetendő tétel."
           />
         ) : (
           <DataTable

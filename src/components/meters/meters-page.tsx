@@ -56,6 +56,17 @@ export function MetersPage() {
         <ModulePageSkeleton metrics={0} tableRows={4} />
       ) : (
         <>
+          {data.missingReadingsCount > 0 && (
+            <AccentPanel
+              tone="danger"
+              icon={Gauge}
+              title="Aktuális leolvasások esedékesek"
+              description={`A beállításokban megadott leolvasási dátum elmúlt, és még ${data.missingReadingsCount} db órához nem rögzítetted a tárgyhavi állást.`}
+            >
+              {null}
+            </AccentPanel>
+          )}
+
           {data.canLoadAnomalies && !!data.aiUtilityAnomalies?.anomalies?.length ? (
             <AccentPanel
               tone="warning"

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo } from 'react';
-import { today } from '@/utils/dates';
+import { today, toDayjs } from '@/utils/dates';
 import { useMetersStore } from '@/stores/metersStore';
 import { useUtilitiesStore } from '@/stores/utilitiesStore';
 import { isStoreLoading } from '@/utils/loadable-status';
@@ -47,6 +47,20 @@ export function useMetersPageData() {
     () => metersCalculations.groupByLocationGroups(meters, metersSettings.location_groups),
     [meters, metersSettings.location_groups],
   );
+
+  const missingReadingsCount = useMemo(() => {
+    const reminderDay = metersSettings.reading_reminder_day || 0;
+    if (reminderDay === 0) return 0;
+    
+    const todayObj = toDayjs(today());
+    const currentMonth = todayObj.month() + 1;
+    const currentYear = todayObj.year();
+    const currentDay = todayObj.date();
+    
+    if (currentDay < reminderDay) return 0;
+    
+    return meters.filter(m => !m.readings.some(r => r.year === currentYear && r.month === currentMonth)).length;
+  }, [meters, metersSettings.reading_reminder_day]);
 
   const refreshAiAnomalies = useCallback(async () => {
     if (!canLoadAnomalies) return null;

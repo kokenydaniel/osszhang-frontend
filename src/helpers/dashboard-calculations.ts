@@ -1,6 +1,6 @@
 import { formatHUF, compareDates, hasSettlementDate, isDueOverdue } from '@/utils';
 import { isUpcomingWithinDays } from '@/helpers/debt-budget';
-import { dayjs, formatTodayLong } from '@/utils/dates';
+import { dayjs, formatTodayLong, toDayjs } from '@/utils/dates';
 import { utilitiesCalculations } from '@/calculations/utilities';
 import { savingsCalculations } from '@/calculations/savings';
 import { HELP } from '@/config/help';
@@ -154,7 +154,7 @@ export function computeDashboardSnapshot(input: DashboardSnapshotInput) {
         }))
       : []),
   ]
-    .filter((item) => isUpcomingWithinDays(item.dueDate, todayStr, 3))
+    .filter((item) => isUpcomingWithinDays(item.dueDate, todayStr, 3) || toDayjs(item.dueDate).isBefore(toDayjs(todayStr), 'day'))
     .sort((a, b) => compareDates(a.dueDate, b.dueDate));
 
   const consumptionData: DashboardConsumptionItem[] = input.meters.map((m) => {
